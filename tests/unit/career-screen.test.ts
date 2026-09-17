@@ -1,7 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { CareerScreen } from '@/adapters/in/ui/screens/CareerScreen';
+import { describe, it, expect } from 'vitest';
+import { mount } from '@vue/test-utils';
+import CareerScreen from '@/adapters/in/ui/screens/CareerScreen.vue';
 import { CareerRecord } from '@/core/domain/career.entity';
 
 describe('CareerScreen Component', () => {
@@ -36,32 +35,31 @@ describe('CareerScreen Component', () => {
   ];
 
   it('deve renderizar os indicadores e permitir alternar entre gráfico de linha e degraus', async () => {
-    render(
-      <CareerScreen
-        careerRecords={mockRecords}
-        isPrivacyActive={false}
-        onRefreshData={vi.fn()}
-      />
-    );
+    const wrapper = mount(CareerScreen, {
+      props: {
+        careerRecords: mockRecords,
+        isPrivacyActive: false,
+      },
+    });
 
-    expect(screen.getByTestId('screen-career')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-total-cash')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-net-salary')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-cagr')).toBeInTheDocument();
+    expect(wrapper.find('[data-testid="screen-career"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="kpi-total-cash"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="kpi-net-salary"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="kpi-cagr"]').exists()).toBe(true);
 
     // Padrão: gráfico de linha ativo
-    expect(screen.getByTestId('career-line-chart')).toBeInTheDocument();
+    expect(wrapper.find('[data-testid="career-line-chart"]').exists()).toBe(true);
 
     // Alternar para degraus/barras
-    const btnBars = screen.getByTestId('btn-chart-type-bars');
-    await userEvent.click(btnBars);
+    const btnBars = wrapper.find('[data-testid="btn-chart-type-bars"]');
+    await btnBars.trigger('click');
 
-    expect(screen.queryByTestId('career-line-chart')).not.toBeInTheDocument();
-    expect(screen.getByText('Degraus Salariais')).toBeInTheDocument();
+    expect(wrapper.find('[data-testid="career-line-chart"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Degraus Salariais');
 
     // Voltar para linha
-    const btnLine = screen.getByTestId('btn-chart-type-line');
-    await userEvent.click(btnLine);
-    expect(screen.getByTestId('career-line-chart')).toBeInTheDocument();
+    const btnLine = wrapper.find('[data-testid="btn-chart-type-line"]');
+    await btnLine.trigger('click');
+    expect(wrapper.find('[data-testid="career-line-chart"]').exists()).toBe(true);
   });
 });
