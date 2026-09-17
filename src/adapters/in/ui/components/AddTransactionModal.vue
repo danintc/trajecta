@@ -4,10 +4,11 @@ import { db } from '@/adapters/out/storage/dexie-db';
 import { calculateInstallmentsSchedule } from '@/core/use-cases/calculate-installments.use-case';
 import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
-import { TransactionType } from '@/core/domain/transaction.entity';
+import { Transaction, TransactionType } from '@/core/domain/transaction.entity';
 
 export interface AddTransactionModalProps {
   isOpen: boolean;
+  transactionToEdit?: Transaction | null;
 }
 
 const props = defineProps<AddTransactionModalProps>();
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'success'): void;
 }>();
+
+const isEditing = computed(() => !!props.transactionToEdit);
 
 const type = ref<TransactionType>('expense');
 const description = ref('');
@@ -27,14 +30,33 @@ const isInstallment = ref(false);
 const installmentTotal = ref(3);
 const errorMessage = ref<string | null>(null);
 
-// Reset form when modal opens
+// Reset / prefill form when modal opens or transactionToEdit changes
 watch(
-  () => props.isOpen,
-  (open) => {
+  () => [props.isOpen, props.transactionToEdit] as const,
+  ([open, tx]) => {
     if (open) {
       errorMessage.value = null;
+      if (tx) {
+        type.value = tx.type;
+        description.value = tx.description;
+        amountStr.value = (tx.amountInCents / 100).toFixed(2).replace('.', ',');
+        categoryId.value = tx.categoryId;
+        accountOrCard.value = tx.accountOrCard;
+        date.value = tx.date;
+        isInstallment.value = false;
+      } else {
+        type.value = 'expense';
+        description.value = '';
+        amountStr.value = '';
+        categoryId.value = 'cat-alimentacao';
+        accountOrCard.value = 'Cartão Nubank';
+        date.value = new Date().toISOString().slice(0, 10);
+        isInstallment.value = false;
+        installmentTotal.value = 3;
+      }
     }
-  }
+  },
+  { immediate: true }
 );
 
 const schedulePreview = computed(() => {
@@ -63,8 +85,37 @@ function handleClose() {
   emit('close');
 }
 
+function handleAmountInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  // Allow only digits and decimal separators (, or .)
+  let val = target.value.replace(/[^0-9.,]/g, '');
+
+  const firstComma = val.indexOf(',');
+  const firstDot = val.indexOf('.');
+
+  if (firstComma !== -1 && firstDot !== -1) {
+    if (firstComma < firstDot) {
+      val = val.slice(0, firstDot) + val.slice(firstDot).replace(/\./g, '');
+    } else {
+      val = val.slice(0, firstComma) + val.slice(firstComma).replace(/,/g, '');
+    }
+  } else if (firstComma !== -1) {
+    val = val.slice(0, firstComma + 1) + val.slice(firstComma + 1).replace(/,/g, '');
+  } else if (firstDot !== -1) {
+    val = val.slice(0, firstDot + 1) + val.slice(firstDot + 1).replace(/\./g, '');
+  }
+
+  amountStr.value = val;
+  target.value = val;
+}
+
 async function handleSubmit() {
   errorMessage.value = null;
+
+  if (!amountStr.value.trim() || !/\d/.test(amountStr.value)) {
+    errorMessage.value = 'O valor total deve ser um número válido.';
+    return;
+  }
 
   const amountInCents = parseBrlToCents(amountStr.value);
   if (!description.value.trim()) {
@@ -72,14 +123,24 @@ async function handleSubmit() {
     return;
   }
   if (amountInCents <= 0) {
-    errorMessage.value = 'O valor deve ser maior que zero.';
+    errorMessage.value = 'O valor deve ser maior que zero (ex: 15,00).';
     return;
   }
 
   try {
     const now = new Date().toISOString();
 
-    if (isInstallment.value && schedulePreview.value) {
+    if (props.transactionToEdit) {
+      await db.transactions.update(props.transactionToEdit.id, {
+        type: type.value,
+        description: description.value.trim(),
+        amountInCents,
+        date: date.value,
+        categoryId: categoryId.value,
+        accountOrCard: accountOrCard.value.trim(),
+        updatedAt: now,
+      });
+    } else if (isInstallment.value && schedulePreview.value) {
       const groupId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const transactions = schedulePreview.value.map((item) => ({
         id: `tx-${Date.now()}-${item.currentInstallment}`,
@@ -154,11 +215,11 @@ async function handleSubmit() {
           <!-- Header do Diálogo -->
           <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
             <h3 id="modal-tx-title" class="font-bold text-base text-white flex items-center gap-2">
-              <span>Novo Lançamento</span>
+              <span>{{ isEditing ? 'Editar Lançamento' : 'Novo Lançamento' }}</span>
               <span
                 class="text-[10px] bg-accent-yellow/10 text-accent-yellow px-2 py-0.5 rounded font-bold uppercase"
               >
-                CRUD Direto
+                {{ isEditing ? 'Edição' : 'CRUD Direto' }}
               </span>
             </h3>
             <button
@@ -247,11 +308,13 @@ async function handleSubmit() {
                   Valor Total (R$)
                 </label>
                 <input
-                  v-model="amountStr"
+                  :value="amountStr"
                   type="text"
+                  inputmode="decimal"
                   data-testid="input-amount"
                   placeholder="Ex: 100,00 ou 100"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
+                  @input="handleAmountInput"
                 />
               </div>
             </div>
@@ -299,9 +362,9 @@ async function handleSubmit() {
               />
             </div>
 
-            <!-- Compra Parcelada (apenas para despesa) -->
+            <!-- Compra Parcelada (apenas para despesa nova) -->
             <div
-              v-if="type === 'expense'"
+              v-if="type === 'expense' && !isEditing"
               class="border border-border-subtle bg-background/60 rounded-xl p-3.5 space-y-3"
             >
               <div class="flex items-center justify-between">
@@ -392,7 +455,7 @@ async function handleSubmit() {
                 data-testid="btn-submit"
                 class="px-4 py-2 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs transition transform active:scale-95 shadow-sm shadow-accent-yellow/20"
               >
-                Salvar Lançamento
+                {{ isEditing ? 'Salvar Alterações' : 'Salvar Lançamento' }}
               </button>
             </div>
           </form>

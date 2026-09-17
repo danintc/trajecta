@@ -15,7 +15,18 @@ export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career';
 const activeTab = ref<ActiveTab>('home');
 const isPrivacyActive = ref(false);
 const isAddModalOpen = ref(false);
+const transactionToEdit = ref<Transaction | null>(null);
 const appMode = ref<'empty' | 'populated'>('populated');
+
+function handleOpenAddModal() {
+  transactionToEdit.value = null;
+  isAddModalOpen.value = true;
+}
+
+function handleOpenEditModal(tx: Transaction) {
+  transactionToEdit.value = tx;
+  isAddModalOpen.value = true;
+}
 
 // Estados sincronizados com IndexedDB
 const transactions = ref<Transaction[]>([]);
@@ -137,7 +148,7 @@ async function handleDeleteTransaction(id: string) {
           data-testid="fab-add-transaction"
           type="button"
           class="px-3.5 py-1.5 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
-          @click="isAddModalOpen = true"
+          @click="handleOpenAddModal"
         >
           <span class="text-sm font-black">+</span>
           <span>Lançar</span>
@@ -219,7 +230,7 @@ async function handleDeleteTransaction(id: string) {
         :transactions="transactions"
         :assets="assets"
         :is-privacy-active="isPrivacyActive"
-        @open-add-modal="isAddModalOpen = true"
+        @open-add-modal="handleOpenAddModal"
         @navigate-to-timeline="activeTab = 'timeline'"
       />
 
@@ -227,7 +238,8 @@ async function handleDeleteTransaction(id: string) {
         v-else-if="activeTab === 'timeline'"
         :transactions="transactions"
         :is-privacy-active="isPrivacyActive"
-        @open-add-modal="isAddModalOpen = true"
+        @open-add-modal="handleOpenAddModal"
+        @edit-transaction="handleOpenEditModal"
         @delete-transaction="handleDeleteTransaction"
       />
 
@@ -249,7 +261,8 @@ async function handleDeleteTransaction(id: string) {
     <!-- MODAL GLOBAL (+) DE TRANSAÇÕES -->
     <AddTransactionModal
       :is-open="isAddModalOpen"
-      @close="isAddModalOpen = false"
+      :transaction-to-edit="transactionToEdit"
+      @close="isAddModalOpen = false; transactionToEdit = null"
       @success="loadDatabaseData"
     />
   </div>
