@@ -1,9 +1,18 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import TimelineScreen from '@/adapters/in/ui/screens/TimelineScreen.vue';
 import { Transaction } from '@/core/domain/transaction.entity';
 
 describe('TimelineScreen Component', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const mockTransactions: Transaction[] = [
     {
       id: 'tx-1',

@@ -8,9 +8,10 @@ import HomeScreen from './adapters/in/ui/screens/HomeScreen.vue';
 import TimelineScreen from './adapters/in/ui/screens/TimelineScreen.vue';
 import InvestmentsScreen from './adapters/in/ui/screens/InvestmentsScreen.vue';
 import CareerScreen from './adapters/in/ui/screens/CareerScreen.vue';
+import PhaseSimulatorScreen from './adapters/in/ui/screens/PhaseSimulatorScreen.vue';
 import AddTransactionModal from './adapters/in/ui/components/AddTransactionModal.vue';
 
-export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career';
+export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career' | 'phase-simulator';
 
 const activeTab = ref<ActiveTab>('home');
 const isPrivacyActive = ref(false);
@@ -221,6 +222,21 @@ async function handleDeleteTransaction(id: string) {
       >
         <span>💼</span> Carreira & Total Cash
       </button>
+      <button
+        data-testid="nav-tab-phase-simulator"
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === 'phase-simulator'"
+        class="px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition"
+        :class="
+          activeTab === 'phase-simulator'
+            ? 'border-accent-yellow text-accent-yellow'
+            : 'border-transparent text-finance-neutral hover:text-white'
+        "
+        @click="activeTab = 'phase-simulator'"
+      >
+        <span>🎯</span> Simulador de Fases
+      </button>
     </nav>
 
     <!-- CONTEÚDO DA ABA ATIVA -->
@@ -248,6 +264,7 @@ async function handleDeleteTransaction(id: string) {
         :assets="assets"
         :is-privacy-active="isPrivacyActive"
         @refresh-data="loadDatabaseData"
+        @navigate-to-simulator="activeTab = 'phase-simulator'"
       />
 
       <CareerScreen
@@ -255,6 +272,14 @@ async function handleDeleteTransaction(id: string) {
         :career-records="careerRecords"
         :is-privacy-active="isPrivacyActive"
         @refresh-data="loadDatabaseData"
+      />
+
+      <PhaseSimulatorScreen
+        v-else-if="activeTab === 'phase-simulator'"
+        :assets="assets"
+        :career-records="careerRecords"
+        :transactions="transactions"
+        :is-privacy-active="isPrivacyActive"
       />
     </main>
 

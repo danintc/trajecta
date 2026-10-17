@@ -3,7 +3,12 @@ import { ref, computed } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
 import KpiCard from '../components/KpiCard.vue';
 import EmptyState from '../components/EmptyState.vue';
-import { formatCentsToBrl, parseBrlToCents } from '@/shared/utils/currency';
+import {
+  formatCentsToBrl,
+  parseBrlToCents,
+  sanitizeCurrencyInput,
+  normalizeCurrencyOnBlur,
+} from '@/shared/utils/currency';
 import { calculatePortfolioRebalance } from '@/core/use-cases/rebalance-portfolio.use-case';
 import AddAssetModal from '../components/AddAssetModal.vue';
 
@@ -16,6 +21,7 @@ const props = defineProps<InvestmentsScreenProps>();
 
 const emit = defineEmits<{
   (e: 'refreshData'): void;
+  (e: 'navigateToSimulator'): void;
 }>();
 
 const aporteInput = ref('2.000,00');
@@ -165,6 +171,37 @@ const filteredAssets = computed(() => {
       />
     </div>
 
+    <!-- BANNER DE ACESSO AO SIMULADOR DE FASES -->
+    <div
+      class="bg-gradient-to-r from-surface to-[#1A1A24] border border-border-subtle rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+    >
+      <div class="flex items-start gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-accent-yellow/10 border border-accent-yellow/20 flex items-center justify-center text-xl shrink-0">
+          🎯
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-white tracking-tight">
+              Simulador de Fases & Renda do Investidor
+            </h3>
+            <span class="text-[10px] bg-accent-yellow/15 text-accent-yellow font-bold px-2 py-0.5 rounded uppercase">
+              Novo
+            </span>
+          </div>
+          <p class="text-xs text-[#71717A] mt-0.5">
+            Descubra se você está na etapa de <strong>Construção</strong>, <strong>Transição</strong> ou <strong>Manutenção</strong> e veja a utilidade marginal dos seus aportes.
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs whitespace-nowrap shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
+        @click="emit('navigateToSimulator')"
+      >
+        Abrir Simulador ➔
+      </button>
+    </div>
+
     <!-- GRÁFICO DE EVOLUÇÃO PATRIMONIAL DOS INVESTIMENTOS -->
     <div
       v-if="assets.length > 0"
@@ -267,9 +304,27 @@ const filteredAssets = computed(() => {
         <div class="flex items-center gap-2">
           <span class="text-xs text-finance-neutral">Aporte (R$):</span>
           <input
-            v-model="aporteInput"
+            :value="aporteInput"
             type="text"
+            inputmode="numeric"
             class="bg-background border border-border-subtle rounded-md px-2.5 py-1 text-xs text-white font-mono w-28 text-right focus:border-accent-yellow outline-none transition"
+            @focus="(e: Event) => {
+              const t = e.target as HTMLInputElement;
+              if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+            }"
+            @click="(e: Event) => {
+              const t = e.target as HTMLInputElement;
+              if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+            }"
+            @input="(e: Event) => {
+              const target = e.target as HTMLInputElement;
+              const sanitized = sanitizeCurrencyInput(target.value);
+              aporteInput = sanitized;
+              target.value = sanitized;
+              target.setSelectionRange(sanitized.length, sanitized.length);
+            }"
+            @blur="aporteInput = normalizeCurrencyOnBlur(aporteInput)"
+            @keydown.enter="($event.target as HTMLInputElement).blur()"
           />
         </div>
       </div>
