@@ -116,7 +116,8 @@ describe('PhaseSimulatorScreen Component', () => {
 
     expect(wrapper.text()).toContain('Evolução Patrimonial e Renda Passiva Mês a Mês');
     expect(wrapper.text()).toContain('Aportes no Período');
-    expect(wrapper.text()).toContain('Juros / Rendimentos Gerados');
+    expect(wrapper.text()).toContain('Juros / Rendimentos');
+    expect(wrapper.text()).toContain('Patrimônio Final');
     expect(wrapper.text()).toContain('Mês 1');
     expect(wrapper.text()).toContain('Ano 1');
     expect(wrapper.text()).toContain('/mês');
@@ -232,5 +233,34 @@ describe('PhaseSimulatorScreen Component', () => {
     expect(wrapper.text()).toContain('280.000,00');
     expect(wrapper.text()).toContain('0,00% a.m.');
   });
+
+  it('deve exibir hint flutuante sobre o gráfico ao passar o mouse em um ano, mostrando todas as linhas ativas (Contínuo, 10a, 5a e Agora)', async () => {
+    const wrapper = mount(PhaseSimulatorScreen, {
+      props: {
+        assets: [],
+        careerRecords: [],
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    // Inicialmente o hint não está visível
+    expect(wrapper.find('[data-testid="wealth-chart-tooltip"]').exists()).toBe(false);
+
+    // Simula passar o mouse sobre o 9º ano (índice 8) no gráfico
+    const interactiveBars = wrapper.findAll('.interactive-bars rect');
+    expect(interactiveBars.length).toBeGreaterThan(8);
+    await interactiveBars[8].trigger('mouseenter');
+
+    const tooltip = wrapper.find('[data-testid="wealth-chart-tooltip"]');
+    expect(tooltip.exists()).toBe(true);
+    expect(tooltip.text()).toContain('Ano 9');
+    expect(tooltip.text()).toContain('Mês 108');
+    expect(tooltip.text()).toContain('Contínuo (30a)');
+    expect(tooltip.text()).toContain('Parar aos 10a');
+    expect(tooltip.text()).toContain('Parar aos 5a');
+    expect(tooltip.text()).toContain('Parar Agora');
+  });
 });
+
 

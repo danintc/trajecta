@@ -47,7 +47,7 @@ const maxNetWorthInCents = computed(() => {
 // Coordenadas SVG
 const width = 700;
 const height = 260;
-const paddingLeft = 60;
+const paddingLeft = 86;
 const paddingRight = 25;
 const paddingTop = 25;
 const paddingBottom = 40;
@@ -119,6 +119,11 @@ const yTicks = computed(() => {
   });
 });
 
+const stepWidth = computed(() => {
+  const total = horizonYears.value - 1 || 1;
+  return plotWidth / total;
+});
+
 const hoveredData = computed(() => {
   if (hoveredYearIdx.value === null) return null;
   const idx = hoveredYearIdx.value;
@@ -128,14 +133,22 @@ const hoveredData = computed(() => {
   const s5 = props.scenarios.stop5Years.yearlyData[idx];
   const sNow = props.scenarios.stopNow.yearlyData[idx];
 
+  const x = getX(idx);
+  const xPercent = (x / width) * 100;
+
   return {
     year,
-    x: getX(idx),
+    x,
+    xPercent,
+    isRightSide: xPercent > 55,
     continuous: cont?.netWorthInCents || 0,
+    passiveIncomeContinuous: cont?.estimatedMonthlyPassiveIncomeInCents || 0,
     stop10: s10?.netWorthInCents || 0,
+    passiveIncomeStop10: s10?.estimatedMonthlyPassiveIncomeInCents || 0,
     stop5: s5?.netWorthInCents || 0,
-    stopNow: sNow?.netWorthInCents || 0,
     passiveIncomeStop5: s5?.estimatedMonthlyPassiveIncomeInCents || 0,
+    stopNow: sNow?.netWorthInCents || 0,
+    passiveIncomeStopNow: sNow?.estimatedMonthlyPassiveIncomeInCents || 0,
   };
 });
 </script>
@@ -156,39 +169,41 @@ const hoveredData = computed(() => {
       </div>
 
       <!-- Filtros/Legenda Interativa -->
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition">
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs shrink-0">
+        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition whitespace-nowrap shrink-0">
           <input v-model="showContinuous" type="checkbox" class="accent-finance-invest rounded" />
-          <span class="w-2.5 h-2.5 rounded-full bg-finance-invest" />
-          <span class="text-white text-[11px] font-medium">Contínuo (30a)</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-finance-invest shrink-0" />
+          <span class="text-white text-[11px] font-medium">Contínuo ({{ horizonYears }}a)</span>
         </label>
 
-        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition">
+        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition whitespace-nowrap shrink-0">
           <input v-model="showStop10" type="checkbox" class="accent-accent-yellow rounded" />
-          <span class="w-2.5 h-2.5 rounded-full bg-accent-yellow" />
+          <span class="w-2.5 h-2.5 rounded-full bg-accent-yellow shrink-0" />
           <span class="text-white text-[11px] font-medium">Parar aos 10a</span>
         </label>
 
-        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition">
+        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition whitespace-nowrap shrink-0">
           <input v-model="showStop5" type="checkbox" class="accent-finance-pos rounded" />
-          <span class="w-2.5 h-2.5 rounded-full bg-finance-pos" />
+          <span class="w-2.5 h-2.5 rounded-full bg-finance-pos shrink-0" />
           <span class="text-white text-[11px] font-medium">Parar aos 5a</span>
         </label>
 
-        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition">
+        <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1 rounded-lg border border-border-subtle hover:border-[#3F3F46] transition whitespace-nowrap shrink-0">
           <input v-model="showStopNow" type="checkbox" class="accent-finance-career rounded" />
-          <span class="w-2.5 h-2.5 rounded-full bg-finance-career" />
+          <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
           <span class="text-white text-[11px] font-medium">Parar Agora (Coast)</span>
         </label>
       </div>
     </div>
 
-    <!-- GRÁFICO SVG RESPONSIVO -->
-    <div class="relative w-full overflow-hidden select-none">
+    <!-- GRÁFICO SVG RESPONSIVO COM HINT FLUTUANTE -->
+    <div
+      class="relative w-full select-none"
+      @mouseleave="hoveredYearIdx = null"
+    >
       <svg
         :viewBox="`0 0 ${width} ${height}`"
-        class="w-full h-auto overflow-visible font-sans"
-        @mouseleave="hoveredYearIdx = null"
+        class="w-full h-auto block font-sans"
       >
         <defs>
           <linearGradient id="gradient-continuous" x1="0" y1="0" x2="0" y2="1">
@@ -277,23 +292,8 @@ const hoveredData = computed(() => {
           <path :d="pathStopNow" fill="none" stroke="#818CF8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2,2" />
         </g>
 
-        <!-- Faixas verticais interativas para capturar hover em qualquer ano -->
-        <g class="interactive-bars">
-          <rect
-            v-for="(_, idx) in scenarios.continuous.yearlyData"
-            :key="idx"
-            :x="getX(idx) - (plotWidth / horizonYears) / 2"
-            :y="paddingTop"
-            :width="plotWidth / horizonYears"
-            :height="plotHeight"
-            fill="transparent"
-            class="cursor-pointer"
-            @mouseenter="hoveredYearIdx = idx"
-          />
-        </g>
-
-        <!-- Linha do Ano em Hover -->
-        <g v-if="hoveredData">
+        <!-- Linha e Pontos do Ano em Hover -->
+        <g v-if="hoveredData" class="pointer-events-none">
           <line
             :x1="hoveredData.x"
             :y1="paddingTop"
@@ -301,41 +301,148 @@ const hoveredData = computed(() => {
             :y2="paddingTop + plotHeight"
             stroke="#FACC15"
             stroke-width="1.2"
+            stroke-dasharray="3,2"
+          />
+          <circle
+            v-if="showContinuous"
+            :cx="hoveredData.x"
+            :cy="getY(hoveredData.continuous)"
+            r="4.5"
+            fill="#38BDF8"
+            stroke="#0E0E10"
+            stroke-width="1.8"
+          />
+          <circle
+            v-if="showStop10"
+            :cx="hoveredData.x"
+            :cy="getY(hoveredData.stop10)"
+            r="4.5"
+            fill="#FACC15"
+            stroke="#0E0E10"
+            stroke-width="1.8"
+          />
+          <circle
+            v-if="showStop5"
+            :cx="hoveredData.x"
+            :cy="getY(hoveredData.stop5)"
+            r="4.5"
+            fill="#22C55E"
+            stroke="#0E0E10"
+            stroke-width="1.8"
+          />
+          <circle
+            v-if="showStopNow"
+            :cx="hoveredData.x"
+            :cy="getY(hoveredData.stopNow)"
+            r="4.5"
+            fill="#818CF8"
+            stroke="#0E0E10"
+            stroke-width="1.8"
+          />
+        </g>
+
+        <!-- Faixas verticais interativas para capturar hover em qualquer ano -->
+        <g class="interactive-bars">
+          <rect
+            v-for="(_, idx) in scenarios.continuous.yearlyData"
+            :key="idx"
+            :x="getX(idx) - stepWidth / 2"
+            :y="paddingTop"
+            :width="stepWidth"
+            :height="plotHeight"
+            fill="transparent"
+            class="cursor-crosshair"
+            @mouseenter="hoveredYearIdx = idx"
+            @mousemove="hoveredYearIdx = idx"
           />
         </g>
       </svg>
-    </div>
 
-    <!-- DETALHES DO ANO SELECIONADO / TOOLTIP -->
-    <div
-      v-if="hoveredData"
-      class="bg-background border border-accent-yellow/40 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs"
-    >
-      <div>
-        <span class="text-[10px] text-[#71717A] block">Ano Selecionado</span>
-        <span class="font-bold text-white font-mono text-sm">Ano {{ hoveredData.year }}</span>
+      <!-- HINT / TOOLTIP FLUTUANTE SOBRE O GRÁFICO -->
+      <div
+        v-if="hoveredData"
+        data-testid="wealth-chart-tooltip"
+        class="pointer-events-none absolute top-2 z-20 w-60 sm:w-64 bg-[#0E0E10]/95 backdrop-blur-md border border-accent-yellow/40 rounded-xl p-3 shadow-2xl space-y-2 text-xs transition-all duration-75"
+        :style="{
+          left: `${hoveredData.xPercent}%`,
+          transform: hoveredData.isRightSide ? 'translateX(calc(-100% - 14px))' : 'translateX(14px)',
+        }"
+      >
+        <div class="flex items-center justify-between border-b border-border-subtle pb-1.5">
+          <span class="font-bold text-white font-mono text-xs">
+            Ano {{ hoveredData.year }}
+          </span>
+          <span class="text-[10px] text-[#A1A1AA] font-mono">
+            Mês {{ hoveredData.year * 12 }}
+          </span>
+        </div>
+
+        <div class="space-y-1.5 font-mono">
+          <!-- Contínuo -->
+          <div v-if="showContinuous" class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-1.5 font-sans pt-0.5">
+              <span class="w-2 h-2 rounded-full bg-finance-invest shrink-0" />
+              <span class="text-[11px] text-finance-invest font-semibold">Contínuo ({{ horizonYears }}a)</span>
+            </div>
+            <div class="text-right">
+              <div class="text-white font-bold text-[11px]">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.continuous) }}
+              </div>
+              <div class="text-[9px] text-[#71717A]">
+                Renda: {{ isPrivacyActive ? '••••' : formatCentsToBrl(hoveredData.passiveIncomeContinuous) }}/mês
+              </div>
+            </div>
+          </div>
+
+          <!-- Parar aos 10 Anos -->
+          <div v-if="showStop10" class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-1.5 font-sans pt-0.5">
+              <span class="w-2 h-2 rounded-full bg-accent-yellow shrink-0" />
+              <span class="text-[11px] text-accent-yellow font-semibold">Parar aos 10a</span>
+            </div>
+            <div class="text-right">
+              <div class="text-white font-bold text-[11px]">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.stop10) }}
+              </div>
+              <div class="text-[9px] text-[#71717A]">
+                Renda: {{ isPrivacyActive ? '••••' : formatCentsToBrl(hoveredData.passiveIncomeStop10) }}/mês
+              </div>
+            </div>
+          </div>
+
+          <!-- Parar aos 5 Anos -->
+          <div v-if="showStop5" class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-1.5 font-sans pt-0.5">
+              <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0" />
+              <span class="text-[11px] text-finance-pos font-semibold">Parar aos 5a</span>
+            </div>
+            <div class="text-right">
+              <div class="text-white font-bold text-[11px]">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.stop5) }}
+              </div>
+              <div class="text-[9px] text-[#71717A]">
+                Renda: {{ isPrivacyActive ? '••••' : formatCentsToBrl(hoveredData.passiveIncomeStop5) }}/mês
+              </div>
+            </div>
+          </div>
+
+          <!-- Parar Agora (Coast) -->
+          <div v-if="showStopNow" class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-1.5 font-sans pt-0.5">
+              <span class="w-2 h-2 rounded-full bg-finance-career shrink-0" />
+              <span class="text-[11px] text-finance-career font-semibold">Parar Agora</span>
+            </div>
+            <div class="text-right">
+              <div class="text-white font-bold text-[11px]">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.stopNow) }}
+              </div>
+              <div class="text-[9px] text-[#71717A]">
+                Renda: {{ isPrivacyActive ? '••••' : formatCentsToBrl(hoveredData.passiveIncomeStopNow) }}/mês
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <span class="text-[10px] text-finance-invest block">Aporte Contínuo</span>
-        <span class="font-bold font-mono text-white">
-          {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.continuous) }}
-        </span>
-      </div>
-      <div>
-        <span class="text-[10px] text-finance-pos block">Parar em 5 Anos</span>
-        <span class="font-bold font-mono text-white">
-          {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.stop5) }}
-        </span>
-      </div>
-      <div>
-        <span class="text-[10px] text-finance-pos block">Renda Passiva Mensal (Parar 5a)</span>
-        <span class="font-bold font-mono text-finance-pos">
-          {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(hoveredData.passiveIncomeStop5) }}/mês
-        </span>
-      </div>
-    </div>
-    <div v-else class="text-[11px] text-[#71717A] text-center italic">
-      Passe o mouse ou toque no gráfico para inspecionar os valores ano a ano
     </div>
   </div>
 </template>
