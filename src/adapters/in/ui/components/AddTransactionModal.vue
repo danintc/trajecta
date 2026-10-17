@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { db } from '@/adapters/out/storage/dexie-db';
+import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { calculateInstallmentsSchedule } from '@/core/use-cases/calculate-installments.use-case';
 import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
@@ -131,7 +132,8 @@ async function handleSubmit() {
     const now = new Date().toISOString();
 
     if (props.transactionToEdit) {
-      await db.transactions.update(props.transactionToEdit.id, {
+      const updatedTx: Transaction = {
+        ...props.transactionToEdit,
         type: type.value,
         description: description.value.trim(),
         amountInCents,
@@ -139,10 +141,20 @@ async function handleSubmit() {
         categoryId: categoryId.value,
         accountOrCard: accountOrCard.value.trim(),
         updatedAt: now,
+      };
+      await db.transactions.update(props.transactionToEdit.id, {
+        type: updatedTx.type,
+        description: updatedTx.description,
+        amountInCents: updatedTx.amountInCents,
+        date: updatedTx.date,
+        categoryId: updatedTx.categoryId,
+        accountOrCard: updatedTx.accountOrCard,
+        updatedAt: now,
       });
+      await cloudSyncService.upsertTransactions([updatedTx]);
     } else if (isInstallment.value && schedulePreview.value) {
       const groupId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const transactions = schedulePreview.value.map((item) => ({
+      const transactions: Transaction[] = schedulePreview.value.map((item) => ({
         id: `tx-${Date.now()}-${item.currentInstallment}`,
         type: type.value,
         description: description.value.trim(),
@@ -160,8 +172,9 @@ async function handleSubmit() {
       }));
 
       await db.transactions.bulkAdd(transactions);
+      await cloudSyncService.upsertTransactions(transactions);
     } else {
-      await db.transactions.add({
+      const newTx: Transaction = {
         id: `tx-${Date.now()}`,
         type: type.value,
         description: description.value.trim(),
@@ -172,7 +185,9 @@ async function handleSubmit() {
         isInstallment: false,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      await db.transactions.add(newTx);
+      await cloudSyncService.upsertTransactions([newTx]);
     }
 
     emit('success');
@@ -205,13 +220,15 @@ async function handleSubmit() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-tx-title"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
         @click.self="handleClose"
         @keydown.esc="handleClose"
       >
         <div
-          class="bg-surface border border-border-subtle rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8 transform transition-all"
+          class="bg-surface border-t sm:border border-border-subtle rounded-t-3xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[92dvh] sm:my-8 pb-safe transform transition-all"
         >
+          <!-- Alça de Arraste Mobile (Bottom Sheet Handle) -->
+          <div class="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mt-3 mb-1 sm:hidden" />
           <!-- Header do Diálogo -->
           <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
             <h3 id="modal-tx-title" class="font-bold text-base text-white flex items-center gap-2">

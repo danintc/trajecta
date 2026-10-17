@@ -11,6 +11,7 @@ import {
 import AddCareerModal from '../components/AddCareerModal.vue';
 import CareerLineChart from '../components/CareerLineChart.vue';
 import { db } from '@/adapters/out/storage/dexie-db';
+import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 
 export interface CareerScreenProps {
   careerRecords: CareerRecord[];
@@ -63,6 +64,7 @@ const cagr = computed(() => {
 async function handleDeleteRecord(id: string, role: string) {
   if (confirm(`Excluir o marco "${role}" da carreira?`)) {
     await db.careerRecords.delete(id);
+    await cloudSyncService.deleteCareerRecord(id);
     emit('refreshData');
   }
 }

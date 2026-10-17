@@ -206,7 +206,7 @@ const periodLabel = computed(() => {
     <!-- SELETOR DE PERÍODO & STATUS -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div
-        class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto"
+        class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto no-scrollbar"
       >
         <button
           v-for="p in [

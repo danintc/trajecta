@@ -3,13 +3,52 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-[#F4F4F5] antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    overscroll-behavior-y: none;
+  }
+
+  /* Evita o auto-zoom forçado do Chrome/Safari no iOS ao focar em campos de formulário */
+  @media screen and (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }
 
 .font-mono-num {
   font-family: 'JetBrains Mono', monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* Safe areas para iPhone (Notch / Dynamic Island e Home Indicator inferior) */
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.pb-safe-nav {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Ocultar barras de rolagem mantendo touch scroll suave no iOS */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }

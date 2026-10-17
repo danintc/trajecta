@@ -10,6 +10,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          supabase: ['@supabase/supabase-js'],
+          xlsx: ['xlsx'],
+          vendor: ['vue', 'dexie', 'date-fns', 'zod'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { db } from '@/adapters/out/storage/dexie-db';
-import { AssetClass } from '@/core/domain/asset.entity';
+import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
+import { Asset, AssetClass } from '@/core/domain/asset.entity';
 import { parseBrlToCents } from '@/shared/utils/currency';
 
 export interface AddAssetModalProps {
@@ -70,15 +71,25 @@ async function handleSubmit() {
       const newQty = existing.totalQuantity + qty;
       const newAvgPrice = Math.round((currentTotal + newTotal) / newQty);
 
-      await db.assets.update(existing.id, {
+      const updatedAsset: Asset = {
+        ...existing,
         totalQuantity: newQty,
         averagePriceInCents: newAvgPrice,
         currentPriceInCents: priceInCents,
         targetPercent: targetPercent || existing.targetPercent,
         updatedAt: now,
+      };
+
+      await db.assets.update(existing.id, {
+        totalQuantity: updatedAsset.totalQuantity,
+        averagePriceInCents: updatedAsset.averagePriceInCents,
+        currentPriceInCents: updatedAsset.currentPriceInCents,
+        targetPercent: updatedAsset.targetPercent,
+        updatedAt: now,
       });
+      await cloudSyncService.upsertAsset(updatedAsset);
     } else {
-      await db.assets.add({
+      const newAsset: Asset = {
         id: `asset-${Date.now()}`,
         tickerOrName: ticker,
         assetClass: assetClass.value,
@@ -89,7 +100,9 @@ async function handleSubmit() {
         targetPercent,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      await db.assets.add(newAsset);
+      await cloudSyncService.upsertAsset(newAsset);
     }
 
     emit('success');
@@ -120,13 +133,15 @@ async function handleSubmit() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-asset-title"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
         @click.self="handleClose"
         @keydown.esc="handleClose"
       >
         <div
-          class="bg-surface border border-border-subtle rounded-2xl w-full max-w-md shadow-2xl overflow-hidden my-8 transform transition-all"
+          class="bg-surface border-t sm:border border-border-subtle rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[92dvh] sm:my-8 pb-safe transform transition-all"
         >
+          <!-- Alça de Arraste Mobile -->
+          <div class="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mt-3 mb-1 sm:hidden" />
           <!-- Header do Diálogo -->
           <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
             <h3 id="modal-asset-title" class="font-bold text-base text-white flex items-center gap-2">

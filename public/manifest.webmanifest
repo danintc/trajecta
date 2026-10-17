@@ -1,0 +1,19 @@
+{
+  "name": "Trajecta — Da Carreira ao Patrimônio",
+  "short_name": "Trajecta",
+  "description": "Gestão financeira pessoal, investimentos, evolução salarial e simulador de independência patrimonial.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E0E10",
+  "theme_color": "#0E0E10",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

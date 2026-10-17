@@ -240,7 +240,7 @@ function handleDelete(id: string, description: string) {
     </div>
 
     <!-- SUB-ABAS DE VISUALIZAÇÃO: DIVISÃO EM ABAS PARA NAVEGAÇÃO LIMPA -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto">
+    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto no-scrollbar">
       <button
         data-testid="subtab-lancamentos"
         type="button"
@@ -292,7 +292,7 @@ function handleDelete(id: string, description: string) {
       class="bg-surface border border-border-subtle rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3"
     >
       <!-- Abas de Modos de Período -->
-      <div class="flex items-center gap-1 p-1 bg-background rounded-lg border border-border-subtle w-full md:w-auto overflow-x-auto">
+      <div class="flex items-center gap-1 p-1 bg-background rounded-lg border border-border-subtle w-full md:w-auto overflow-x-auto no-scrollbar">
         <button
           data-testid="period-tab-month"
           type="button"
