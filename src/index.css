@@ -52,3 +52,29 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Barra de rolagem horizontal estilizada e visível para tabelas densas */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3F3F46 #121215;
+  -webkit-overflow-scrolling: touch;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #121215;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3F3F46;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FACC15;
+}

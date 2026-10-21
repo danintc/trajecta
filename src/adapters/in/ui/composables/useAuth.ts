@@ -11,7 +11,7 @@ const isAuthLoading = ref<boolean>(true);
 let authSubscriptionInitialized = false;
 
 export function useAuth() {
-  const isAuthenticated = computed(() => Boolean(currentUser.value) || isDemoSession.value);
+  const isAuthenticated = computed(() => Boolean(currentUser.value));
 
   const userDisplayName = computed(() => {
     if (isDemoSession.value) return 'Visitante (Modo Local)';
@@ -122,7 +122,13 @@ export function useAuth() {
       linkedin_oidc: 'LinkedIn',
     };
 
-    // Verifica antes de redirecionar se o provedor já foi ativado no painel do Supabase
+    if (provider !== 'google') {
+      return {
+        error: `O login com ${providerLabels[provider]} ainda não está disponível.`,
+      };
+    }
+
+    // Verifica antes de redirecionar se o provedor está ativo
     try {
       const supabaseUrl =
         import.meta.env.VITE_SUPABASE_URL || 'https://hkkbdetfvjwavlwqojfv.supabase.co';
@@ -138,7 +144,7 @@ export function useAuth() {
         const settings = await settingsRes.json();
         if (settings?.external && settings.external[provider] === false) {
           return {
-            error: `O login com ${providerLabels[provider]} ainda não foi ativado no seu painel do Supabase (menu Authentication → Sign In / Providers). Enquanto isso, você já pode criar sua conta com E-mail e Senha abaixo!`,
+            error: `O login com ${providerLabels[provider]} ainda não está disponível.`,
           };
         }
       }
@@ -152,7 +158,6 @@ export function useAuth() {
       provider,
       options: {
         redirectTo,
-        scopes: provider === 'azure' ? 'email profile openid' : undefined,
       },
     });
 
@@ -222,7 +227,7 @@ function translateAuthError(message: string): string {
     return 'A senha deve ter pelo menos 6 caracteres.';
   }
   if (lower.includes('provider is not enabled')) {
-    return 'Este login social ainda precisa ser habilitado no painel Authentication -> Providers do Supabase.';
+    return 'Este método de login ainda não está disponível.';
   }
   return message;
 }

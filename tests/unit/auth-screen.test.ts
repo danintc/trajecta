@@ -45,11 +45,16 @@ describe('AuthScreen (Mobile-First Login & Social Auth)', () => {
     );
   });
 
-  it('deve permitir entrar no Modo Demonstração Local emitindo o evento authenticated', async () => {
+  it('deve manter os botões Apple, Microsoft e LinkedIn desabilitados com aviso de disponibilidade em breve e sem modo demo', () => {
     const wrapper = mount(AuthScreen);
 
-    await wrapper.find('[data-testid="btn-auth-demo"]').trigger('click');
-
-    expect(wrapper.emitted('authenticated')).toBeTruthy();
+    expect(wrapper.find('[data-testid="btn-auth-demo"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="btn-social-google"]').attributes('disabled')).toBeUndefined();
+    expect(wrapper.find('[data-testid="btn-social-apple"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-testid="btn-social-microsoft"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-testid="btn-social-linkedin"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-testid="social-coming-soon"]').text()).toContain(
+      'Outros métodos de login estarão disponíveis em breve.'
+    );
   });
 });

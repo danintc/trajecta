@@ -6,8 +6,7 @@ const emit = defineEmits<{
   (e: 'authenticated'): void;
 }>();
 
-const { signInWithEmail, signUpWithEmail, signInWithSocial, resetPassword, enterDemoMode } =
-  useAuth();
+const { signInWithEmail, signUpWithEmail, signInWithSocial, resetPassword } = useAuth();
 
 type AuthMode = 'login' | 'register' | 'forgot';
 
@@ -106,11 +105,6 @@ async function handleSocialLogin(provider: SocialAuthProvider) {
     activeSocialLoading.value = null;
   }
 }
-
-function handleDemoAccess() {
-  enterDemoMode();
-  emit('authenticated');
-}
 </script>
 
 <template>
@@ -136,11 +130,6 @@ function handleDemoAccess() {
           <div class="text-left">
             <div class="flex items-center gap-2">
               <span class="font-extrabold text-xl tracking-tight text-white">Trajecta</span>
-              <span
-                class="text-[10px] font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 px-2 py-0.5 rounded-full uppercase tracking-wider"
-              >
-                Cloud & Mobile
-              </span>
             </div>
             <p class="text-xs text-[#A1A1AA]">Da sua evolução profissional à liberdade patrimonial</p>
           </div>
@@ -235,34 +224,30 @@ function handleDemoAccess() {
               </span>
             </button>
 
-            <!-- Continuar com Apple -->
+            <!-- Continuar com Apple (Em breve) -->
             <button
               type="button"
               data-testid="btn-social-apple"
-              :disabled="activeSocialLoading !== null"
-              class="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#000000] hover:bg-zinc-900 border border-zinc-700 active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-3 shadow-sm transition disabled:opacity-60"
-              @click="handleSocialLogin('apple')"
+              disabled
+              class="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#000000] border border-zinc-800 text-white font-bold text-sm flex items-center justify-center gap-3 shadow-sm transition disabled:opacity-45 disabled:cursor-not-allowed"
             >
               <svg class="w-5 h-5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
                 />
               </svg>
-              <span>
-                {{ activeSocialLoading === 'apple' ? 'Conectando à Apple...' : 'Continuar com Apple' }}
-              </span>
+              <span>Continuar com Apple</span>
             </button>
           </div>
 
-          <!-- Linha Secundária: Microsoft & LinkedIn -->
+          <!-- Linha Secundária: Microsoft & LinkedIn (Em breve) -->
           <div class="grid grid-cols-2 gap-2.5">
             <!-- Microsoft -->
             <button
               type="button"
               data-testid="btn-social-microsoft"
-              :disabled="activeSocialLoading !== null"
-              class="min-h-[46px] px-3 py-2.5 rounded-xl bg-background hover:bg-surface-hover border border-border-subtle active:scale-[0.99] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition disabled:opacity-60"
-              @click="handleSocialLogin('azure')"
+              disabled
+              class="min-h-[46px] px-3 py-2.5 rounded-xl bg-background border border-border-subtle text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition disabled:opacity-45 disabled:cursor-not-allowed"
             >
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 23 23" aria-hidden="true">
                 <path fill="#f35325" d="M1 1h10v10H1z" />
@@ -270,25 +255,31 @@ function handleDemoAccess() {
                 <path fill="#05a6f0" d="M1 12h10v10H1z" />
                 <path fill="#ffba08" d="M12 12h10v10H12z" />
               </svg>
-              <span>{{ activeSocialLoading === 'azure' ? 'Abrindo...' : 'Microsoft' }}</span>
+              <span>Microsoft</span>
             </button>
 
             <!-- LinkedIn -->
             <button
               type="button"
               data-testid="btn-social-linkedin"
-              :disabled="activeSocialLoading !== null"
-              class="min-h-[46px] px-3 py-2.5 rounded-xl bg-background hover:bg-surface-hover border border-border-subtle active:scale-[0.99] text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition disabled:opacity-60"
-              @click="handleSocialLogin('linkedin_oidc')"
+              disabled
+              class="min-h-[46px] px-3 py-2.5 rounded-xl bg-background border border-border-subtle text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition disabled:opacity-45 disabled:cursor-not-allowed"
             >
               <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#0A66C2" aria-hidden="true">
                 <path
                   d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"
                 />
               </svg>
-              <span>{{ activeSocialLoading === 'linkedin_oidc' ? 'Abrindo...' : 'LinkedIn' }}</span>
+              <span>LinkedIn</span>
             </button>
           </div>
+
+          <p
+            data-testid="social-coming-soon"
+            class="text-center text-[11px] text-[#71717A] pt-0.5"
+          >
+            Outros métodos de login estarão disponíveis em breve.
+          </p>
         </div>
 
         <!-- Divisor -->
@@ -394,23 +385,6 @@ function handleDemoAccess() {
             <span v-else>Enviar Link de Recuperação</span>
           </button>
         </form>
-      </div>
-
-      <!-- Acesso Rápido Modo Local / Demo -->
-      <div class="text-center space-y-3">
-        <button
-          type="button"
-          data-testid="btn-auth-demo"
-          class="w-full py-3 px-4 rounded-2xl border border-border-subtle bg-surface/60 hover:bg-surface text-xs font-semibold text-finance-neutral hover:text-white transition flex items-center justify-center gap-2"
-          @click="handleDemoAccess"
-        >
-          <span>⚡</span>
-          <span>Explorar no Modo Local / Demonstração (Sem Login)</span>
-        </button>
-
-        <p class="text-[11px] text-[#71717A] px-4 leading-relaxed">
-          Seus dados são protegidos com criptografia e isolamento por usuário (Row Level Security).
-        </p>
       </div>
     </div>
   </div>
