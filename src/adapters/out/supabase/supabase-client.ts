@@ -1,12 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const DEFAULT_SUPABASE_URL = 'https://hkkbdetfvjwavlwqojfv.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_QiGgIX01zv4HW9sqnw83Zg_v0c-JZlQ';
+const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || '';
+const envSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || '';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+export const isSupabaseConfigured = Boolean(envSupabaseUrl && envSupabaseAnonKey);
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const supabaseUrl = envSupabaseUrl || 'https://placeholder.supabase.co';
+const supabaseAnonKey = envSupabaseAnonKey || 'placeholder-anon-key';
 
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

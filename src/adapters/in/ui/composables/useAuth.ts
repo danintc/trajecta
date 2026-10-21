@@ -130,22 +130,21 @@ export function useAuth() {
 
     // Verifica antes de redirecionar se o provedor está ativo
     try {
-      const supabaseUrl =
-        import.meta.env.VITE_SUPABASE_URL || 'https://hkkbdetfvjwavlwqojfv.supabase.co';
-      const supabaseAnonKey =
-        import.meta.env.VITE_SUPABASE_ANON_KEY ||
-        'sb_publishable_QiGgIX01zv4HW9sqnw83Zg_v0c-JZlQ';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-      const settingsRes = await fetch(`${supabaseUrl}/auth/v1/settings`, {
-        headers: { apikey: supabaseAnonKey },
-      });
+      if (supabaseUrl && supabaseAnonKey) {
+        const settingsRes = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+          headers: { apikey: supabaseAnonKey },
+        });
 
-      if (settingsRes.ok) {
-        const settings = await settingsRes.json();
-        if (settings?.external && settings.external[provider] === false) {
-          return {
-            error: `O login com ${providerLabels[provider]} ainda não está disponível.`,
-          };
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json();
+          if (settings?.external && settings.external[provider] === false) {
+            return {
+              error: `O login com ${providerLabels[provider]} ainda não está disponível.`,
+            };
+          }
         }
       }
     } catch {

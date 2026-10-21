@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '@/adapters/out/supabase/supabase-client';
+import { supabase } from '@/adapters/out/supabase/supabase-client';
 import { db } from '@/adapters/out/storage/dexie-db';
 import { Transaction } from '@/core/domain/transaction.entity';
 import { Asset } from '@/core/domain/asset.entity';
@@ -177,7 +177,6 @@ function mapRowToCareer(row: SupabaseCareerRow): CareerRecord {
  */
 export const cloudSyncService = {
   async getCurrentUserId(): Promise<string | null> {
-    if (!isSupabaseConfigured) return null;
     try {
       const { data } = await supabase.auth.getSession();
       return data.session?.user?.id ?? null;
