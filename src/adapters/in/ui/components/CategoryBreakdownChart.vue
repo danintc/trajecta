@@ -12,6 +12,10 @@ export interface CategoryBreakdownChartProps {
 
 const props = defineProps<CategoryBreakdownChartProps>();
 
+const emit = defineEmits<{
+  (e: 'selectCategory', categoryId: string, type: 'expense' | 'income'): void;
+}>();
+
 const activeType = ref<'expense' | 'income'>('expense');
 
 // Mapeamento de categorias e ícones amigáveis
@@ -119,30 +123,37 @@ const totalFormatted = computed(() => {
   if (props.isPrivacyActive) return 'R$ •••••';
   return formatCentsToBrl(totalAmountInCents.value);
 });
+
+function handleSliceSelect(_slice: DonutSlice, idx: number) {
+  const item = categoryBreakdownList.value[idx];
+  if (item) {
+    emit('selectCategory', item.categoryId, activeType.value);
+  }
+}
 </script>
 
 <template>
   <div
     data-testid="category-breakdown-card"
-    class="bg-surface border border-border-subtle rounded-2xl p-5 sm:p-6 space-y-5 shadow-lg flex flex-col justify-between"
+    class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg flex flex-col justify-between"
   >
     <!-- Top Header: Título e Toggle Despesas / Receitas -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
       <div>
-        <h3 class="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+        <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 whitespace-nowrap">
           <span>🍩 Gastos por Categoria</span>
         </h3>
         <p class="text-[11px] text-[#71717A]">
-          Distribuição percentual e financeira das saídas
+          Toque em uma categoria para filtrar seus lançamentos
         </p>
       </div>
 
       <!-- Segmented Control estilo Mobile (Expenses / Income) -->
-      <div class="inline-flex p-1 bg-background rounded-xl border border-border-subtle">
+      <div class="inline-flex p-1 bg-background rounded-xl border border-border-subtle self-start sm:self-auto shrink-0">
         <button
           data-testid="toggle-type-expense"
           type="button"
-          class="px-3 py-1 rounded-lg text-xs font-semibold transition"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
           :class="
             activeType === 'expense'
               ? 'bg-white text-black shadow-sm font-bold'
@@ -155,7 +166,7 @@ const totalFormatted = computed(() => {
         <button
           data-testid="toggle-type-income"
           type="button"
-          class="px-3 py-1 rounded-lg text-xs font-semibold transition"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
           :class="
             activeType === 'income'
               ? 'bg-white text-black shadow-sm font-bold'
@@ -176,10 +187,11 @@ const totalFormatted = computed(() => {
         :total-formatted="totalFormatted"
         :empty-text="activeType === 'expense' ? 'Nenhuma despesa no período' : 'Nenhuma receita no período'"
         :is-privacy-active="isPrivacyActive"
+        @select-slice="handleSliceSelect"
       />
     </div>
 
-    <!-- Lista Detalhada com Barra de Progresso e Valores (Estilo Screenshot) -->
+    <!-- Lista Detalhada com Barra de Progresso e Valores (Clicável para redirecionar à lista filtrada) -->
     <div class="space-y-3 pt-3 border-t border-border-subtle/80">
       <div class="flex items-center justify-between text-xs text-[#71717A] uppercase font-bold tracking-wider px-1">
         <span>Ranking por Categoria</span>
@@ -193,12 +205,15 @@ const totalFormatted = computed(() => {
         Nenhum registro encontrado para {{ activeType === 'expense' ? 'despesas' : 'receitas' }} neste período.
       </div>
 
-      <div v-else class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
         <div
           v-for="item in categoryBreakdownList"
           :key="item.categoryId"
           :data-testid="`category-breakdown-row-${item.categoryId}`"
-          class="bg-background/40 hover:bg-background/80 border border-border-subtle/40 hover:border-border-subtle rounded-xl p-2.5 transition group"
+          role="button"
+          tabindex="0"
+          class="bg-background/60 hover:bg-surface-hover border border-border-subtle/60 hover:border-accent-yellow/50 rounded-xl p-3 transition group cursor-pointer"
+          @click="emit('selectCategory', item.categoryId, activeType)"
         >
           <div class="flex items-center justify-between gap-3">
             <!-- Ícone Circular e Nome da Categoria -->
@@ -213,18 +228,19 @@ const totalFormatted = computed(() => {
                 <span>{{ item.emoji }}</span>
               </div>
               <div class="truncate">
-                <div class="text-xs font-semibold text-white group-hover:text-accent-yellow transition truncate">
+                <div class="text-xs font-bold text-white group-hover:text-accent-yellow transition truncate">
                   {{ item.name }}
                 </div>
-                <div class="text-[10px] text-[#71717A]">
-                  {{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }}
+                <div class="text-[10px] text-[#71717A] flex items-center gap-1">
+                  <span>{{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }}</span>
+                  <span class="text-accent-yellow opacity-0 group-hover:opacity-100 transition">• Ver no extrato →</span>
                 </div>
               </div>
             </div>
 
             <!-- Valor Monetário Formatado -->
             <div class="text-right shrink-0">
-              <div class="text-xs font-bold font-mono text-white">
+              <div class="text-xs font-bold font-mono text-white whitespace-nowrap">
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(item.amountInCents) }}
               </div>
             </div>
@@ -242,7 +258,7 @@ const totalFormatted = computed(() => {
               />
             </div>
             <span
-              class="text-[11px] font-mono font-medium shrink-0 w-12 text-right"
+              class="text-[11px] font-mono font-bold shrink-0 w-12 text-right whitespace-nowrap"
               :style="{ color: item.color }"
             >
               {{ item.percent.toFixed(2) }}%

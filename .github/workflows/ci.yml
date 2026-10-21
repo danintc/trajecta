@@ -1,0 +1,52 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-tests:
+    name: Typecheck, Unit, Integration & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        timeout-minutes: 2
+        run: npm ci
+
+      - name: Static Typecheck & Domain Type Contracts
+        timeout-minutes: 1
+        run: npm run test:types
+
+      - name: Unit Tests
+        timeout-minutes: 1
+        run: npm run test:unit
+
+      - name: Integration Tests (Dexie IndexedDB & Cloud Sync)
+        timeout-minutes: 1
+        run: npm run test:integration
+
+      - name: Full Test Suite & Coverage Thresholds (Vitest v8)
+        timeout-minutes: 2
+        run: npm run test:coverage
+
+      - name: Production Build Verification (Vite)
+        timeout-minutes: 2
+        run: npm run build

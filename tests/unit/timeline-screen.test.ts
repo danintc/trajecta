@@ -176,6 +176,8 @@ describe('TimelineScreen Component', () => {
       },
     });
 
+    await wrapper.find('[data-testid="subtab-consolidado"]').trigger('click');
+
     expect(wrapper.find('[data-testid="category-breakdown-card"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Gastos por Categoria');
     expect(wrapper.find('[data-testid="donut-category-chart"]').exists()).toBe(true);
@@ -195,6 +197,8 @@ describe('TimelineScreen Component', () => {
       },
     });
 
+    await wrapper.find('[data-testid="subtab-consolidado"]').trigger('click');
+
     expect(wrapper.find('[data-testid="financial-calendar-card"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Calendário Financeiro');
 
@@ -204,7 +208,7 @@ describe('TimelineScreen Component', () => {
 
     await dayBtn.trigger('click');
     expect(wrapper.find('[data-testid="badge-active-day-filter"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Filtro: 2026-09-16');
+    expect(wrapper.find('[data-testid="badge-active-day-filter"]').text()).toContain('2026-09-16');
 
     // Itens listados contêm 2026-09-16 e não contêm 2026-09-10
     expect(wrapper.text()).toContain('Supermercado Central');
@@ -225,6 +229,8 @@ describe('TimelineScreen Component', () => {
         isPrivacyActive: false,
       },
     });
+
+    await wrapper.find('[data-testid="subtab-consolidado"]').trigger('click');
 
     const toggleBtn = wrapper.find('[data-testid="btn-toggle-analytics"]');
     expect(toggleBtn.exists()).toBe(true);

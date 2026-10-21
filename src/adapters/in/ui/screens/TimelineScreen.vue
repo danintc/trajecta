@@ -39,8 +39,8 @@ const emit = defineEmits<{
   (e: 'deleteTransaction', id: string): void;
 }>();
 
-// Sub-aba ativa no Extrato
-const activeSubTab = ref<TimelineSubTab>('consolidado');
+// Sub-aba ativa no Extrato (Padrão: 'lancamentos' para tela limpa e direta, sem sobrecarga visual)
+const activeSubTab = ref<TimelineSubTab>('lancamentos');
 
 // Data de referência centralizada e fixa no mês atual (não salta para parcelas futuras)
 const anchorDate = ref<Date>(new Date());
@@ -138,6 +138,19 @@ function handlePeriodToday() {
   anchorDate.value = new Date();
 }
 
+// Redirecionamento ao clicar em um card de resumo (Despesas / Receitas / Saldo)
+function handleFilterBySummaryType(type: 'ALL' | 'expense' | 'income') {
+  selectedType.value = type;
+  activeSubTab.value = 'lancamentos';
+}
+
+// Redirecionamento ao clicar em uma categoria no gráfico/ranking de categorias
+function handleSelectCategoryFromChart(categoryId: string, type: 'expense' | 'income') {
+  selectedCategory.value = categoryId;
+  selectedType.value = type;
+  activeSubTab.value = 'lancamentos';
+}
+
 // Transações finais filtradas (período + dia do calendário + busca + tipo + categoria)
 const filteredTransactions = computed(() => {
   return periodTransactions.value.filter((t) => {
@@ -153,7 +166,9 @@ const filteredTransactions = computed(() => {
     const matchCategory =
       selectedCategory.value === 'ALL' || t.categoryId === selectedCategory.value;
 
-    const matchType = selectedType.value === 'ALL' || t.type === selectedType.value;
+    const matchType =
+      selectedType.value === 'ALL' ||
+      (selectedType.value === 'income' ? t.type === 'income' || t.type === 'dividend' : t.type === selectedType.value);
 
     return matchSearch && matchCategory && matchType;
   });
@@ -183,7 +198,7 @@ const groupedByDay = computed(() => {
 const totals = computed(() => {
   let exp = 0;
   let inc = 0;
-  for (const t of filteredTransactions.value) {
+  for (const t of periodTransactions.value) {
     if (t.type === 'expense') exp += t.amountInCents;
     else inc += t.amountInCents;
   }
@@ -195,42 +210,51 @@ function handleDelete(id: string, description: string) {
     emit('deleteTransaction', id);
   }
 }
+
+function handleToggleAnalyticsButton() {
+  isAnalyticsVisible.value = !isAnalyticsVisible.value;
+  if (isAnalyticsVisible.value && activeSubTab.value === 'lancamentos') {
+    activeSubTab.value = 'consolidado';
+  }
+}
 </script>
 
 <template>
-  <div data-testid="screen-timeline" class="space-y-6">
-    <!-- Header com Ações e Botão de Lançamento -->
+  <div data-testid="screen-timeline" class="space-y-5">
+    <!-- Header com Ações e Botão de Lançamento (Sem quebra de badge) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          <span>Extrato & Linha do Tempo</span>
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white whitespace-nowrap">
+            Extrato & Linha do Tempo
+          </h1>
           <span
-            class="text-xs bg-surface-hover text-accent-yellow font-normal px-2.5 py-0.5 rounded border border-border-subtle"
+            class="text-[10px] bg-surface-hover text-accent-yellow font-mono font-bold px-2.5 py-0.5 rounded-full border border-border-subtle whitespace-nowrap shrink-0"
           >
             Movimentações Diárias
           </span>
-        </h1>
+        </div>
         <p class="text-xs text-[#71717A]">
           Histórico completo de despesas avulsas, compras parceladas e salários
         </p>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2 shrink-0 self-start sm:self-auto">
         <button
           data-testid="btn-toggle-analytics"
           type="button"
-          class="px-3 py-2 rounded-xl border border-border-subtle bg-surface hover:bg-surface-hover text-xs font-semibold flex items-center gap-1.5 transition"
+          class="px-3 py-2 rounded-xl border border-border-subtle bg-surface hover:bg-surface-hover text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap"
           :class="isAnalyticsVisible ? 'text-accent-yellow border-accent-yellow/40' : 'text-finance-neutral hover:text-white'"
-          @click="isAnalyticsVisible = !isAnalyticsVisible"
+          @click="handleToggleAnalyticsButton"
         >
           <span>📊</span>
-          <span class="hidden sm:inline">{{ isAnalyticsVisible ? 'Ocultar Análise' : 'Ver Análise' }}</span>
+          <span>{{ isAnalyticsVisible ? 'Ocultar Análise' : 'Ver Análise' }}</span>
         </button>
 
         <button
           data-testid="btn-timeline-add"
           type="button"
-          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
+          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 whitespace-nowrap"
           @click="emit('openAddModal')"
         >
           <span class="text-sm font-black leading-none">+</span>
@@ -239,36 +263,48 @@ function handleDelete(id: string, description: string) {
       </div>
     </div>
 
-    <!-- SUB-ABAS DE VISUALIZAÇÃO: DIVISÃO EM ABAS PARA NAVEGAÇÃO LIMPA -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto no-scrollbar">
+    <!-- SUB-ABAS INTERNAS DE VISUALIZAÇÃO (DIVISÃO MODULAR LIMPA) -->
+    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
       <button
         data-testid="subtab-lancamentos"
         type="button"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5"
-        :class="activeSubTab === 'lancamentos' ? 'bg-accent-yellow text-black font-bold shadow-sm' : 'text-finance-neutral hover:text-white hover:bg-surface-hover'"
+        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
+        :class="activeSubTab === 'lancamentos' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
         @click="activeSubTab = 'lancamentos'"
       >
         <span>📜</span>
         <span>Lançamentos</span>
+        <span
+          class="text-[10px] px-1.5 py-0.2 rounded-full font-mono"
+          :class="activeSubTab === 'lancamentos' ? 'bg-black/20 text-black' : 'bg-background text-[#A1A1AA]'"
+        >
+          {{ filteredTransactions.length }}
+        </span>
       </button>
 
       <button
         data-testid="subtab-categorias"
         type="button"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5"
-        :class="activeSubTab === 'categorias' ? 'bg-accent-yellow text-black font-bold shadow-sm' : 'text-finance-neutral hover:text-white hover:bg-surface-hover'"
-        @click="activeSubTab = 'categorias'"
+        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
+        :class="activeSubTab === 'categorias' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        @click="
+          activeSubTab = 'categorias';
+          isAnalyticsVisible = true;
+        "
       >
-        <span>📊</span>
+        <span>🍩</span>
         <span>Gastos por Categoria</span>
       </button>
 
       <button
         data-testid="subtab-calendario"
         type="button"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5"
-        :class="activeSubTab === 'calendario' ? 'bg-accent-yellow text-black font-bold shadow-sm' : 'text-finance-neutral hover:text-white hover:bg-surface-hover'"
-        @click="activeSubTab = 'calendario'"
+        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
+        :class="activeSubTab === 'calendario' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        @click="
+          activeSubTab = 'calendario';
+          isAnalyticsVisible = true;
+        "
       >
         <span>📅</span>
         <span>Calendário</span>
@@ -277,26 +313,29 @@ function handleDelete(id: string, description: string) {
       <button
         data-testid="subtab-consolidado"
         type="button"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5"
-        :class="activeSubTab === 'consolidado' ? 'bg-accent-yellow text-black font-bold shadow-sm' : 'text-finance-neutral hover:text-white hover:bg-surface-hover'"
-        @click="activeSubTab = 'consolidado'"
+        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
+        :class="activeSubTab === 'consolidado' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        @click="
+          activeSubTab = 'consolidado';
+          isAnalyticsVisible = true;
+        "
       >
         <span>🔲</span>
         <span>Visão Consolidada</span>
       </button>
     </div>
 
-    <!-- SELETOR DE PERÍODO CENTRALIZADO ÚNICO -->
+    <!-- SELETOR DE PERÍODO CENTRALIZADO ÚNICO & COMPACTO -->
     <div
       data-testid="period-selector-container"
-      class="bg-surface border border-border-subtle rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3"
+      class="bg-surface border border-border-subtle rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-2.5"
     >
       <!-- Abas de Modos de Período -->
-      <div class="flex items-center gap-1 p-1 bg-background rounded-lg border border-border-subtle w-full md:w-auto overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-1 p-1 bg-background rounded-xl border border-border-subtle w-full md:w-auto overflow-x-auto no-scrollbar">
         <button
           data-testid="period-tab-month"
           type="button"
-          class="px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap transition"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
           :class="periodMode === 'month' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
           @click="periodMode = 'month'"
         >
@@ -305,7 +344,7 @@ function handleDelete(id: string, description: string) {
         <button
           data-testid="period-tab-week"
           type="button"
-          class="px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap transition"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
           :class="periodMode === 'week' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
           @click="periodMode = 'week'"
         >
@@ -314,7 +353,7 @@ function handleDelete(id: string, description: string) {
         <button
           data-testid="period-tab-year"
           type="button"
-          class="px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap transition"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
           :class="periodMode === 'year' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
           @click="periodMode = 'year'"
         >
@@ -323,7 +362,7 @@ function handleDelete(id: string, description: string) {
         <button
           data-testid="period-tab-custom"
           type="button"
-          class="px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap transition"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
           :class="periodMode === 'custom' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
           @click="periodMode = 'custom'"
         >
@@ -332,7 +371,7 @@ function handleDelete(id: string, description: string) {
         <button
           data-testid="period-tab-all"
           type="button"
-          class="px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap transition"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
           :class="periodMode === 'all' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
           @click="periodMode = 'all'"
         >
@@ -341,19 +380,19 @@ function handleDelete(id: string, description: string) {
       </div>
 
       <!-- Controles de Navegação Temporal Centralizados (< [ Rótulo ] >) -->
-      <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-2">
+      <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-1.5 w-full md:w-auto justify-between md:justify-end">
         <button
           data-testid="btn-period-prev"
           type="button"
           title="Período anterior"
-          class="p-1.5 rounded-lg bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer"
+          class="p-2 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
           @click="handlePeriodPrev"
         >
           ◀
         </button>
         <span
           data-testid="period-active-label"
-          class="text-xs font-bold text-white uppercase tracking-wider px-3 py-1.5 bg-background rounded-lg border border-border-subtle min-w-[150px] text-center"
+          class="text-xs font-extrabold text-white uppercase tracking-wider px-3 py-2 bg-background rounded-xl border border-border-subtle min-w-[140px] flex-1 md:flex-initial text-center whitespace-nowrap"
         >
           {{ activeDateRange.label }}
         </span>
@@ -361,7 +400,7 @@ function handleDelete(id: string, description: string) {
           data-testid="btn-period-next"
           type="button"
           title="Próximo período"
-          class="p-1.5 rounded-lg bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer"
+          class="p-2 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
           @click="handlePeriodNext"
         >
           ▶
@@ -369,7 +408,7 @@ function handleDelete(id: string, description: string) {
         <button
           type="button"
           title="Ir para hoje"
-          class="px-2.5 py-1.5 text-xs font-semibold bg-background hover:bg-surface-hover text-accent-yellow rounded-lg border border-border-subtle transition cursor-pointer"
+          class="px-3 py-2 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
           @click="handlePeriodToday"
         >
           Hoje
@@ -377,7 +416,7 @@ function handleDelete(id: string, description: string) {
       </div>
 
       <!-- Inputs de Data para Modo Customizado -->
-      <div v-else-if="periodMode === 'custom'" class="flex items-center gap-2">
+      <div v-else-if="periodMode === 'custom'" class="flex flex-wrap items-center gap-2">
         <div class="flex items-center gap-1.5 text-xs text-finance-neutral">
           <span>De:</span>
           <input
@@ -401,50 +440,76 @@ function handleDelete(id: string, description: string) {
       </div>
     </div>
 
-    <!-- Mini-Cards de Resumo do Extrato (Reativos ao Período) -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div
-        class="bg-surface border border-border-subtle rounded-xl p-3.5 flex justify-between items-center"
+    <!-- MINI-CARDS INTERATIVOS DE RESUMO DO EXTRATO (CLICAR FILTRA E VAI PARA LANÇAMENTOS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      <button
+        type="button"
+        class="bg-surface hover:bg-surface-hover/70 border rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
+        :class="selectedType === 'expense' ? 'border-finance-neg/60 bg-finance-neg/5' : 'border-border-subtle'"
+        @click="handleFilterBySummaryType(selectedType === 'expense' ? 'ALL' : 'expense')"
       >
-        <span class="text-xs font-semibold text-finance-neutral uppercase">Total Despesas</span>
-        <span class="text-base font-bold text-finance-neg font-mono">
+        <div>
+          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Total Despesas</span>
+          <span class="text-[10px] text-[#71717A]">Clique para filtrar saídas</span>
+        </div>
+        <span class="text-base font-extrabold text-finance-neg font-mono whitespace-nowrap">
           {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-totals.totalExpenses) }}
         </span>
-      </div>
-      <div
-        class="bg-surface border border-border-subtle rounded-xl p-3.5 flex justify-between items-center"
+      </button>
+
+      <button
+        type="button"
+        class="bg-surface hover:bg-surface-hover/70 border rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
+        :class="selectedType === 'income' ? 'border-finance-pos/60 bg-finance-pos/5' : 'border-border-subtle'"
+        @click="handleFilterBySummaryType(selectedType === 'income' ? 'ALL' : 'income')"
       >
-        <span class="text-xs font-semibold text-finance-neutral uppercase">Total Receitas</span>
-        <span class="text-base font-bold text-finance-pos font-mono">
+        <div>
+          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Total Receitas</span>
+          <span class="text-[10px] text-[#71717A]">Clique para filtrar entradas</span>
+        </div>
+        <span class="text-base font-extrabold text-finance-pos font-mono whitespace-nowrap">
           {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totals.totalIncome, { showSign: true }) }}
         </span>
-      </div>
-      <div
-        class="bg-surface border border-border-subtle rounded-xl p-3.5 flex justify-between items-center"
+      </button>
+
+      <button
+        type="button"
+        class="bg-surface hover:bg-surface-hover/70 border border-border-subtle rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
+        @click="
+          selectedType = 'ALL';
+          selectedCategory = 'ALL';
+          activeSubTab = 'lancamentos';
+        "
       >
-        <span class="text-xs font-semibold text-finance-neutral uppercase">Saldo Apurado</span>
-        <span class="text-base font-bold text-white font-mono">
+        <div>
+          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Saldo Apurado</span>
+          <span class="text-[10px] text-[#71717A]">Ver todos os lançamentos</span>
+        </div>
+        <span class="text-base font-extrabold text-white font-mono whitespace-nowrap">
           {{
             isPrivacyActive
               ? 'R$ •••••'
               : formatCentsToBrl(totals.totalIncome - totals.totalExpenses, { showSign: true })
           }}
         </span>
-      </div>
+      </button>
     </div>
 
-    <!-- CONTEÚDO BASEADO NA SUB-ABA SELECIONADA -->
+    <!-- ========================================================================= -->
+    <!-- CONTEÚDO BASEADO NA SUB-ABA SELECIONADA                                   -->
+    <!-- ========================================================================= -->
 
-    <!-- 1. ABA: GASTOS POR CATEGORIA (FOCADA) -->
+    <!-- 1. SUB-ABA: GASTOS POR CATEGORIA (FOCADA — CLICAR EM CATEGORIA REDIRECIONA PARA LANÇAMENTOS) -->
     <div v-if="activeSubTab === 'categorias' && isAnalyticsVisible">
       <CategoryBreakdownChart
         :transactions="periodTransactions"
         :is-privacy-active="isPrivacyActive"
+        @select-category="handleSelectCategoryFromChart"
       />
     </div>
 
-    <!-- 2. ABA: CALENDÁRIO FINANCEIRO (FOCADO) -->
-    <div v-else-if="activeSubTab === 'calendario' && isAnalyticsVisible" class="space-y-6">
+    <!-- 2. SUB-ABA: CALENDÁRIO FINANCEIRO (FOCADO) -->
+    <div v-else-if="activeSubTab === 'calendario' && isAnalyticsVisible" class="space-y-4">
       <FinancialCalendar
         :transactions="periodTransactions"
         :selected-date="selectedCalendarDay"
@@ -454,7 +519,7 @@ function handleDelete(id: string, description: string) {
       />
     </div>
 
-    <!-- 3. ABA: VISÃO CONSOLIDADA (GRÁFICO + CALENDÁRIO EM GRID) -->
+    <!-- 3. SUB-ABA: VISÃO CONSOLIDADA (GRÁFICO + CALENDÁRIO EM GRID) -->
     <div
       v-else-if="activeSubTab === 'consolidado' && isAnalyticsVisible"
       class="grid grid-cols-1 lg:grid-cols-2 gap-5"
@@ -462,6 +527,7 @@ function handleDelete(id: string, description: string) {
       <CategoryBreakdownChart
         :transactions="periodTransactions"
         :is-privacy-active="isPrivacyActive"
+        @select-category="handleSelectCategoryFromChart"
       />
 
       <FinancialCalendar
@@ -473,27 +539,27 @@ function handleDelete(id: string, description: string) {
       />
     </div>
 
-    <!-- SEÇÃO DE LANÇAMENTOS (Exibida na aba Lançamentos, Consolidado e Calendário) -->
-    <div v-if="activeSubTab !== 'categorias'" class="space-y-4">
+    <!-- 4. SEÇÃO DE LANÇAMENTOS (Exibida na aba Lançamentos, ou abaixo quando um dia do Calendário é selecionado) -->
+    <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-4">
       <!-- Barra de Filtros e Busca -->
       <div
-        class="bg-surface border border-border-subtle rounded-xl p-3.5 flex flex-col sm:flex-row gap-3 items-center justify-between"
+        class="bg-surface border border-border-subtle rounded-2xl p-3.5 flex flex-col sm:flex-row gap-2.5 items-center justify-between"
       >
         <div class="w-full sm:w-72 flex items-center gap-2">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-1.5 text-xs text-white outline-none transition"
+            class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3.5 py-2 text-xs text-white outline-none transition"
           />
         </div>
 
-        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
           <!-- Chip de Dia Selecionado se houver filtro do Calendário -->
           <div
             v-if="selectedCalendarDay"
             data-testid="badge-active-day-filter"
-            class="bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 whitespace-nowrap"
+            class="bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <span>📅 Dia: {{ selectedCalendarDay }}</span>
             <button
@@ -509,7 +575,7 @@ function handleDelete(id: string, description: string) {
           <!-- Filtro de Tipo -->
           <select
             v-model="selectedType"
-            class="bg-background border border-border-subtle text-white rounded-lg px-2.5 py-1.5 text-xs outline-none"
+            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0"
           >
             <option value="ALL">Todos os Tipos</option>
             <option value="expense">Despesas</option>
@@ -520,7 +586,7 @@ function handleDelete(id: string, description: string) {
           <!-- Filtro de Categoria -->
           <select
             v-model="selectedCategory"
-            class="bg-background border border-border-subtle text-white rounded-lg px-2.5 py-1.5 text-xs outline-none"
+            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0"
           >
             <option value="ALL">Todas as Categorias</option>
             <option v-for="c in DEFAULT_CATEGORIES" :key="c.id" :value="c.id">
@@ -531,18 +597,18 @@ function handleDelete(id: string, description: string) {
       </div>
 
       <!-- CONTAINER DA LINHA DO TEMPO -->
-      <div class="bg-surface border border-border-subtle rounded-2xl p-5 sm:p-6 space-y-4">
-        <div class="flex items-center justify-between border-b border-border-subtle pb-3">
-          <div class="flex items-center gap-2">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-finance-neutral">
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4">
+        <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-finance-neutral truncate">
               Lançamentos Ordenados por Data
             </h2>
-            <span v-if="selectedCalendarDay" class="text-xs text-accent-yellow font-semibold">
+            <span v-if="selectedCalendarDay" class="text-xs text-accent-yellow font-semibold whitespace-nowrap">
               (Filtrando: {{ selectedCalendarDay }})
             </span>
           </div>
-          <span class="text-xs text-[#71717A] font-mono">
-            {{ filteredTransactions.length }} registros listados
+          <span class="text-xs text-[#71717A] font-mono whitespace-nowrap shrink-0">
+            {{ filteredTransactions.length }} registros
           </span>
         </div>
 
@@ -555,7 +621,7 @@ function handleDelete(id: string, description: string) {
           @primary-action="emit('openAddModal')"
         />
 
-        <div v-else class="space-y-6 pt-2">
+        <div v-else class="space-y-5 pt-1">
           <div
             v-for="{ date, transactions: dayTxs, subtotalInCents } in groupedByDay"
             :key="date"
@@ -563,11 +629,11 @@ function handleDelete(id: string, description: string) {
           >
             <!-- Header do Dia com Subtotal -->
             <div
-              class="flex items-center justify-between text-xs font-semibold text-[#71717A] bg-background px-3 py-1.5 rounded-lg border border-border-subtle/50"
+              class="flex items-center justify-between text-xs font-semibold text-[#71717A] bg-background px-3 py-1.5 rounded-xl border border-border-subtle/60"
             >
-              <span class="text-finance-neutral">{{ date }}</span>
+              <span class="text-finance-neutral font-mono">{{ date }}</span>
               <span
-                class="font-mono"
+                class="font-mono whitespace-nowrap"
                 :class="subtotalInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
               >
                 Subtotal:
@@ -585,43 +651,46 @@ function handleDelete(id: string, description: string) {
                 v-for="tx in dayTxs"
                 :key="tx.id"
                 :data-testid="`transaction-item-${tx.id}`"
-                class="py-2.5 px-2 flex items-center justify-between hover:bg-surface-hover/50 rounded-lg transition group"
+                class="py-2.5 px-2 flex items-center justify-between gap-2 hover:bg-surface-hover/50 rounded-xl transition group"
               >
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold"
+                <div class="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 cursor-pointer transition hover:scale-105"
                     :style="{
                       backgroundColor: `${categoryMap.get(tx.categoryId)?.color || '#71717A'}20`,
                       color: categoryMap.get(tx.categoryId)?.color || '#71717A',
                     }"
+                    :title="`Filtrar por ${categoryMap.get(tx.categoryId)?.name || 'Categoria'}`"
+                    @click="selectedCategory = selectedCategory === tx.categoryId ? 'ALL' : tx.categoryId"
                   >
                     {{ categoryMap.get(tx.categoryId)?.name[0] || 'T' }}
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
+                  </button>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
                       <span
-                        class="text-sm font-semibold text-white group-hover:text-accent-yellow transition"
+                        class="text-sm font-bold text-white group-hover:text-accent-yellow transition truncate"
                       >
                         {{ tx.description }}
                       </span>
                       <span
                         v-if="tx.isInstallment"
                         :data-testid="`badge-installment-${tx.currentInstallment}-${tx.totalInstallments}`"
-                        class="text-[10px] font-bold bg-[#27272A] text-accent-yellow px-1.5 py-0.2 rounded font-mono"
+                        class="text-[10px] font-bold bg-[#27272A] text-accent-yellow px-1.5 py-0.5 rounded font-mono whitespace-nowrap shrink-0"
                       >
                         [{{ tx.currentInstallment }}/{{ tx.totalInstallments }}]
                       </span>
                     </div>
-                    <div class="text-xs text-[#71717A]">
+                    <div class="text-xs text-[#71717A] truncate">
                       {{ categoryMap.get(tx.categoryId)?.name || 'Geral' }} • {{ tx.accountOrCard }}
                     </div>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5 shrink-0">
                   <div class="text-right">
                     <div
-                      class="text-sm font-bold font-mono"
+                      class="text-sm font-bold font-mono whitespace-nowrap"
                       :class="tx.type === 'expense' ? 'text-finance-neg' : 'text-finance-pos'"
                     >
                       {{
@@ -632,7 +701,7 @@ function handleDelete(id: string, description: string) {
                             })
                       }}
                     </div>
-                    <div class="text-[10px] text-[#71717A]">
+                    <div class="text-[10px] text-[#71717A] whitespace-nowrap">
                       {{ tx.isInstallment ? 'Parcela' : 'À vista' }}
                     </div>
                   </div>
@@ -643,7 +712,7 @@ function handleDelete(id: string, description: string) {
                       type="button"
                       :data-testid="`btn-edit-transaction-${tx.id}`"
                       title="Editar lançamento"
-                      class="text-finance-neutral hover:text-accent-yellow p-1 rounded opacity-60 group-hover:opacity-100 transition text-xs cursor-pointer"
+                      class="text-finance-neutral hover:text-accent-yellow p-1 rounded opacity-70 group-hover:opacity-100 transition text-xs cursor-pointer"
                       @click="emit('editTransaction', tx)"
                     >
                       ✏️
@@ -651,7 +720,7 @@ function handleDelete(id: string, description: string) {
                     <button
                       type="button"
                       title="Excluir lançamento"
-                      class="text-finance-neutral hover:text-finance-neg p-1 rounded opacity-60 group-hover:opacity-100 transition text-xs cursor-pointer"
+                      class="text-finance-neutral hover:text-finance-neg p-1 rounded opacity-70 group-hover:opacity-100 transition text-xs cursor-pointer"
                       @click="handleDelete(tx.id, tx.description)"
                     >
                       🗑️

@@ -8,6 +8,9 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:types": "vue-tsc --noEmit && vitest run tests/types",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "vue-tsc --noEmit"

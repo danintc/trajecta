@@ -395,7 +395,7 @@ async function handleLogout() {
     </nav>
 
     <!-- CONTEÚDO DA ABA ATIVA (Com espaçamento inferior seguro para a Bottom Bar no iOS Mobile) -->
-    <main class="flex-1 p-3.5 sm:p-6 lg:p-8 pb-safe-nav md:pb-8 max-w-6xl mx-auto w-full">
+    <main class="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 pb-safe-nav md:pb-8 max-w-7xl mx-auto w-full">
       <HomeScreen
         v-if="activeTab === 'home'"
         :transactions="transactions"
@@ -403,6 +403,9 @@ async function handleLogout() {
         :is-privacy-active="isPrivacyActive"
         @open-add-modal="handleOpenAddModal"
         @navigate-to-timeline="activeTab = 'timeline'"
+        @navigate-to-invest="activeTab = 'invest'"
+        @navigate-to-career="activeTab = 'career'"
+        @navigate-to-simulator="activeTab = 'phase-simulator'"
       />
 
       <TimelineScreen
@@ -420,6 +423,7 @@ async function handleLogout() {
         :is-privacy-active="isPrivacyActive"
         @refresh-data="loadDatabaseData"
         @navigate-to-simulator="activeTab = 'phase-simulator'"
+        @navigate-to-timeline="activeTab = 'timeline'"
       />
 
       <CareerScreen
@@ -427,6 +431,8 @@ async function handleLogout() {
         :career-records="careerRecords"
         :is-privacy-active="isPrivacyActive"
         @refresh-data="loadDatabaseData"
+        @navigate-to-simulator="activeTab = 'phase-simulator'"
+        @navigate-to-timeline="activeTab = 'timeline'"
       />
 
       <PhaseSimulatorScreen
@@ -435,6 +441,9 @@ async function handleLogout() {
         :career-records="careerRecords"
         :transactions="transactions"
         :is-privacy-active="isPrivacyActive"
+        @navigate-to-invest="activeTab = 'invest'"
+        @navigate-to-career="activeTab = 'career'"
+        @navigate-to-timeline="activeTab = 'timeline'"
       />
     </main>
 

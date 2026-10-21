@@ -261,6 +261,52 @@ describe('PhaseSimulatorScreen Component', () => {
     expect(tooltip.text()).toContain('Parar aos 5a');
     expect(tooltip.text()).toContain('Parar Agora');
   });
+
+  it('deve emitir redirecionamento para Carreira e Carteira ao clicar nos atalhos de Salário Base e Na Carteira', async () => {
+    const wrapper = mount(PhaseSimulatorScreen, {
+      props: {
+        assets: mockAssets,
+        careerRecords: mockCareerRecords,
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const btnSalary = wrapper.find('[data-testid="btn-goto-career-salary"]');
+    expect(btnSalary.exists()).toBe(true);
+    await btnSalary.trigger('click');
+    expect(wrapper.emitted('navigateToCareer')).toBeTruthy();
+
+    const btnWallet = wrapper.find('[data-testid="btn-goto-invest-wallet"]');
+    expect(btnWallet.exists()).toBe(true);
+    await btnWallet.trigger('click');
+    expect(wrapper.emitted('navigateToInvest')).toBeTruthy();
+  });
+
+  it('deve exibir aviso de scroll horizontal na aba Evolução Mês a Mês e permitir alternar para visualização em Cards sem scroll', async () => {
+    const wrapper = mount(PhaseSimulatorScreen, {
+      props: {
+        assets: mockAssets,
+        careerRecords: mockCareerRecords,
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    await wrapper.find('button[data-testid="tab-monthly"]').trigger('click');
+
+    const scrollHint = wrapper.find('[data-testid="horizontal-scroll-indicator"]');
+    expect(scrollHint.exists()).toBe(true);
+    expect(scrollHint.text()).toContain('Arraste a tabela para o lado');
+
+    // Alternar para modo Cards (Sem Scroll)
+    const cardsBtn = wrapper.findAll('button').find((b) => b.text().includes('Cards (Sem Scroll)'));
+    expect(cardsBtn).toBeDefined();
+    await cardsBtn!.trigger('click');
+
+    expect(wrapper.find('[data-testid="horizontal-scroll-indicator"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Mês 1');
+  });
 });
 
 

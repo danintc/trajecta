@@ -11,21 +11,26 @@ export interface WealthPhaseGaugeProps {
 
 const props = defineProps<WealthPhaseGaugeProps>();
 
+const emit = defineEmits<{
+  (e: 'navigateToInvest'): void;
+  (e: 'navigateToCareer'): void;
+  (e: 'navigateToTrajectories'): void;
+}>();
+
 // Posição percentual do marcador na barra (0 a 100%)
-// Zona 1 (Manutenção): 0 a 5% -> ocupa 33% da barra
-// Zona 2 (Transição): 5 a 20% -> ocupa 33% a 66% da barra
-// Zona 3 (Construção): > 20% -> ocupa 66% a 100% da barra (saturando em 60%)
+// Zona 1 (Manutenção): 0 a 5% -> ocupa 33.3% da barra
+// Zona 2 (Transição): 5 a 20% -> ocupa 33.3% a 66.6% da barra
+// Zona 3 (Construção): > 20% -> ocupa 66.6% a 100% da barra (saturando em 60%)
 const pinPositionPercent = computed(() => {
   const r = props.currentRatioPercent;
   if (r <= 5) {
-    return Math.min(33, (r / 5) * 33);
+    return Math.max(3, Math.min(33, (r / 5) * 33));
   }
   if (r <= 20) {
-    return 33 + ((r - 5) / 15) * 33;
+    return 33.3 + ((r - 5) / 15) * 33.3;
   }
-  // r > 20
-  const excess = Math.min(40, r - 20); // de 20% até 60%
-  return 66 + (excess / 40) * 34;
+  const excess = Math.min(40, r - 20);
+  return Math.min(97, 66.6 + (excess / 40) * 33.4);
 });
 
 const phaseTheme = computed(() => {
@@ -59,56 +64,62 @@ const phaseTheme = computed(() => {
 </script>
 
 <template>
-  <div class="bg-surface border border-border-subtle rounded-2xl p-5 sm:p-6 space-y-5">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-finance-neutral uppercase tracking-wider">
-            Diagnóstico de Alavanca
-          </span>
-          <span
-            class="text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide transition"
-            :class="phaseTheme.badge"
-          >
-            Fase: {{ guidelines.name }}
-          </span>
-        </div>
-        <h2 class="text-lg font-bold text-white mt-1">
-          {{ guidelines.tagline }}
-        </h2>
+  <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 h-full flex flex-col justify-between">
+    <!-- TOPO: DIAGNÓSTICO & BADGE SEM QUEBRA DE LINHA -->
+    <div class="space-y-3 border-b border-border-subtle pb-4">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] font-bold text-finance-neutral uppercase tracking-wider whitespace-nowrap">
+          Diagnóstico de Alavanca
+        </span>
+        <span
+          class="text-[11px] px-3 py-1 rounded-full font-extrabold uppercase tracking-wide transition whitespace-nowrap shrink-0 shadow-sm"
+          :class="phaseTheme.badge"
+        >
+          Fase: {{ guidelines.name }}
+        </span>
       </div>
 
-      <div class="flex items-center gap-3 bg-background border border-border-subtle rounded-xl px-3.5 py-2">
-        <div class="text-right">
-          <span class="text-[10px] text-[#71717A] block">Razão Aporte / Patrimônio</span>
-          <span class="text-base font-bold font-mono text-white">
+      <h2 class="text-base sm:text-lg font-extrabold text-white leading-snug">
+        {{ guidelines.tagline }}
+      </h2>
+
+      <!-- KPIs de Diagnóstico Lado a Lado Aproveitando 100% da Largura -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between">
+          <span class="text-[10px] text-[#71717A] font-semibold uppercase tracking-wide whitespace-nowrap truncate">
+            Razão Aporte / Patrimônio
+          </span>
+          <div class="text-lg sm:text-xl font-extrabold font-mono text-white mt-0.5 whitespace-nowrap">
             {{ currentRatioPercent }}%
-          </span>
+          </div>
         </div>
-        <div class="w-px h-8 bg-border-subtle" />
-        <div>
-          <span class="text-[10px] text-[#71717A] block">Taxa de Poupança</span>
-          <span class="text-base font-bold font-mono text-accent-yellow">
-            {{ savingsRatePercent }}% <span class="text-[10px] text-[#71717A] font-normal">da renda</span>
+
+        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between">
+          <span class="text-[10px] text-[#71717A] font-semibold uppercase tracking-wide whitespace-nowrap truncate">
+            Taxa de Poupança
           </span>
+          <div class="text-lg sm:text-xl font-extrabold font-mono text-accent-yellow mt-0.5 whitespace-nowrap">
+            {{ savingsRatePercent }}% <span class="text-[11px] text-[#71717A] font-sans font-normal">da renda</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- RÉGUA / GAUGE VISUAL DAS 3 FASES -->
+    <!-- RÉGUA / GAUGE VISUAL DAS 3 FASES (ALINHAMENTO PRECISO SEM COLISÃO DE LABELS) -->
     <div class="space-y-2">
-      <div class="flex justify-between text-[11px] font-semibold text-[#71717A]">
-        <span>0%</span>
-        <span>5% (Fronteira Manutenção)</span>
-        <span>20% (Fronteira Transição)</span>
-        <span>+40%</span>
+      <!-- Marcadores de Fronteira alinhados às divisões de 33.3% e 66.6% -->
+      <div class="relative h-4 text-[10px] font-mono font-bold text-[#A1A1AA] select-none">
+        <span class="absolute left-0 whitespace-nowrap">0%</span>
+        <span class="absolute left-1/3 -translate-x-1/2 whitespace-nowrap text-finance-pos">5% (Manutenção)</span>
+        <span class="absolute left-2/3 -translate-x-1/2 whitespace-nowrap text-accent-yellow">20% (Transição)</span>
+        <span class="absolute right-0 whitespace-nowrap text-finance-invest">+40%</span>
       </div>
 
-      <div class="relative w-full h-4 bg-background rounded-full overflow-visible border border-border-subtle flex">
+      <div class="relative w-full h-6 bg-background rounded-full overflow-visible border border-border-subtle flex shadow-inner">
         <!-- Zona Manutenção (< 5%) -->
         <div
-          class="h-full rounded-l-full bg-finance-pos/30 border-r border-border-subtle transition flex items-center justify-center text-[9px] font-bold text-finance-pos"
-          style="width: 33.3%"
+          class="h-full rounded-l-full bg-finance-pos/25 border-r border-border-subtle/80 transition flex items-center justify-center text-[10px] font-extrabold text-finance-pos whitespace-nowrap"
+          style="width: 33.33%"
           title="Manutenção (< 5%)"
         >
           Manutenção
@@ -116,8 +127,8 @@ const phaseTheme = computed(() => {
 
         <!-- Zona Transição (5% a 20%) -->
         <div
-          class="h-full bg-accent-yellow/30 border-r border-border-subtle transition flex items-center justify-center text-[9px] font-bold text-accent-yellow"
-          style="width: 33.3%"
+          class="h-full bg-accent-yellow/25 border-r border-border-subtle/80 transition flex items-center justify-center text-[10px] font-extrabold text-accent-yellow whitespace-nowrap"
+          style="width: 33.33%"
           title="Transição (5% a 20%)"
         >
           Transição
@@ -125,8 +136,8 @@ const phaseTheme = computed(() => {
 
         <!-- Zona Construção (> 20%) -->
         <div
-          class="h-full rounded-r-full bg-finance-invest/30 transition flex items-center justify-center text-[9px] font-bold text-finance-invest"
-          style="width: 33.4%"
+          class="h-full rounded-r-full bg-finance-invest/25 transition flex items-center justify-center text-[10px] font-extrabold text-finance-invest whitespace-nowrap"
+          style="width: 33.34%"
           title="Construção (> 20%)"
         >
           Construção
@@ -134,7 +145,7 @@ const phaseTheme = computed(() => {
 
         <!-- Marcador / Pino da Posição Atual -->
         <div
-          class="absolute -top-1.5 -bottom-1.5 w-4 -ml-2 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-all duration-500"
+          class="absolute -top-1.5 -bottom-1.5 w-5 -ml-2.5 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-all duration-500 z-10"
           :class="phaseTheme.accentBar"
           :style="{ left: `${pinPositionPercent}%` }"
         >
@@ -142,24 +153,28 @@ const phaseTheme = computed(() => {
         </div>
       </div>
 
-      <div class="flex justify-between text-[10px] text-[#71717A] pt-1">
-        <span>Usufruto & Piloto Automático</span>
-        <span>Equilíbrio & Qualidade</span>
-        <span>Foco Máximo em Aporte</span>
+      <!-- Subtítulos das 3 Zonas em Grid Simétrico de 3 Colunas -->
+      <div class="grid grid-cols-3 gap-1 text-[10px] text-[#71717A] pt-1 text-center">
+        <span class="truncate">Piloto Automático</span>
+        <span class="truncate">Equilíbrio & Qualidade</span>
+        <span class="truncate">Foco em Aporte</span>
       </div>
     </div>
 
-    <!-- MATRIZ DOS 3 PILARES: APORTE vs INVESTIR MELHOR vs USUFRUTO -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+    <!-- MATRIZ DOS 3 PILARES INTERATIVOS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
       <!-- Pilar 1: Aporte -->
       <div
-        class="bg-background rounded-xl p-3.5 border transition"
+        role="button"
+        tabindex="0"
+        class="bg-background rounded-xl p-3.5 border transition cursor-pointer hover:border-finance-career/60 group flex flex-col justify-between gap-2"
         :class="guidelines.aportePriority === 'MUITO_ALTA' ? 'border-finance-invest/60 bg-finance-invest/5' : 'border-border-subtle'"
+        @click="emit('navigateToCareer')"
       >
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-[#71717A] font-medium">1. Aumentar Aportes</span>
+        <div class="flex justify-between items-center gap-1.5">
+          <span class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">1. Aumentar Aportes</span>
           <span
-            class="text-[10px] font-bold px-2 py-0.5 rounded uppercase"
+            class="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase whitespace-nowrap shrink-0"
             :class="{
               'bg-finance-invest/20 text-finance-invest': guidelines.aportePriority === 'MUITO_ALTA',
               'bg-accent-yellow/20 text-accent-yellow': guidelines.aportePriority === 'MEDIA',
@@ -169,7 +184,7 @@ const phaseTheme = computed(() => {
             {{ guidelines.aportePriority.replace('_', ' ') }}
           </span>
         </div>
-        <p class="text-xs text-white font-semibold mt-2">
+        <p class="text-xs text-white/90 font-medium leading-relaxed">
           {{
             currentPhase === 'CONSTRUCTION'
               ? 'Alavanca principal: ganhe mais e poupe com disciplina.'
@@ -178,17 +193,23 @@ const phaseTheme = computed(() => {
               : 'Impacto quase nulo: novos aportes não mudam o futuro.'
           }}
         </p>
+        <span class="text-[10px] text-finance-career font-semibold group-hover:underline flex items-center gap-1">
+          Ver Carreira & Renda →
+        </span>
       </div>
 
       <!-- Pilar 2: Rentabilidade / Investir Melhor -->
       <div
-        class="bg-background rounded-xl p-3.5 border transition"
+        role="button"
+        tabindex="0"
+        class="bg-background rounded-xl p-3.5 border transition cursor-pointer hover:border-finance-invest/60 group flex flex-col justify-between gap-2"
         :class="guidelines.investingBetterPriority === 'MUITO_ALTA' || guidelines.investingBetterPriority === 'ALTA' ? 'border-accent-yellow/60 bg-accent-yellow/5' : 'border-border-subtle'"
+        @click="emit('navigateToInvest')"
       >
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-[#71717A] font-medium">2. Investir Melhor</span>
+        <div class="flex justify-between items-center gap-1.5">
+          <span class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">2. Investir Melhor</span>
           <span
-            class="text-[10px] font-bold px-2 py-0.5 rounded uppercase"
+            class="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase whitespace-nowrap shrink-0"
             :class="{
               'bg-accent-yellow/20 text-accent-yellow': guidelines.investingBetterPriority === 'ALTA',
               'bg-finance-pos/20 text-finance-pos': guidelines.investingBetterPriority === 'MUITO_ALTA',
@@ -198,7 +219,7 @@ const phaseTheme = computed(() => {
             {{ guidelines.investingBetterPriority.replace('_', ' ') }}
           </span>
         </div>
-        <p class="text-xs text-white font-semibold mt-2">
+        <p class="text-xs text-white/90 font-medium leading-relaxed">
           {{
             currentPhase === 'CONSTRUCTION'
               ? 'Simplicidade: evite erros graves; alfa gera pouco dinheiro.'
@@ -207,17 +228,23 @@ const phaseTheme = computed(() => {
               : 'Prioridade máxima: preservação contra inflação e volatilidade.'
           }}
         </p>
+        <span class="text-[10px] text-finance-invest font-semibold group-hover:underline flex items-center gap-1">
+          Ver Carteira →
+        </span>
       </div>
 
       <!-- Pilar 3: Usufruir / Consumir a Renda -->
       <div
-        class="bg-background rounded-xl p-3.5 border transition"
+        role="button"
+        tabindex="0"
+        class="bg-background rounded-xl p-3.5 border transition cursor-pointer hover:border-finance-pos/60 group flex flex-col justify-between gap-2"
         :class="guidelines.enjoymentPriority === 'MUITO_ALTA' ? 'border-finance-pos/60 bg-finance-pos/5' : 'border-border-subtle'"
+        @click="emit('navigateToTrajectories')"
       >
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-[#71717A] font-medium">3. Usufruir da Renda</span>
+        <div class="flex justify-between items-center gap-1.5">
+          <span class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">3. Usufruir da Renda</span>
           <span
-            class="text-[10px] font-bold px-2 py-0.5 rounded uppercase"
+            class="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase whitespace-nowrap shrink-0"
             :class="{
               'bg-finance-pos/20 text-finance-pos': guidelines.enjoymentPriority === 'MUITO_ALTA',
               'bg-accent-yellow/20 text-accent-yellow': guidelines.enjoymentPriority === 'MEDIA',
@@ -227,7 +254,7 @@ const phaseTheme = computed(() => {
             {{ guidelines.enjoymentPriority.replace('_', ' ') }}
           </span>
         </div>
-        <p class="text-xs text-white font-semibold mt-2">
+        <p class="text-xs text-white/90 font-medium leading-relaxed">
           {{
             currentPhase === 'CONSTRUCTION'
               ? 'Consumo dosado: poupar agora compra sua liberdade futura.'
@@ -236,14 +263,17 @@ const phaseTheme = computed(() => {
               : 'Liberdade plena: consuma e viva sem culpa!'
           }}
         </p>
+        <span class="text-[10px] text-finance-pos font-semibold group-hover:underline flex items-center gap-1">
+          Simular Curvas →
+        </span>
       </div>
     </div>
 
     <!-- REFLEXÃO CENTRAL -->
-    <div class="bg-background/80 border border-border-subtle rounded-xl p-4 flex items-start gap-3.5">
-      <div class="text-2xl select-none">💧</div>
-      <div class="space-y-1">
-        <h4 class="text-xs font-bold text-accent-yellow uppercase tracking-wider">
+    <div class="bg-background/80 border border-border-subtle rounded-xl p-3.5 flex items-start gap-3">
+      <div class="text-xl select-none shrink-0">💧</div>
+      <div class="space-y-1 min-w-0">
+        <h4 class="text-[11px] font-bold text-accent-yellow uppercase tracking-wider">
           A Analogia do Copo d'Água & Utilidade Marginal
         </h4>
         <p class="text-xs text-white/90 leading-relaxed">

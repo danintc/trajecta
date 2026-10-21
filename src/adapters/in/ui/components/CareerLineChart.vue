@@ -18,12 +18,12 @@ const props = defineProps<CareerLineChartProps>();
 
 const hoveredIdx = ref<number | null>(null);
 
-const width = 500;
-const height = 180;
-const paddingLeft = 40;
-const paddingRight = 40;
-const paddingTop = 30;
-const paddingBottom = 40;
+const width = 580;
+const height = 220;
+const paddingLeft = 36;
+const paddingRight = 36;
+const paddingTop = 32;
+const paddingBottom = 38;
 
 const plotWidth = width - paddingLeft - paddingRight;
 const plotHeight = height - paddingTop - paddingBottom;
@@ -45,7 +45,7 @@ const coords = computed(() => {
         ? width / 2
         : paddingLeft + (idx / (props.points.length - 1)) * plotWidth;
     const yFraction = range.value > 0 ? (p.grossSalary - minSalary.value) / range.value : 0.5;
-    const y = paddingTop + plotHeight - yFraction * (plotHeight * 0.8) - plotHeight * 0.1;
+    const y = paddingTop + plotHeight - yFraction * (plotHeight * 0.82) - plotHeight * 0.08;
 
     return {
       x,
@@ -88,27 +88,27 @@ const activePoint = computed(() => {
 <template>
   <div
     data-testid="career-line-chart"
-    class="flex flex-col justify-between w-full h-full select-none space-y-2"
+    class="flex flex-col justify-between w-full h-full select-none space-y-3"
   >
-    <!-- Mini-Barra Informativa do Marco em Foco -->
+    <!-- Barra Informativa do Marco em Foco -->
     <div
       v-if="activePoint"
-      class="flex flex-wrap items-center justify-between text-xs px-2 bg-background/60 py-1.5 rounded-lg border border-border-subtle/50"
+      class="flex flex-wrap items-center justify-between gap-2 text-xs px-3 py-2 bg-background/80 rounded-xl border border-border-subtle"
     >
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-finance-career" />
-        <span class="font-bold text-white">{{ activePoint.role }}</span>
-        <span class="text-[#71717A]">({{ activePoint.label }})</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
+        <span class="font-bold text-white truncate">{{ activePoint.role }}</span>
+        <span class="text-[#71717A] whitespace-nowrap">({{ activePoint.label }})</span>
       </div>
-      <div class="flex items-center gap-3 font-mono">
-        <span>
+      <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
+        <span class="whitespace-nowrap">
           Salário:
           <strong class="text-finance-career">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.grossSalary) }}
           </strong>
         </span>
-        <span class="text-[#71717A]">|</span>
-        <span>
+        <span class="text-[#3F3F46]">|</span>
+        <span class="whitespace-nowrap">
           Total Cash:
           <strong class="text-white">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.totalCash) }}
@@ -117,8 +117,8 @@ const activePoint = computed(() => {
       </div>
     </div>
 
-    <!-- SVG da Linha Contínua -->
-    <div class="relative w-full h-40 sm:h-44">
+    <!-- SVG da Linha Contínua Amplo -->
+    <div class="relative w-full h-52 sm:h-60 bg-background/50 rounded-xl border border-border-subtle/60 p-2">
       <svg
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
@@ -126,12 +126,12 @@ const activePoint = computed(() => {
       >
         <defs>
           <linearGradient id="careerAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#818CF8" stop-opacity="0.35" />
-            <stop offset="70%" stop-color="#818CF8" stop-opacity="0.08" />
+            <stop offset="0%" stop-color="#818CF8" stop-opacity="0.38" />
+            <stop offset="70%" stop-color="#818CF8" stop-opacity="0.09" />
             <stop offset="100%" stop-color="#818CF8" stop-opacity="0.0" />
           </linearGradient>
           <filter id="careerGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#818CF8" flood-opacity="0.4" />
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#818CF8" flood-opacity="0.45" />
           </filter>
         </defs>
 
@@ -157,7 +157,7 @@ const activePoint = computed(() => {
           :d="linePath"
           fill="none"
           stroke="#818CF8"
-          stroke-width="3"
+          stroke-width="3.2"
           stroke-linecap="round"
           stroke-linejoin="round"
           filter="url(#careerGlow)"
@@ -174,14 +174,27 @@ const activePoint = computed(() => {
             :y2="paddingTop + plotHeight"
             stroke="#52525B"
             stroke-dasharray="3 3"
-            stroke-width="1"
+            stroke-width="1.2"
           />
+
+          <!-- Valor Acima do Ponto -->
+          <text
+            :x="pt.x"
+            :y="pt.y - 11"
+            text-anchor="middle"
+            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#818CF8' : '#A1A1AA'"
+            font-size="10"
+            font-weight="700"
+            class="font-mono select-none"
+          >
+            {{ isPrivacyActive ? '••••' : formatCentsToBrl(pt.grossSalary).split(',')[0] }}
+          </text>
 
           <!-- Círculo do Ponto Salarial -->
           <circle
             :cx="pt.x"
             :cy="pt.y"
-            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 6 : 4"
+            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 6.5 : 4.5"
             :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#818CF8'"
             stroke="#818CF8"
             :stroke-width="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 2.5 : 1.5"
@@ -191,17 +204,17 @@ const activePoint = computed(() => {
           <!-- Rótulo Inferior (Empresa / Ano) -->
           <text
             :x="pt.x"
-            :y="height - 12"
+            :y="height - 10"
             text-anchor="middle"
-            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#71717A'"
-            font-size="10"
+            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#A1A1AA'"
+            font-size="11"
             :font-weight="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 700 : 500"
             class="select-none"
           >
             {{ pt.label }}
           </text>
 
-          <!-- Área de Captura de Hover -->
+          <!-- Área de Captura de Hover / Toque -->
           <rect
             :x="pt.x - plotWidth / (coords.length * 2 || 1)"
             :y="0"
@@ -211,6 +224,7 @@ const activePoint = computed(() => {
             class="cursor-pointer"
             @mouseenter="hoveredIdx = idx"
             @mouseleave="hoveredIdx = null"
+            @click="hoveredIdx = idx"
           />
         </g>
       </svg>

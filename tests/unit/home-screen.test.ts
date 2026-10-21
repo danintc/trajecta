@@ -97,5 +97,10 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
     const addBtn = wrapper.find('[data-testid="btn-add-expense-container"]');
     await addBtn.trigger('click');
     expect(wrapper.emitted('openAddModal')).toBeTruthy();
+
+    const investBtn = wrapper.find('[data-testid="btn-home-goto-invest"]');
+    expect(investBtn.exists()).toBe(true);
+    await investBtn.trigger('click');
+    expect(wrapper.emitted('navigateToInvest')).toBeTruthy();
   });
 });

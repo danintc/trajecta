@@ -66,12 +66,12 @@ const metrics = computed(() => {
   };
 });
 
-const width = 500;
-const height = 170;
-const paddingLeft = 15;
-const paddingRight = 15;
-const paddingTop = 25;
-const paddingBottom = 30;
+const width = 560;
+const height = 210;
+const paddingLeft = 18;
+const paddingRight = 18;
+const paddingTop = 26;
+const paddingBottom = 32;
 
 const plotWidth = width - paddingLeft - paddingRight;
 const plotHeight = height - paddingTop - paddingBottom;
@@ -84,8 +84,8 @@ const coords = computed(() => {
 
   return dataPoints.value.map((d, i) => {
     const x = paddingLeft + (i / (dataPoints.value.length - 1 || 1)) * plotWidth;
-    const yNw = paddingTop + plotHeight - ((d.netWorthInCents - minVal) / range) * plotHeight;
-    const yCdi = paddingTop + plotHeight - ((d.benchmarkCdiInCents - minVal) / range) * plotHeight;
+    const yNw = paddingTop + plotHeight - ((d.netWorthInCents - minVal) / range) * (plotHeight * 0.88) - plotHeight * 0.06;
+    const yCdi = paddingTop + plotHeight - ((d.benchmarkCdiInCents - minVal) / range) * (plotHeight * 0.88) - plotHeight * 0.06;
     return { x, yNw, yCdi, ...d };
   });
 });
@@ -121,25 +121,25 @@ const activePt = computed(() => {
 <template>
   <div
     data-testid="net-worth-line-chart"
-    class="flex flex-col justify-between h-full w-full select-none"
+    class="flex flex-col justify-between h-full w-full select-none space-y-2.5"
   >
-    <!-- Cabeçalho do Gráfico com Legendas e Benchmark Tag -->
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-      <div class="flex items-center gap-3 text-xs">
+    <!-- Cabeçalho do Gráfico com Legendas e Benchmark Tag (Sem quebra feia) -->
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex flex-wrap items-center gap-3 text-xs">
         <!-- Legenda Patrimônio -->
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-finance-pos shadow-sm shadow-finance-pos/50" />
-          <span class="text-white font-medium">Patrimônio Líquido</span>
-          <span class="text-finance-pos font-mono font-bold text-[11px]">
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+          <span class="w-2.5 h-2.5 rounded-full bg-finance-pos shadow-sm shadow-finance-pos/50 shrink-0" />
+          <span class="text-white font-semibold">Patrimônio Líquido</span>
+          <span class="text-finance-pos font-mono font-bold text-[11px] bg-finance-pos/10 px-1.5 py-0.5 rounded">
             {{ metrics.nwGrowthPercent >= 0 ? `+${metrics.nwGrowthPercent}%` : `${metrics.nwGrowthPercent}%` }}
           </span>
         </div>
 
         <!-- Legenda CDI -->
-        <div class="flex items-center gap-1.5">
-          <span class="w-3 h-0.5 bg-accent-yellow border-b border-dashed border-accent-yellow" />
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+          <span class="w-3 h-0.5 bg-accent-yellow border-b border-dashed border-accent-yellow shrink-0" />
           <span class="text-[#A1A1AA]">100% CDI ({{ periodLabel }})</span>
-          <span class="text-accent-yellow font-mono text-[11px]">
+          <span class="text-accent-yellow font-mono font-semibold text-[11px]">
             +{{ metrics.cdiGrowthPercent }}%
           </span>
         </div>
@@ -148,11 +148,11 @@ const activePt = computed(() => {
       <!-- Badge Comparativo de Desempenho -->
       <div
         v-if="currentNetWorthInCents > 0"
-        class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+        class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0"
         :class="
           metrics.isBeatingCdi
-            ? 'bg-finance-pos/10 text-finance-pos border-finance-pos/20'
-            : 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/20'
+            ? 'bg-finance-pos/10 text-finance-pos border-finance-pos/25'
+            : 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/25'
         "
       >
         {{
@@ -163,8 +163,8 @@ const activePt = computed(() => {
       </div>
     </div>
 
-    <!-- SVG do Gráfico de Linha -->
-    <div class="relative w-full h-36 sm:h-40">
+    <!-- SVG do Gráfico de Linha Amplo -->
+    <div class="relative w-full h-44 sm:h-52 lg:h-56 bg-background/50 rounded-xl border border-border-subtle/50 p-2">
       <svg
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
@@ -172,8 +172,8 @@ const activePt = computed(() => {
       >
         <defs>
           <linearGradient id="nwAreaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#10B981" stop-opacity="0.32" />
-            <stop offset="60%" stop-color="#10B981" stop-opacity="0.08" />
+            <stop offset="0%" stop-color="#10B981" stop-opacity="0.35" />
+            <stop offset="65%" stop-color="#10B981" stop-opacity="0.09" />
             <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
           </linearGradient>
 
@@ -204,10 +204,10 @@ const activePt = computed(() => {
           :d="cdiPath"
           fill="none"
           stroke="#F59E0B"
-          stroke-width="2"
+          stroke-width="2.2"
           stroke-dasharray="6 4"
           stroke-linecap="round"
-          opacity="0.85"
+          opacity="0.9"
         />
 
         <!-- Linha Principal do Patrimônio Líquido -->
@@ -216,7 +216,7 @@ const activePt = computed(() => {
           :d="nwPath"
           fill="none"
           stroke="#10B981"
-          stroke-width="2.5"
+          stroke-width="3"
           stroke-linecap="round"
           stroke-linejoin="round"
           filter="url(#glow)"
@@ -233,14 +233,14 @@ const activePt = computed(() => {
             :y2="paddingTop + plotHeight"
             stroke="#52525B"
             stroke-dasharray="3 3"
-            stroke-width="1"
+            stroke-width="1.2"
           />
 
           <!-- Ponto Benchmark CDI -->
           <circle
             :cx="pt.x"
             :cy="pt.yCdi"
-            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 4 : 2.5"
+            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 4.5 : 3"
             fill="#F59E0B"
             stroke="#18181B"
             stroke-width="1.5"
@@ -250,7 +250,7 @@ const activePt = computed(() => {
           <circle
             :cx="pt.x"
             :cy="pt.yNw"
-            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 5.5 : 3.5"
+            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 6 : 4"
             :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#10B981'"
             stroke="#10B981"
             :stroke-width="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 2.5 : 1.5"
@@ -262,15 +262,15 @@ const activePt = computed(() => {
             :x="pt.x"
             :y="height - 8"
             text-anchor="middle"
-            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#71717A'"
-            font-size="10"
+            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#A1A1AA'"
+            font-size="11"
             :font-weight="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 700 : 500"
             class="select-none"
           >
             {{ pt.dateLabel }}
           </text>
 
-          <!-- Área de Captura de Evento Mouse -->
+          <!-- Área de Captura de Evento Mouse/Toque -->
           <rect
             :x="pt.x - plotWidth / (coords.length * 2)"
             :y="0"
@@ -280,27 +280,29 @@ const activePt = computed(() => {
             class="cursor-pointer"
             @mouseenter="hoveredIdx = idx"
             @mouseleave="hoveredIdx = null"
+            @click="hoveredIdx = idx"
           />
         </g>
       </svg>
     </div>
 
-    <!-- Mini-Barra Informativa do Ponto em Foco -->
+    <!-- Barra Informativa do Ponto em Foco -->
     <div
       v-if="activePt"
-      class="flex items-center justify-between text-[11px] pt-1 px-1 border-t border-border-subtle/50 text-[#71717A]"
+      class="flex flex-wrap items-center justify-between gap-2 text-xs bg-background/70 px-3 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA]"
     >
-      <span class="font-semibold text-white">
-        Ponto: {{ activePt.dateLabel }}
+      <span class="font-bold text-white whitespace-nowrap">
+        📅 {{ activePt.dateLabel }}
       </span>
-      <div class="flex items-center gap-3 font-mono">
-        <span>
+      <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
+        <span class="whitespace-nowrap">
           Patrimônio:
           <strong class="text-finance-pos">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePt.netWorthInCents) }}
           </strong>
         </span>
-        <span>
+        <span class="text-border-subtle">|</span>
+        <span class="whitespace-nowrap">
           CDI:
           <strong class="text-accent-yellow">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePt.benchmarkCdiInCents) }}
