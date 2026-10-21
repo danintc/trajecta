@@ -193,12 +193,12 @@ const maxSalaryInCents = computed(() => {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARREIRA -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
+    <!-- SUB-ABAS INTERNAS DA CARREIRA (GRID DE 3 COLUNAS SEM QUEBRAS OU CORTES) -->
+    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
       <button
         type="button"
         data-testid="career-subtab-evolution"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'evolution'
             ? 'bg-finance-career text-black shadow-sm'
@@ -207,13 +207,14 @@ const maxSalaryInCents = computed(() => {
         @click="activeSubTab = 'evolution'"
       >
         <span>📈</span>
-        <span>Evolução & Curva</span>
+        <span class="sm:hidden truncate">Curva</span>
+        <span class="hidden sm:inline truncate">Evolução & Curva</span>
       </button>
 
       <button
         type="button"
         data-testid="career-subtab-timeline"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'timeline'
             ? 'bg-finance-career text-black shadow-sm'
@@ -222,13 +223,14 @@ const maxSalaryInCents = computed(() => {
         @click="activeSubTab = 'timeline'"
       >
         <span>📜</span>
-        <span>Marcos & Histórico</span>
+        <span class="sm:hidden truncate">Marcos</span>
+        <span class="hidden sm:inline truncate">Marcos & Histórico</span>
       </button>
 
       <button
         type="button"
         data-testid="career-subtab-totalcash"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'totalcash'
             ? 'bg-finance-career text-black shadow-sm'
@@ -237,7 +239,8 @@ const maxSalaryInCents = computed(() => {
         @click="activeSubTab = 'totalcash'"
       >
         <span>💰</span>
-        <span>Composição Total Cash</span>
+        <span class="sm:hidden truncate">Total Cash</span>
+        <span class="hidden sm:inline truncate">Composição Total Cash</span>
       </button>
     </div>
 

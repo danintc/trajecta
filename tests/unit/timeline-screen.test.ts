@@ -108,7 +108,7 @@ describe('TimelineScreen Component', () => {
     expect(wrapper.text()).toContain('Nenhum lançamento encontrado');
   });
 
-  it('deve acionar o botão de novo lançamento e exclusão', async () => {
+  it('deve acionar a exclusão de lançamento', async () => {
     vi.spyOn(window, 'confirm').mockImplementation(() => true);
 
     const wrapper = mount(TimelineScreen, {
@@ -118,14 +118,24 @@ describe('TimelineScreen Component', () => {
       },
     });
 
-    const addBtn = wrapper.find('[data-testid="btn-timeline-add"]');
-    await addBtn.trigger('click');
-    expect(wrapper.emitted('openAddModal')).toBeTruthy();
-
     const deleteBtns = wrapper.findAll('button[title="Excluir lançamento"]');
     await deleteBtns[0].trigger('click');
     expect(wrapper.emitted('deleteTransaction')).toBeTruthy();
     expect(wrapper.emitted('deleteTransaction')![0]).toEqual(['tx-1']);
+  });
+
+  it('deve emitir openAddModal ao clicar na ação do EmptyState', async () => {
+    const wrapper = mount(TimelineScreen, {
+      props: {
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const emptyBtn = wrapper.find('[data-testid="btn-empty-action-timeline"]');
+    expect(emptyBtn.exists()).toBe(true);
+    await emptyBtn.trigger('click');
+    expect(wrapper.emitted('openAddModal')).toBeTruthy();
   });
 
   it('deve acionar o botão de edição de lançamento emitindo editTransaction', async () => {

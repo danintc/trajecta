@@ -90,30 +90,38 @@ const activePoint = computed(() => {
     data-testid="career-line-chart"
     class="flex flex-col justify-between w-full h-full select-none space-y-3"
   >
-    <!-- Barra Informativa do Marco em Foco -->
+    <!-- Barra Informativa do Marco em Foco (Sem vazamento de texto no mobile) -->
     <div
       v-if="activePoint"
-      class="flex flex-wrap items-center justify-between gap-2 text-xs px-3 py-2 bg-background/80 rounded-xl border border-border-subtle"
+      class="bg-background/80 rounded-xl border border-border-subtle p-2.5 sm:p-3 space-y-2 overflow-hidden"
     >
-      <div class="flex items-center gap-2 min-w-0">
-        <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
-        <span class="font-bold text-white truncate">{{ activePoint.role }}</span>
-        <span class="text-[#71717A] whitespace-nowrap">({{ activePoint.label }})</span>
+      <div class="flex items-center justify-between gap-2 min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
+          <span class="font-bold text-white text-xs sm:text-sm truncate">{{ activePoint.role }}</span>
+        </div>
+        <span class="text-[10px] sm:text-[11px] text-[#A1A1AA] bg-surface border border-border-subtle px-2 py-0.5 rounded-md shrink-0 font-mono">
+          {{ activePoint.label }}
+        </span>
       </div>
-      <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
-        <span class="whitespace-nowrap">
-          Salário:
-          <strong class="text-finance-career">
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-1.5 border-t border-border-subtle/50">
+        <div class="bg-surface/60 border border-border-subtle/40 rounded-lg p-2 min-w-0">
+          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider truncate font-sans">
+            Salário Bruto
+          </span>
+          <span class="font-extrabold text-finance-career text-xs sm:text-sm truncate block mt-0.5">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.grossSalary) }}
-          </strong>
-        </span>
-        <span class="text-[#3F3F46]">|</span>
-        <span class="whitespace-nowrap">
-          Total Cash:
-          <strong class="text-white">
+          </span>
+        </div>
+        <div class="bg-surface/60 border border-border-subtle/40 rounded-lg p-2 min-w-0">
+          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider truncate font-sans">
+            Total Cash
+          </span>
+          <span class="font-extrabold text-white text-xs sm:text-sm truncate block mt-0.5">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.totalCash) }}
-          </strong>
-        </span>
+          </span>
+        </div>
       </div>
     </div>
 

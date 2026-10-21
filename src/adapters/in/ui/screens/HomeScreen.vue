@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { Transaction } from '@/core/domain/transaction.entity';
 import { Asset } from '@/core/domain/asset.entity';
-import KpiCard from '../components/KpiCard.vue';
 import DonutChart, { DonutSlice } from '../components/DonutChart.vue';
 import NetWorthLineChart from '../components/NetWorthLineChart.vue';
 import { formatCentsToBrl } from '@/shared/utils/currency';
@@ -207,24 +206,24 @@ const periodLabel = computed(() => {
 </script>
 
 <template>
-  <div data-testid="screen-home" class="space-y-5">
-    <!-- TOPO: SELETOR DE PERÍODO & AÇÕES RÁPIDAS -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  <div data-testid="screen-home" class="space-y-4">
+    <!-- TOPO: SELETOR DE PERÍODO & LINK PARA EXTRATO (SEM BOTÃO LANÇAR DUPLICADO) -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
       <div
-        class="flex items-center gap-1 p-1 bg-surface border border-border-subtle rounded-xl overflow-x-auto no-scrollbar"
+        class="grid grid-cols-5 gap-1 p-1 bg-surface border border-border-subtle rounded-xl w-full sm:w-auto"
       >
         <button
           v-for="p in [
-            { key: '1M', label: 'Mês Vigente' },
-            { key: '3M', label: '3 Meses' },
-            { key: '6M', label: '6 Meses' },
-            { key: 'YTD', label: 'Ano Vigente' },
-            { key: 'ALL', label: 'Todo o Período' },
+            { key: '1M', label: 'Mês', fullLabel: 'Mês Vigente' },
+            { key: '3M', label: '3M', fullLabel: '3 Meses' },
+            { key: '6M', label: '6M', fullLabel: '6 Meses' },
+            { key: 'YTD', label: 'Ano', fullLabel: 'Ano Vigente' },
+            { key: 'ALL', label: 'Tudo', fullLabel: 'Todo o Período' },
           ]"
           :key="p.key"
           :data-testid="`period-filter-${p.key}`"
           type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition shrink-0"
+          class="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-center truncate"
           :class="
             selectedPeriod === p.key
               ? 'bg-accent-yellow text-black shadow-sm font-bold'
@@ -232,37 +231,104 @@ const periodLabel = computed(() => {
           "
           @click="selectedPeriod = p.key as PeriodFilter"
         >
-          {{ p.label }}
+          <span class="sm:hidden">{{ p.label }}</span>
+          <span class="hidden sm:inline">{{ p.fullLabel }}</span>
         </button>
       </div>
 
-      <div class="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+      <div class="flex items-center justify-between sm:justify-end gap-2">
+        <span class="text-[11px] text-[#71717A] sm:hidden">{{ periodLabel }}</span>
         <button
           type="button"
-          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1 whitespace-nowrap"
+          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1 whitespace-nowrap ml-auto"
           @click="emit('navigateToTimeline')"
         >
           <span>📜 Ver Linha do Tempo & Extrato</span>
           <span>→</span>
         </button>
+      </div>
+    </div>
+
+    <!-- BARRA DE FLUXO NA MESMA LINHA (ESTILO MONEY TRACKER: DESPESAS | RECEITAS | SALDO) -->
+    <div class="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 shadow-md">
+      <div class="grid grid-cols-3 divide-x divide-border-subtle/80 items-center">
+        <!-- Coluna 1: Gastos / Despesas -->
         <button
-          data-testid="btn-add-expense-container"
           type="button"
-          class="px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 whitespace-nowrap shrink-0"
-          @click="emit('openAddModal')"
+          data-testid="kpi-expenses"
+          class="pr-2 sm:pr-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          title="Ver Despesas no Extrato"
+          @click="emit('navigateToTimeline')"
         >
-          <span class="text-sm leading-none font-black">+</span>
-          <span>Lançar</span>
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+              Despesas
+            </span>
+            <span class="text-[10px] text-finance-neg hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
+          </div>
+          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-neg mt-0.5 truncate">
+            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-periodSummary.totalExpensesInCents) }}
+          </div>
+          <div class="text-[9px] sm:text-[11px] text-[#71717A] truncate mt-0.5">
+            {{ filteredTransactions.filter((t) => t.type === 'expense').length }} saídas
+          </div>
+        </button>
+
+        <!-- Coluna 2: Ganhos / Receitas -->
+        <button
+          type="button"
+          data-testid="kpi-income"
+          class="px-2 sm:px-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          title="Ver Receitas no Extrato"
+          @click="emit('navigateToTimeline')"
+        >
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+              Receitas
+            </span>
+            <span class="text-[10px] text-finance-pos hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
+          </div>
+          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-pos mt-0.5 truncate">
+            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodSummary.totalIncomeInCents, { showSign: true }) }}
+          </div>
+          <div class="text-[9px] sm:text-[11px] text-[#71717A] truncate mt-0.5">
+            Entradas no período
+          </div>
+        </button>
+
+        <!-- Coluna 3: Saldo Resultante -->
+        <button
+          type="button"
+          data-testid="kpi-balance"
+          class="pl-2 sm:pl-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          title="Simular Fase com seu Saldo"
+          @click="emit('navigateToSimulator')"
+        >
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+              Saldo
+            </span>
+            <span class="text-[10px] text-accent-yellow hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
+          </div>
+          <div
+            class="text-xs sm:text-xl font-extrabold font-mono mt-0.5 truncate"
+            :class="periodSummary.balanceInCents >= 0 ? 'text-white' : 'text-finance-neg'"
+          >
+            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodSummary.balanceInCents, { showSign: true }) }}
+          </div>
+          <div class="text-[9px] sm:text-[11px] text-accent-yellow font-semibold truncate mt-0.5">
+            {{ periodSummary.savingsRate }}% poupado
+          </div>
         </button>
       </div>
     </div>
 
-    <!-- SUB-ABAS INTERNAS DO DASHBOARD (MODULARIZAÇÃO PARA NÃO POLUIR A TELA) -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
+    <!-- SUB-ABAS INTERNAS DO DASHBOARD (3 COLUNAS QUE CABEM 100% NA TELA SEM VAZAR) -->
+    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
       <button
         type="button"
         data-testid="home-subtab-overview"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
         :class="
           activeSubTab === 'overview'
             ? 'bg-accent-yellow text-black shadow-sm'
@@ -271,13 +337,13 @@ const periodLabel = computed(() => {
         @click="activeSubTab = 'overview'"
       >
         <span>📊</span>
-        <span>Patrimônio & Fluxo</span>
+        <span class="truncate">Patrimônio</span>
       </button>
 
       <button
         type="button"
         data-testid="home-subtab-allocation"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
         :class="
           activeSubTab === 'allocation'
             ? 'bg-accent-yellow text-black shadow-sm'
@@ -286,13 +352,13 @@ const periodLabel = computed(() => {
         @click="activeSubTab = 'allocation'"
       >
         <span>🍩</span>
-        <span>Alocação de Ativos</span>
+        <span class="truncate">Ativos</span>
       </button>
 
       <button
         type="button"
         data-testid="home-subtab-liabilities"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
         :class="
           activeSubTab === 'liabilities'
             ? 'bg-accent-yellow text-black shadow-sm'
@@ -301,86 +367,75 @@ const periodLabel = computed(() => {
         @click="activeSubTab = 'liabilities'"
       >
         <span>💳</span>
-        <span>Passivos & Dívidas</span>
+        <span class="truncate">Passivos</span>
       </button>
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 1: PATRIMÔNIO LÍQUIDO, GRÁFICO DE EVOLUÇÃO & RESUMO               -->
+    <!-- SUB-ABA 1: PATRIMÔNIO LÍQUIDO & GRÁFICO DE EVOLUÇÃO                       -->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'overview'" class="space-y-5">
-      <!-- HERO CARD: BALANÇO PATRIMONIAL & NET WORTH (SEM RETÂNGULOS TRIPLOS ESPREMIDOS) -->
+    <div v-show="activeSubTab === 'overview'" class="space-y-4">
       <div
         data-testid="hero-net-worth"
-        class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-xl"
+        class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl overflow-hidden"
       >
         <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border-subtle pb-4"
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border-subtle pb-3.5"
         >
-          <div class="space-y-1">
+          <div class="space-y-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-base sm:text-lg font-extrabold text-white tracking-tight whitespace-nowrap">
+              <h2 class="text-sm sm:text-lg font-extrabold text-white tracking-tight truncate">
                 Balanço Patrimonial & Net Worth
               </h2>
               <span
-                class="text-[10px] font-bold bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0"
+                class="text-[10px] font-bold bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/25 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0"
               >
-                Consolidação Reativa
+                Tempo Real
               </span>
             </div>
-            <p class="text-xs text-[#71717A]">
-              Ativos reais deduzidos das faturas abertas e parcelas futuras contratadas
+            <p class="text-xs text-[#71717A] truncate">
+              Ativos reais deduzidos das faturas e parcelas futuras
             </p>
-          </div>
-
-          <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <span class="text-[11px] text-finance-neutral font-medium whitespace-nowrap">Período:</span>
-            <span class="text-xs font-bold text-accent-yellow bg-background px-2.5 py-1 rounded-lg border border-border-subtle whitespace-nowrap">
-              {{ periodLabel }}
-            </span>
           </div>
         </div>
 
-        <!-- Métricas de Patrimônio + Gráfico Amplo Lado a Lado -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-          <!-- Coluna Esquerda: Valor Principal + Atalhos Clicáveis -->
-          <div class="lg:col-span-4 bg-background/70 border border-border-subtle/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4">
-            <div class="space-y-1.5">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-finance-neutral whitespace-nowrap">
-                PATRIMÔNIO LÍQUIDO TOTAL (NET WORTH)
+        <!-- Métricas de Patrimônio + Gráfico Amplo -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          <div class="lg:col-span-4 bg-background/70 border border-border-subtle/80 rounded-2xl p-4 flex flex-col justify-between gap-3 overflow-hidden">
+            <div class="space-y-1 min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-finance-neutral truncate">
+                PATRIMÔNIO LÍQUIDO (NET WORTH)
               </div>
               <div
                 data-testid="kpi-net-worth-total"
-                class="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight whitespace-nowrap truncate"
+                class="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight truncate"
               >
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.netWorthTotalInCents) }}
               </div>
-              <div class="text-xs text-finance-pos flex items-center gap-1 font-semibold">
-                <span>▲ +R$ 4.250,00 (+2,8%) no período</span>
+              <div class="text-xs text-finance-pos font-semibold truncate">
+                ▲ +R$ 4.250,00 (+2,8%) no período
               </div>
             </div>
 
-            <!-- Botões Rápidos de Navegação Interna -->
-            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-border-subtle/70">
+            <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-border-subtle/70">
               <button
                 type="button"
-                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-invest transition flex items-center justify-center gap-1 whitespace-nowrap"
+                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-invest transition flex items-center justify-center gap-1 truncate"
                 @click="activeSubTab = 'allocation'"
               >
-                <span>🍩 Ver Ativos</span>
+                <span>🍩 Ativos</span>
               </button>
               <button
                 type="button"
-                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-neg transition flex items-center justify-center gap-1 whitespace-nowrap"
+                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-neg transition flex items-center justify-center gap-1 truncate"
                 @click="activeSubTab = 'liabilities'"
               >
-                <span>💳 Ver Passivos</span>
+                <span>💳 Passivos</span>
               </button>
             </div>
           </div>
 
-          <!-- Coluna Direita: Gráfico de Evolução Amplo Sem Caixa Dupla Espremida -->
-          <div class="lg:col-span-8 flex items-center">
+          <div class="lg:col-span-8 flex items-center min-w-0">
             <NetWorthLineChart
               :current-net-worth-in-cents="netWorthResult.netWorthTotalInCents"
               :is-privacy-active="isPrivacyActive"
@@ -389,129 +444,89 @@ const periodLabel = computed(() => {
           </div>
         </div>
 
-        <!-- Ativos vs Passivos Interativos (Clicar na Carteira ou Contas redireciona!) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Ativos vs Passivos Interativos (SEM VAZAMENTO DE TEXTO NA LATERAL!) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <!-- Card Ativos -->
-          <div class="bg-background/60 border border-border-subtle rounded-xl p-4 space-y-2.5">
+          <div class="bg-background/60 border border-border-subtle rounded-xl p-3.5 space-y-2.5 overflow-hidden">
             <div class="flex justify-between items-center border-b border-border-subtle pb-2 gap-2">
-              <span class="text-xs font-bold text-finance-pos uppercase tracking-wider whitespace-nowrap">
-                Ativos (Saldos + Investimentos)
+              <span class="text-xs font-bold text-finance-pos uppercase tracking-wide truncate min-w-0">
+                Ativos Totais
               </span>
-              <span class="text-sm font-bold text-white font-mono whitespace-nowrap">
+              <span class="text-xs sm:text-sm font-extrabold text-white font-mono shrink-0">
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.totalAssetsInCents) }}
               </span>
             </div>
 
             <button
               type="button"
-              class="w-full flex justify-between items-center text-xs text-finance-neutral hover:text-white py-1 px-2 -mx-2 rounded-lg hover:bg-surface-hover/60 transition group"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
               @click="emit('navigateToTimeline')"
             >
-              <span class="flex items-center gap-1.5">
-                <span>🏦 Saldos em Conta & Caixa</span>
-                <span class="text-[10px] text-accent-yellow opacity-0 group-hover:opacity-100 transition">Ver Extrato →</span>
+              <span class="truncate min-w-0 text-left font-medium">
+                🏦 Saldos em Conta & Caixa
               </span>
-              <span class="font-mono text-white font-semibold whitespace-nowrap">
-                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(accountsBalanceInCents) }}
+              <span class="font-mono text-white font-bold shrink-0 flex items-center gap-1">
+                <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(accountsBalanceInCents) }}</span>
+                <span class="text-[#71717A] group-hover:text-accent-yellow">›</span>
               </span>
             </button>
 
             <button
               type="button"
               data-testid="btn-home-goto-invest"
-              class="w-full flex justify-between items-center text-xs text-finance-neutral hover:text-white py-1 px-2 -mx-2 rounded-lg hover:bg-surface-hover/60 transition group"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
               @click="emit('navigateToInvest')"
             >
-              <span class="flex items-center gap-1.5">
-                <span>📈 Custódia de Ativos em Carteira</span>
-                <span class="text-[10px] text-finance-invest font-semibold group-hover:underline">Abrir Carteira ↗</span>
+              <span class="truncate min-w-0 text-left font-medium">
+                📈 Custódia em Carteira
               </span>
-              <span class="font-mono text-finance-invest font-bold whitespace-nowrap">
-                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(portfolioTotalInCents) }}
+              <span class="font-mono text-finance-invest font-bold shrink-0 flex items-center gap-1">
+                <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(portfolioTotalInCents) }}</span>
+                <span class="text-finance-invest group-hover:translate-x-0.5 transition">↗</span>
               </span>
             </button>
           </div>
 
           <!-- Card Passivos -->
-          <div class="bg-background/60 border border-border-subtle rounded-xl p-4 space-y-2.5">
+          <div class="bg-background/60 border border-border-subtle rounded-xl p-3.5 space-y-2.5 overflow-hidden">
             <div class="flex justify-between items-center border-b border-border-subtle pb-2 gap-2">
-              <span class="text-xs font-bold text-finance-neg uppercase tracking-wider whitespace-nowrap">
-                Passivos (Compromissos & Parcelas)
+              <span class="text-xs font-bold text-finance-neg uppercase tracking-wide truncate min-w-0">
+                Passivos Totais
               </span>
-              <span class="text-sm font-bold text-finance-neg font-mono whitespace-nowrap">
+              <span class="text-xs sm:text-sm font-extrabold text-finance-neg font-mono shrink-0">
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-netWorthResult.totalLiabilitiesInCents) }}
               </span>
             </div>
 
             <button
               type="button"
-              class="w-full flex justify-between items-center text-xs text-finance-neutral hover:text-white py-1 px-2 -mx-2 rounded-lg hover:bg-surface-hover/60 transition group"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
               @click="emit('navigateToTimeline')"
             >
-              <span class="flex items-center gap-1.5">
-                <span>💳 Faturas em Aberto do Mês</span>
-                <span class="text-[10px] text-accent-yellow opacity-0 group-hover:opacity-100 transition">Ver Extrato →</span>
+              <span class="truncate min-w-0 text-left font-medium">
+                💳 Faturas em Aberto do Mês
               </span>
-              <span class="font-mono text-finance-neg font-semibold whitespace-nowrap">
-                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-currentMonthBillsInCents) }}
+              <span class="font-mono text-finance-neg font-bold shrink-0 flex items-center gap-1">
+                <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-currentMonthBillsInCents) }}</span>
+                <span class="text-[#71717A] group-hover:text-accent-yellow">›</span>
               </span>
             </button>
 
             <button
               type="button"
-              class="w-full flex justify-between items-center text-xs text-finance-neutral hover:text-white py-1 px-2 -mx-2 rounded-lg hover:bg-surface-hover/60 transition group"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
               @click="emit('navigateToTimeline')"
             >
-              <span class="flex items-center gap-1.5">
-                <span>🗓️ Parcelas Futuras Contratadas</span>
-                <span class="text-[10px] text-accent-yellow opacity-0 group-hover:opacity-100 transition">Ver Extrato →</span>
+              <span class="truncate min-w-0 text-left font-medium">
+                🗓️ Parcelas Futuras Contratadas
               </span>
-              <span class="font-mono text-finance-neg font-semibold whitespace-nowrap">
-                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-futureInstallmentsInCents) }}
+              <span class="font-mono text-finance-neg font-bold shrink-0 flex items-center gap-1">
+                <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-futureInstallmentsInCents) }}</span>
+                <span class="text-[#71717A] group-hover:text-accent-yellow">›</span>
               </span>
             </button>
           </div>
         </div>
-      </div>
-
-      <!-- CARDS DE RESUMO DO PERÍODO (CLICÁVEIS PARA REDIRECIONAR AO EXTRATO / SIMULADOR) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <KpiCard
-          test-id="kpi-expenses"
-          :title="`Despesas (${periodLabel})`"
-          :formatted-value="formatCentsToBrl(-periodSummary.totalExpensesInCents)"
-          :subtitle="`${filteredTransactions.filter((t) => t.type === 'expense').length} saídas no período`"
-          variant="negative"
-          icon="↓"
-          :is-privacy-active="isPrivacyActive"
-          clickable
-          action-hint="Ver Extrato"
-          @click="emit('navigateToTimeline')"
-        />
-        <KpiCard
-          test-id="kpi-income"
-          :title="`Receitas (${periodLabel})`"
-          :formatted-value="formatCentsToBrl(periodSummary.totalIncomeInCents, { showSign: true })"
-          subtitle="Salários e proventos realizados"
-          variant="positive"
-          icon="↑"
-          :is-privacy-active="isPrivacyActive"
-          clickable
-          action-hint="Ver Receitas"
-          @click="emit('navigateToTimeline')"
-        />
-        <KpiCard
-          test-id="kpi-balance"
-          title="Saldo Resultante"
-          :formatted-value="formatCentsToBrl(periodSummary.balanceInCents, { showSign: true })"
-          :subtitle="`${periodSummary.savingsRate}% de poupança no período`"
-          :variant="periodSummary.balanceInCents >= 0 ? 'positive' : 'negative'"
-          icon="★"
-          :is-privacy-active="isPrivacyActive"
-          clickable
-          action-hint="Simular Fase"
-          @click="emit('navigateToSimulator')"
-        />
       </div>
     </div>
 
@@ -521,19 +536,19 @@ const periodLabel = computed(() => {
     <div
       v-show="activeSubTab === 'allocation'"
       data-testid="donut-asset-allocation"
-      class="bg-surface border border-border-subtle rounded-2xl p-5 sm:p-6 space-y-5 shadow-lg"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
-        <div>
-          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+        <div class="min-w-0">
+          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 truncate">
             <span>🍩 Alocação do Patrimônio</span>
           </h3>
           <p class="text-xs text-[#71717A]">
-            Onde seus ativos e reservas estão distribuídos • Clique em uma classe para abrir sua Carteira
+            Onde seus ativos estão distribuídos • Toque em uma classe para abrir a Carteira
           </p>
         </div>
 
-        <div class="flex items-center gap-3 self-start sm:self-auto">
+        <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
           <span class="text-sm font-mono font-extrabold text-finance-pos whitespace-nowrap">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.totalAssetsInCents) }}
           </span>
@@ -565,19 +580,19 @@ const periodLabel = computed(() => {
     <div
       v-show="activeSubTab === 'liabilities'"
       data-testid="donut-debt-categories"
-      class="bg-surface border border-border-subtle rounded-2xl p-5 sm:p-6 space-y-5 shadow-lg"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
-        <div>
-          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+        <div class="min-w-0">
+          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 truncate">
             <span>🍩 Distribuição das Dívidas & Passivos</span>
           </h3>
           <p class="text-xs text-[#71717A]">
-            Faturas abertas e parcelas futuras por categoria • Clique para ver detalhes no Extrato
+            Faturas abertas e parcelas futuras por categoria • Toque para abrir o Extrato
           </p>
         </div>
 
-        <div class="flex items-center gap-3 self-start sm:self-auto">
+        <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
           <span class="text-sm font-mono font-extrabold text-finance-neg whitespace-nowrap">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.totalLiabilitiesInCents) }}
           </span>

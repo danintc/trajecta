@@ -250,16 +250,6 @@ function handleToggleAnalyticsButton() {
           <span>📊</span>
           <span>{{ isAnalyticsVisible ? 'Ocultar Análise' : 'Ver Análise' }}</span>
         </button>
-
-        <button
-          data-testid="btn-timeline-add"
-          type="button"
-          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 whitespace-nowrap"
-          @click="emit('openAddModal')"
-        >
-          <span class="text-sm font-black leading-none">+</span>
-          <span>Novo Lançamento</span>
-        </button>
       </div>
     </div>
 
@@ -440,59 +430,85 @@ function handleToggleAnalyticsButton() {
       </div>
     </div>
 
-    <!-- MINI-CARDS INTERATIVOS DE RESUMO DO EXTRATO (CLICAR FILTRA E VAI PARA LANÇAMENTOS) -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-      <button
-        type="button"
-        class="bg-surface hover:bg-surface-hover/70 border rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
-        :class="selectedType === 'expense' ? 'border-finance-neg/60 bg-finance-neg/5' : 'border-border-subtle'"
-        @click="handleFilterBySummaryType(selectedType === 'expense' ? 'ALL' : 'expense')"
-      >
-        <div>
-          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Total Despesas</span>
-          <span class="text-[10px] text-[#71717A]">Clique para filtrar saídas</span>
-        </div>
-        <span class="text-base font-extrabold text-finance-neg font-mono whitespace-nowrap">
-          {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-totals.totalExpenses) }}
-        </span>
-      </button>
+    <!-- BARRA DE FLUXO NA MESMA LINHA (ESTILO MONEY TRACKER: DESPESAS | RECEITAS | SALDO) -->
+    <div class="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 shadow-md">
+      <div class="grid grid-cols-3 divide-x divide-border-subtle/80 items-center">
+        <!-- Coluna 1: Total Despesas -->
+        <button
+          type="button"
+          data-testid="timeline-summary-expense"
+          class="pr-2 sm:pr-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          :class="selectedType === 'expense' ? 'opacity-100 ring-1 ring-finance-neg/50 rounded-lg p-1 -m-1' : ''"
+          title="Clique para filtrar saídas"
+          @click="handleFilterBySummaryType(selectedType === 'expense' ? 'ALL' : 'expense')"
+        >
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="w-2 h-2 rounded-full bg-finance-neg shrink-0"></span>
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+              Despesas
+            </span>
+          </div>
+          <p class="text-xs sm:text-base font-extrabold text-finance-neg font-mono truncate">
+            {{ isPrivacyActive ? '••••' : formatCentsToBrl(-totals.totalExpenses) }}
+          </p>
+          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Filtrar saídas</span>
+        </button>
 
-      <button
-        type="button"
-        class="bg-surface hover:bg-surface-hover/70 border rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
-        :class="selectedType === 'income' ? 'border-finance-pos/60 bg-finance-pos/5' : 'border-border-subtle'"
-        @click="handleFilterBySummaryType(selectedType === 'income' ? 'ALL' : 'income')"
-      >
-        <div>
-          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Total Receitas</span>
-          <span class="text-[10px] text-[#71717A]">Clique para filtrar entradas</span>
-        </div>
-        <span class="text-base font-extrabold text-finance-pos font-mono whitespace-nowrap">
-          {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totals.totalIncome, { showSign: true }) }}
-        </span>
-      </button>
+        <!-- Coluna 2: Total Receitas -->
+        <button
+          type="button"
+          data-testid="timeline-summary-income"
+          class="px-2 sm:px-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          :class="selectedType === 'income' ? 'opacity-100 ring-1 ring-finance-pos/50 rounded-lg p-1 -m-1' : ''"
+          title="Clique para filtrar entradas"
+          @click="handleFilterBySummaryType(selectedType === 'income' ? 'ALL' : 'income')"
+        >
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0"></span>
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+              Receitas
+            </span>
+          </div>
+          <p class="text-xs sm:text-base font-extrabold text-finance-pos font-mono truncate">
+            {{ isPrivacyActive ? '••••' : formatCentsToBrl(totals.totalIncome, { showSign: true }) }}
+          </p>
+          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Filtrar entradas</span>
+        </button>
 
-      <button
-        type="button"
-        class="bg-surface hover:bg-surface-hover/70 border border-border-subtle rounded-xl p-3.5 flex justify-between items-center transition cursor-pointer text-left"
-        @click="
-          selectedType = 'ALL';
-          selectedCategory = 'ALL';
-          activeSubTab = 'lancamentos';
-        "
-      >
-        <div>
-          <span class="text-[11px] font-bold text-finance-neutral uppercase block whitespace-nowrap">Saldo Apurado</span>
-          <span class="text-[10px] text-[#71717A]">Ver todos os lançamentos</span>
-        </div>
-        <span class="text-base font-extrabold text-white font-mono whitespace-nowrap">
-          {{
-            isPrivacyActive
-              ? 'R$ •••••'
-              : formatCentsToBrl(totals.totalIncome - totals.totalExpenses, { showSign: true })
-          }}
-        </span>
-      </button>
+        <!-- Coluna 3: Saldo Apurado -->
+        <button
+          type="button"
+          data-testid="timeline-summary-balance"
+          class="pl-2 sm:pl-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          title="Ver todos os lançamentos"
+          @click="
+            selectedType = 'ALL';
+            selectedCategory = 'ALL';
+            activeSubTab = 'lancamentos';
+          "
+        >
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span
+              class="w-2 h-2 rounded-full shrink-0"
+              :class="totals.totalIncome - totals.totalExpenses >= 0 ? 'bg-accent-yellow' : 'bg-finance-neg'"
+            ></span>
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+              Saldo
+            </span>
+          </div>
+          <p
+            class="text-xs sm:text-base font-extrabold font-mono truncate"
+            :class="totals.totalIncome - totals.totalExpenses >= 0 ? 'text-white' : 'text-finance-neg'"
+          >
+            {{
+              isPrivacyActive
+                ? '••••'
+                : formatCentsToBrl(totals.totalIncome - totals.totalExpenses, { showSign: true })
+            }}
+          </p>
+          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Ver todos</span>
+        </button>
+      </div>
     </div>
 
     <!-- ========================================================================= -->

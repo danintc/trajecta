@@ -215,12 +215,12 @@ function handleSelectInstitution(inst: string) {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARTEIRA -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
+    <!-- SUB-ABAS INTERNAS DA CARTEIRA (GRID DE 3 COLUNAS SEM QUEBRAS OU CORTES) -->
+    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
       <button
         type="button"
         data-testid="invest-subtab-custody"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'custody'
             ? 'bg-finance-invest text-black shadow-sm'
@@ -229,13 +229,14 @@ function handleSelectInstitution(inst: string) {
         @click="activeSubTab = 'custody'"
       >
         <span>💼</span>
-        <span>Custódia & Corretoras</span>
+        <span class="sm:hidden truncate">Custódia</span>
+        <span class="hidden sm:inline truncate">Custódia & Corretoras</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-evolution"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'evolution'
             ? 'bg-finance-invest text-black shadow-sm'
@@ -244,13 +245,14 @@ function handleSelectInstitution(inst: string) {
         @click="activeSubTab = 'evolution'"
       >
         <span>📈</span>
-        <span>Evolução & Performance</span>
+        <span class="sm:hidden truncate">Evolução</span>
+        <span class="hidden sm:inline truncate">Evolução & Performance</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-rebalance"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
         :class="
           activeSubTab === 'rebalance'
             ? 'bg-finance-invest text-black shadow-sm'
@@ -259,7 +261,8 @@ function handleSelectInstitution(inst: string) {
         @click="activeSubTab = 'rebalance'"
       >
         <span>⚖️</span>
-        <span>Aporte Inteligente</span>
+        <span class="sm:hidden truncate">Aporte</span>
+        <span class="hidden sm:inline truncate">Aporte Inteligente</span>
       </button>
     </div>
 

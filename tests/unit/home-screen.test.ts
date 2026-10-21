@@ -80,7 +80,7 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
     expect(wrapper.text()).toContain('Últimos 3 Meses');
   });
 
-  it('deve acionar a navegação para a Timeline e a abertura do modal de lançamento', async () => {
+  it('deve acionar a navegação para a Timeline e para Investimentos', async () => {
     const wrapper = mount(HomeScreen, {
       props: {
         transactions: mockTransactions,
@@ -93,10 +93,6 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
     expect(navLink).toBeDefined();
     await navLink!.trigger('click');
     expect(wrapper.emitted('navigateToTimeline')).toBeTruthy();
-
-    const addBtn = wrapper.find('[data-testid="btn-add-expense-container"]');
-    await addBtn.trigger('click');
-    expect(wrapper.emitted('openAddModal')).toBeTruthy();
 
     const investBtn = wrapper.find('[data-testid="btn-home-goto-invest"]');
     expect(investBtn.exists()).toBe(true);

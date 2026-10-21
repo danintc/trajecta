@@ -265,11 +265,11 @@ async function handleLogout() {
           </span>
         </button>
 
-        <!-- Botão Global (+) -->
+        <!-- Botão Global (+) — Visível no topo apenas no Desktop (no Mobile fica em destaque na barra inferior estilo Money Tracker) -->
         <button
           data-testid="fab-add-transaction"
           type="button"
-          class="min-h-[36px] px-3 sm:px-3.5 py-1.5 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center gap-1 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
+          class="hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
           @click="handleOpenAddModal"
         >
           <span class="text-sm font-black leading-none">+</span>
@@ -447,21 +447,22 @@ async function handleLogout() {
       />
     </main>
 
-    <!-- BOTTOM NAVIGATION BAR NATIVA (EXCLUSIVA MOBILE < md — OTIMIZADA PARA CHROME/SAFARI iOS) -->
+    <!-- BOTTOM NAVIGATION BAR NATIVA COM BOTÃO (+) CENTRAL EM EVIDÊNCIA (ESTILO MONEY TRACKER) -->
     <nav
       data-testid="mobile-bottom-nav"
-      class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#121215]/95 backdrop-blur-xl border-t border-border-subtle px-1.5 pt-1.5 pb-safe grid grid-cols-5 items-center"
+      class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#121215]/95 backdrop-blur-xl border-t border-border-subtle px-1 pt-1.5 pb-safe grid grid-cols-6 items-center"
       role="tablist"
       aria-label="Navegação Mobile"
     >
+      <!-- Abas Esquerda (Início, Extrato) -->
       <button
-        v-for="item in navItems"
+        v-for="item in navItems.slice(0, 2)"
         :key="`mob-${item.key}`"
         :data-testid="`mobile-${item.testId}`"
         type="button"
         role="tab"
         :aria-selected="activeTab === item.key"
-        class="flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition relative"
+        class="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition relative min-w-0"
         :class="
           activeTab === item.key
             ? 'text-accent-yellow font-bold'
@@ -471,7 +472,46 @@ async function handleLogout() {
       >
         <span
           v-if="activeTab === item.key"
-          class="absolute top-0 w-6 h-0.5 rounded-full bg-accent-yellow"
+          class="absolute top-0 w-5 h-0.5 rounded-full bg-accent-yellow"
+        />
+        <span class="text-base leading-none mb-1">{{ item.icon }}</span>
+        <span class="text-[10px] tracking-tight truncate max-w-full">{{ item.shortLabel }}</span>
+      </button>
+
+      <!-- BOTÃO (+) ÚNICO E EVIDENTE DE LANÇAMENTO (ESTILO MONEY TRACKER) -->
+      <div class="col-span-1 flex flex-col items-center justify-center relative">
+        <button
+          data-testid="mobile-fab-add-transaction"
+          type="button"
+          aria-label="Novo Lançamento"
+          title="Novo Lançamento"
+          class="w-12 h-12 -mt-5 rounded-full bg-accent-yellow hover:bg-accent-yellow-hover text-black shadow-lg shadow-accent-yellow/30 border-4 border-[#121215] flex items-center justify-center transition transform active:scale-95 cursor-pointer"
+          @click="handleOpenAddModal"
+        >
+          <span class="text-2xl font-light leading-none select-none">+</span>
+        </button>
+        <span class="text-[9px] font-bold text-accent-yellow tracking-tight mt-0.5">Lançar</span>
+      </div>
+
+      <!-- Abas Direita (Investir, Carreira, Fases) -->
+      <button
+        v-for="item in navItems.slice(2)"
+        :key="`mob-${item.key}`"
+        :data-testid="`mobile-${item.testId}`"
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === item.key"
+        class="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition relative min-w-0"
+        :class="
+          activeTab === item.key
+            ? 'text-accent-yellow font-bold'
+            : 'text-finance-neutral hover:text-white font-medium'
+        "
+        @click="activeTab = item.key"
+      >
+        <span
+          v-if="activeTab === item.key"
+          class="absolute top-0 w-5 h-0.5 rounded-full bg-accent-yellow"
         />
         <span class="text-base leading-none mb-1">{{ item.icon }}</span>
         <span class="text-[10px] tracking-tight truncate max-w-full">{{ item.shortLabel }}</span>
