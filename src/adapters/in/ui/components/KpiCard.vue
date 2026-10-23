@@ -80,7 +80,7 @@ function handleClick() {
     :data-testid="testId"
     :role="clickable ? 'button' : undefined"
     :tabindex="clickable ? 0 : undefined"
-    class="bg-surface border rounded-2xl p-4 sm:p-4.5 transition-all flex flex-col justify-between gap-1.5"
+    class="bg-surface border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 transition-all flex flex-col justify-between gap-1 min-w-0"
     :class="[
       activeBorderClass,
       clickable ? 'cursor-pointer hover:bg-surface-hover/50 active:scale-[0.99] group' : '',
@@ -88,28 +88,29 @@ function handleClick() {
     @click="handleClick"
     @keydown.enter="handleClick"
   >
-    <div class="flex items-center justify-between gap-2">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-finance-neutral whitespace-nowrap">
+    <div class="flex items-center justify-between gap-1.5">
+      <span class="text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-finance-neutral truncate">
         {{ title }}
       </span>
       <span
         v-if="icon"
-        class="w-7 h-7 rounded-lg bg-background border border-border-subtle/80 flex items-center justify-center text-xs shrink-0 group-hover:border-[#3F3F46] transition text-accent-yellow"
+        class="w-5 h-5 sm:w-7 sm:h-7 rounded-lg bg-background border border-border-subtle/80 flex items-center justify-center text-[10px] sm:text-xs shrink-0 group-hover:border-[#3F3F46] transition text-accent-yellow"
       >
-        <AppIcon v-if="isIconName" :name="icon" size="14" />
+        <AppIcon v-if="isIconName" :name="icon" :size="12" class="sm:hidden" />
+        <AppIcon v-if="isIconName" :name="icon" :size="14" class="hidden sm:inline" />
         <span v-else>{{ icon }}</span>
       </span>
     </div>
-    <div class="text-xl sm:text-2xl font-extrabold font-mono tracking-tight whitespace-nowrap" :class="textColorClass">
+    <div class="text-xs sm:text-lg lg:text-xl font-extrabold font-mono tracking-tight truncate" :class="textColorClass">
       {{ displayValue }}
     </div>
-    <div v-if="subtitle || actionHint" class="flex items-center justify-between gap-2 pt-0.5">
-      <span v-if="subtitle" class="text-[11px] text-[#71717A]">
+    <div v-if="subtitle || actionHint" class="flex items-center justify-between gap-1 pt-0.5">
+      <span v-if="subtitle" class="text-[9px] sm:text-[11px] text-[#71717A] truncate">
         {{ subtitle }}
       </span>
       <span
         v-if="actionHint"
-        class="text-[10px] font-semibold text-accent-yellow/90 group-hover:text-accent-yellow whitespace-nowrap shrink-0 flex items-center gap-0.5 ml-auto"
+        class="hidden md:flex text-[10px] font-semibold text-accent-yellow/90 group-hover:text-accent-yellow whitespace-nowrap shrink-0 items-center gap-0.5 ml-auto"
       >
         {{ actionHint }} <span>→</span>
       </span>

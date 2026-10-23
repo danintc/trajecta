@@ -1,13 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   formatCentsToBrl,
   parseBrlToCents,
   formatCentsToDecimal,
   sanitizeCurrencyInput,
   normalizeCurrencyOnBlur,
+  globalCurrency,
+  setGlobalCurrency,
+  toggleGlobalCurrency,
+  USD_EXCHANGE_RATE,
 } from '@/shared/utils/currency';
 
 describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
+  beforeEach(() => {
+    setGlobalCurrency('BRL');
+  });
+
   it('deve formatar centavos inteiros positivos e negativos para BRL', () => {
     // 1050 centavos = R$ 10,50
     const strPos = formatCentsToBrl(1050);
@@ -66,5 +74,26 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(normalizeCurrencyOnBlur('7100,5')).toBe('7.100,50');
     expect(normalizeCurrencyOnBlur('7100,')).toBe('7.100,00');
     expect(normalizeCurrencyOnBlur('')).toBe('0,00');
+  });
+
+  it('deve alternar a moeda global entre BRL e USD e converter valores conforme a taxa de câmbio', () => {
+    expect(USD_EXCHANGE_RATE).toBe(5.65);
+    expect(globalCurrency.value).toBe('BRL');
+
+    toggleGlobalCurrency();
+    expect(globalCurrency.value).toBe('USD');
+
+    // R$ 565,00 (56500 centavos) na cotação 5.65 deve virar $100.00
+    const strUsd = formatCentsToBrl(56500);
+    expect(strUsd).toContain('$100.00');
+
+    // Com valor negativo
+    const strNegUsd = formatCentsToBrl(-56500);
+    expect(strNegUsd).toContain('-$100.00');
+
+    // Alternar de volta para BRL
+    toggleGlobalCurrency();
+    expect(globalCurrency.value).toBe('BRL');
+    expect(formatCentsToBrl(56500)).toContain('565,00');
   });
 });

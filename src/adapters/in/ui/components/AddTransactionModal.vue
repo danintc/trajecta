@@ -361,48 +361,24 @@ async function handleSubmit() {
                   >
                     <AppIcon :name="c.icon" size="16" />
                   </div>
-                  <span class="text-[9px] text-white/90 font-medium mt-1 leading-tight line-clamp-1">
-                    {{ c.name.split('&')[0].trim() }}
+                  <span class="text-[9px] text-white/90 font-medium mt-1 leading-tight text-center">
+                    {{ c.name.split(/[\s&]/)[0] }}
                   </span>
                 </button>
               </div>
-
-              <select
-                v-model="categoryId"
-                data-testid="select-category"
-                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-1.5 text-xs text-white outline-none transition"
-              >
-                <option v-for="c in filteredCategories" :key="c.id" :value="c.id">
-                  {{ c.name }}
-                </option>
-              </select>
             </div>
 
-            <!-- Conta / Cartão e Data -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Conta / Cartão
-                </label>
-                <input
-                  v-model="accountOrCard"
-                  type="text"
-                  data-testid="select-account"
-                  placeholder="Ex: Cartão Nubank, Itaú Corrente"
-                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
-                />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Data de Referência
-                </label>
-                <input
-                  v-model="date"
-                  type="date"
-                  data-testid="input-date"
-                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
-                />
-              </div>
+            <!-- Data de Referência -->
+            <div>
+              <label class="block text-xs font-semibold text-finance-neutral mb-1">
+                Data de Referência
+              </label>
+              <input
+                v-model="date"
+                type="date"
+                data-testid="input-date"
+                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
+              />
             </div>
 
             <!-- Compra Parcelada (apenas para despesa nova) -->
@@ -484,21 +460,21 @@ async function handleSubmit() {
               </div>
             </div>
 
-            <!-- Rodapé / Ações -->
-            <div class="pt-2 border-t border-border-subtle flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                class="px-3.5 py-1.5 text-xs text-finance-neutral hover:text-white font-medium transition"
-                @click="handleClose"
-              >
-                Cancelar
-              </button>
+            <!-- Rodapé / Ações (Botão Lançar cobrindo o width da tela alinhado com outros componentes) -->
+            <div class="pt-3 border-t border-border-subtle flex flex-col gap-2">
               <button
                 type="submit"
                 data-testid="btn-submit"
-                class="px-4 py-2 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs transition transform active:scale-95 shadow-sm shadow-accent-yellow/20"
+                class="w-full h-12 py-3 px-4 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-sm transition transform active:scale-[0.99] shadow-md shadow-accent-yellow/20 flex items-center justify-center gap-2 cursor-pointer"
               >
-                {{ isEditing ? 'Salvar Alterações' : 'Salvar Lançamento' }}
+                <span>{{ isEditing ? 'Salvar Alterações' : 'Salvar Lançamento' }}</span>
+              </button>
+              <button
+                type="button"
+                class="w-full py-1 text-xs text-finance-neutral hover:text-white font-medium transition text-center cursor-pointer"
+                @click="handleClose"
+              >
+                Cancelar
               </button>
             </div>
           </form>

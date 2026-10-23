@@ -1,15 +1,59 @@
-/**
- * Utilitários de manipulação monetária em centavos inteiros
- */
+import { ref } from 'vue';
 
 /**
- * Converte centavos inteiros para string BRL formatada (ex: 1050 -> "R$ 10,50")
+ * Utilitários de manipulação monetária em centavos inteiros com suporte a Moeda Global (BRL / USD)
  */
-export function formatCentsToBrl(amountInCents: number, options?: { showSign?: boolean }): string {
+
+export type SupportedCurrency = 'BRL' | 'USD';
+
+// Cotação do Dólar Comercial Atual frente ao Real (Referência de Mercado: 1 USD = R$ 5,65)
+export const USD_EXCHANGE_RATE = 5.65;
+
+// Estado reativo global de moeda da aplicação
+export const globalCurrency = ref<SupportedCurrency>('BRL');
+
+export function setGlobalCurrency(currency: SupportedCurrency) {
+  globalCurrency.value = currency;
+}
+
+export function toggleGlobalCurrency(): SupportedCurrency {
+  globalCurrency.value = globalCurrency.value === 'BRL' ? 'USD' : 'BRL';
+  return globalCurrency.value;
+}
+
+/**
+ * Converte centavos inteiros para string formatada de acordo com a moeda global ou explícita.
+ * Suporta BRL (padrão brasileiro) e USD (convertido pela taxa de câmbio).
+ */
+export function formatCentsToBrl(
+  amountInCents: number,
+  options?: { showSign?: boolean; currency?: SupportedCurrency; exchangeRate?: number }
+): string {
+  const activeCurrency = options?.currency || globalCurrency.value;
   const isNegative = amountInCents < 0;
   const absCents = Math.abs(amountInCents);
-  const reais = absCents / 100;
 
+  if (activeCurrency === 'USD') {
+    const rate = options?.exchangeRate || USD_EXCHANGE_RATE;
+    const dollars = (absCents / 100) / rate;
+    const formatted = dollars.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    if (isNegative) {
+      return `-${formatted}`;
+    }
+    if (options?.showSign && amountInCents > 0) {
+      return `+${formatted}`;
+    }
+    return formatted;
+  }
+
+  // Moeda padrão BRL
+  const reais = absCents / 100;
   const formatted = reais.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -53,9 +97,7 @@ export function formatIntegerWithDots(rawInt: string): string {
   const digitsOnly = rawInt.replace(/\D/g, '');
   if (!digitsOnly) return '';
 
-  // Remove zeros à esquerda (ex: "07100" -> "7100"), preservando se for apenas "0"
   const cleanDigits = digitsOnly.replace(/^0+(?=\d)/, '') || '0';
-
   return cleanDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
@@ -102,24 +144,24 @@ export function parseBrlToCents(input: string | number): number {
     return 0;
   }
 
-  let str = input.trim().replace(/[^\d,.-]/g, '');
+  let clean = input.replace(/R\$\s*/g, '').replace(/\$\s*/g, '').trim();
 
-  // Se contém vírgula, tratamos padrão pt-BR (ex: "1.500,50" ou "10,50")
-  if (str.includes(',')) {
-    str = str.replace(/\./g, '').replace(',', '.');
-  } else if ((str.match(/\./g) || []).length > 1) {
-    // Apenas múltiplos pontos sem vírgula (ex: "1.500.000") -> remove pontos de milhar
-    str = str.replace(/\./g, '');
-  } else if (/\.\d{3}$/.test(str)) {
-    // Um único ponto seguido de 3 dígitos sem vírgula (ex: "100.000" ou "23.000") -> milhar
-    str = str.replace(/\./g, '');
-  }
-  // Se tem apenas um ponto decimal (ex: "10.50"), o parseFloat nativo interpreta como decimal
-
-  const parsed = parseFloat(str);
-  if (isNaN(parsed)) {
-    return 0;
+  // Tratamento de formato brasileiro: pontos são milhares e vírgula é decimal
+  if (clean.includes(',') && clean.includes('.')) {
+    clean = clean.replace(/\./g, '').replace(',', '.');
+  } else if (clean.includes(',')) {
+    clean = clean.replace(',', '.');
+  } else if (clean.includes('.')) {
+    const parts = clean.split('.');
+    if (parts.length > 2) {
+      clean = parts.join('');
+    } else if (parts[1]?.length === 3) {
+      clean = parts.join('');
+    }
   }
 
-  return Math.round(parsed * 100);
+  const num = parseFloat(clean);
+  if (isNaN(num)) return 0;
+
+  return Math.round(num * 100);
 }

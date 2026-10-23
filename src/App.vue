@@ -14,6 +14,7 @@ import CareerScreen from './adapters/in/ui/screens/CareerScreen.vue';
 import PhaseSimulatorScreen from './adapters/in/ui/screens/PhaseSimulatorScreen.vue';
 import AddTransactionModal from './adapters/in/ui/components/AddTransactionModal.vue';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
+import { globalCurrency, toggleGlobalCurrency, USD_EXCHANGE_RATE } from '@/shared/utils/currency';
 
 export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career' | 'phase-simulator';
 
@@ -263,6 +264,22 @@ async function handleLogout() {
           <AppIcon :name="isPrivacyActive ? 'eye-off' : 'eye'" size="14" />
           <span class="hidden md:inline">
             {{ isPrivacyActive ? 'Privacidade' : 'Privacidade' }}
+          </span>
+        </button>
+
+        <!-- Toggle Moeda Global (BRL / USD) -->
+        <button
+          data-testid="currency-toggle"
+          type="button"
+          class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer hover:border-[#3F3F46]"
+          :class="globalCurrency === 'USD' ? 'border-accent-yellow/40 text-accent-yellow bg-accent-yellow/5' : 'text-white'"
+          :title="globalCurrency === 'BRL' ? 'Mudar moeda para Dólar Americano (USD)' : 'Mudar moeda para Real Brasileiro (BRL)'"
+          @click="toggleGlobalCurrency"
+        >
+          <span class="text-sm leading-none">{{ globalCurrency === 'BRL' ? '🇧🇷' : '🇺🇸' }}</span>
+          <span class="font-mono font-bold text-[11px] sm:text-xs">{{ globalCurrency }}</span>
+          <span class="text-[10px] text-[#71717A] font-mono hidden xl:inline">
+            (US$ 1 = R$ {{ USD_EXCHANGE_RATE.toFixed(2) }})
           </span>
         </button>
 

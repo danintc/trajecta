@@ -75,6 +75,10 @@ describe('InvestmentsScreen Component', () => {
       },
     });
 
+    // Mudar para a aba evolução onde o banner está localizado
+    const evoTabBtn = wrapper.find('[data-testid="invest-subtab-evolution"]');
+    await evoTabBtn.trigger('click');
+
     const simBtn = wrapper
       .findAll('button')
       .find((b) => b.text().includes('Abrir Simulador'));
@@ -82,5 +86,39 @@ describe('InvestmentsScreen Component', () => {
     await simBtn!.trigger('click');
 
     expect(wrapper.emitted('navigateToSimulator')).toBeTruthy();
+  });
+
+  it('deve alternar para a sub-aba Carteira XP exibindo o estilo visual solicitado', async () => {
+    const wrapper = mount(InvestmentsScreen, {
+      props: {
+        assets: mockAssets,
+        isPrivacyActive: false,
+      },
+    });
+
+    const xpTabBtn = wrapper.find('[data-testid="invest-subtab-xp"]');
+    expect(xpTabBtn.exists()).toBe(true);
+    await xpTabBtn.trigger('click');
+
+    expect(wrapper.find('[data-testid="xp-portfolio-tab"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Minha carteira');
+    expect(wrapper.text()).toContain('Liberta Digital');
+  });
+
+  it('deve alternar para a sub-aba Rentabilidade & Evolução XP exibindo o gráfico de montanha e benchmarks', async () => {
+    const wrapper = mount(InvestmentsScreen, {
+      props: {
+        assets: mockAssets,
+        isPrivacyActive: false,
+      },
+    });
+
+    const evoTabBtn = wrapper.find('[data-testid="invest-subtab-evolution"]');
+    expect(evoTabBtn.exists()).toBe(true);
+    await evoTabBtn.trigger('click');
+
+    expect(wrapper.find('[data-testid="xp-evolution-tab"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Rentabilidade e evolução patrimonial');
+    expect(wrapper.text()).toContain('Estatísticas no ano');
   });
 });

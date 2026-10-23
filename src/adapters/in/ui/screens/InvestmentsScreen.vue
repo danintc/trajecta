@@ -12,8 +12,10 @@ import {
 import { calculatePortfolioRebalance } from '@/core/use-cases/rebalance-portfolio.use-case';
 import AddAssetModal from '../components/AddAssetModal.vue';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
+import XpEvolutionTab from '../components/XpEvolutionTab.vue';
+import XpPortfolioTab from '../components/XpPortfolioTab.vue';
 
-export type InvestSubTab = 'custody' | 'evolution' | 'rebalance';
+export type InvestSubTab = 'xp' | 'custody' | 'evolution' | 'rebalance';
 
 export interface InvestmentsScreenProps {
   assets: Asset[];
@@ -100,18 +102,6 @@ const rebalanceResult = computed(() => {
   return calculatePortfolioRebalance(classAllocations.value, cents);
 });
 
-// Histórico de Evolução Patrimonial
-const evolutionPoints = computed(() => {
-  if (totalInvestedInCents.value === 0) return [];
-  return [
-    { month: 'Jan', value: Math.round(totalInvestedInCents.value * 0.72) },
-    { month: 'Mar', value: Math.round(totalInvestedInCents.value * 0.78) },
-    { month: 'Mai', value: Math.round(totalInvestedInCents.value * 0.84) },
-    { month: 'Jul', value: Math.round(totalInvestedInCents.value * 0.91) },
-    { month: 'Set (Atual)', value: totalInvestedInCents.value },
-  ];
-});
-
 // Filtragem de Ativos (Por Classe e Por Instituição)
 const filteredAssets = computed(() => {
   return props.assets.filter((a) => {
@@ -155,7 +145,7 @@ function handleSelectInstitution(inst: string) {
       <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
         <button
           type="button"
-          class="px-3 py-2 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center gap-1.5 transition whitespace-nowrap"
+          class="px-3 py-2 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer"
           @click="emit('navigateToSimulator')"
         >
           <span>🎯</span>
@@ -164,7 +154,7 @@ function handleSelectInstitution(inst: string) {
 
         <button
           type="button"
-          class="px-4 py-2 rounded-xl bg-finance-invest hover:bg-[#0284C7] text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-finance-invest/20 transition transform active:scale-95 whitespace-nowrap"
+          class="px-4 py-2 rounded-xl bg-finance-invest hover:bg-[#0284C7] text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-finance-invest/20 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
           @click="isAddModalOpen = true"
         >
           <span class="text-sm leading-none font-black">+</span>
@@ -173,8 +163,8 @@ function handleSelectInstitution(inst: string) {
       </div>
     </div>
 
-    <!-- CARDS INVESTIMENTOS (CLICÁVEIS PARA NAVEGAR ENTRE AS SUB-ABAS) -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <!-- CARDS INVESTIMENTOS LADO A LADO (COMPACTOS E ALINHADOS) -->
+    <div class="grid grid-cols-3 gap-2 sm:gap-3">
       <KpiCard
         test-id="kpi-invest-total"
         title="Patrimônio em Ativos"
@@ -184,9 +174,9 @@ function handleSelectInstitution(inst: string) {
         icon="invest"
         :is-privacy-active="isPrivacyActive"
         clickable
-        :active="activeSubTab === 'custody'"
-        action-hint="Ver Custódia"
-        @click="activeSubTab = 'custody'"
+        :active="activeSubTab === 'xp' || activeSubTab === 'custody'"
+        action-hint="Ver Carteira XP"
+        @click="activeSubTab = 'xp'"
       />
       <KpiCard
         test-id="kpi-invest-profit"
@@ -198,7 +188,7 @@ function handleSelectInstitution(inst: string) {
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'evolution'"
-        action-hint="Ver Evolução"
+        action-hint="Ver Evolução XP"
         @click="activeSubTab = 'evolution'"
       />
       <KpiCard
@@ -216,8 +206,23 @@ function handleSelectInstitution(inst: string) {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARTEIRA (Item 8: Botões Flutuantes com Espaçamento) -->
-    <div class="grid grid-cols-3 gap-2 py-0.5">
+    <!-- SUB-ABAS INTERNAS DA CARTEIRA: Carteira XP | Custódia | Evolução XP | Rebalancear -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 py-0.5">
+      <button
+        type="button"
+        data-testid="invest-subtab-xp"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
+        :class="
+          activeSubTab === 'xp'
+            ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
+        "
+        @click="activeSubTab = 'xp'"
+      >
+        <span>📱</span>
+        <span>Carteira XP</span>
+      </button>
+
       <button
         type="button"
         data-testid="invest-subtab-custody"
@@ -247,7 +252,7 @@ function handleSelectInstitution(inst: string) {
       >
         <AppIcon name="line-chart" size="14" />
         <span class="sm:hidden">Evolução</span>
-        <span class="hidden sm:inline">Evolução & Performance</span>
+        <span class="hidden sm:inline">Evolução XP</span>
       </button>
 
       <button
@@ -263,8 +268,20 @@ function handleSelectInstitution(inst: string) {
       >
         <AppIcon name="phase" size="14" />
         <span class="sm:hidden">Rebalancear</span>
-        <span class="hidden sm:inline">Rebalanceamento Ideal</span>
+        <span class="hidden sm:inline">Rebalanceamento</span>
       </button>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SUB-ABA 0: MINHA CARTEIRA NO ESTILO XP (Print 4)                          -->
+    <!-- ========================================================================= -->
+    <div v-show="activeSubTab === 'xp'" class="space-y-5">
+      <XpPortfolioTab
+        :assets="assets"
+        :is-privacy-active="isPrivacyActive"
+        :total-invested-in-cents="totalInvestedInCents"
+        @open-add-asset="isAddModalOpen = true"
+      />
     </div>
 
     <!-- ========================================================================= -->
@@ -283,7 +300,7 @@ function handleSelectInstitution(inst: string) {
           <button
             v-if="selectedInstitutionFilter !== 'ALL'"
             type="button"
-            class="text-[11px] text-accent-yellow hover:underline whitespace-nowrap"
+            class="text-[11px] text-accent-yellow hover:underline whitespace-nowrap cursor-pointer"
             @click="selectedInstitutionFilter = 'ALL'"
           >
             Limpar filtro ({{ selectedInstitutionFilter }}) ✕
@@ -351,7 +368,7 @@ function handleSelectInstitution(inst: string) {
               ]"
               :key="cls.key"
               type="button"
-              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer"
               :class="
                 selectedClassFilter === cls.key
                   ? 'bg-finance-invest text-black font-bold border-finance-invest'
@@ -465,55 +482,14 @@ function handleSelectInstitution(inst: string) {
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 2: EVOLUÇÃO PATRIMONIAL & PERFORMANCE                             -->
+    <!-- SUB-ABA 2: EVOLUÇÃO PATRIMONIAL & PERFORMANCE (ESTILO XP - Prints 1, 2, 3)-->
     <!-- ========================================================================= -->
     <div v-show="activeSubTab === 'evolution'" class="space-y-5">
-      <div
-        v-if="assets.length > 0"
-        class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg"
-      >
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-3.5">
-          <div>
-            <h2 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
-              <span>📈 Evolução Patrimonial dos Investimentos</span>
-            </h2>
-            <p class="text-xs text-[#71717A]">
-              Crescimento do patrimônio investido acumulado mês a mês
-            </p>
-          </div>
-          <span class="text-sm font-mono font-extrabold text-finance-pos whitespace-nowrap">
-            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totalInvestedInCents) }}
-          </span>
-        </div>
-
-        <!-- Gráfico de Evolução Amplo com Valores Sempre Visíveis no Topo das Barras -->
-        <div class="h-56 sm:h-64 w-full flex items-end justify-between pt-8 px-2 sm:px-6 pb-2 gap-2.5 sm:gap-4 bg-background/60 rounded-xl border border-border-subtle/60">
-          <div
-            v-for="(pt, idx) in evolutionPoints"
-            :key="idx"
-            class="flex-1 flex flex-col items-center justify-end h-full gap-2 group"
-          >
-            <div
-              class="text-[10px] sm:text-xs font-mono text-white font-bold whitespace-nowrap truncate max-w-full"
-            >
-              {{ isPrivacyActive ? '••••' : formatCentsToBrl(pt.value).split(',')[0] }}
-            </div>
-            <div
-              class="w-full max-w-[64px] bg-surface-hover rounded-t-xl overflow-hidden flex flex-col justify-end flex-1 border border-border-subtle"
-            >
-              <div
-                class="bg-gradient-to-t from-finance-invest/40 to-finance-invest rounded-t-xl transition-all duration-500 w-full"
-                :style="{
-                  height: `${Math.max(22, Math.round((pt.value / (totalInvestedInCents || 1)) * 100))}%`,
-                }"
-              />
-            </div>
-            <span class="text-[11px] font-bold text-[#A1A1AA] text-center whitespace-nowrap">
-              {{ pt.month }}
-            </span>
-          </div>
-        </div>
-      </div>
+      <XpEvolutionTab
+        :assets="assets"
+        :is-privacy-active="isPrivacyActive"
+        :total-invested-in-cents="totalInvestedInCents"
+      />
 
       <!-- BANNER DE ACESSO AO SIMULADOR DE FASES -->
       <div
@@ -539,7 +515,7 @@ function handleSelectInstitution(inst: string) {
         </div>
         <button
           type="button"
-          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs whitespace-nowrap shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 shrink-0"
+          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs whitespace-nowrap shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 shrink-0 cursor-pointer"
           @click="emit('navigateToSimulator')"
         >
           Abrir Simulador ➔

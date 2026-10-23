@@ -534,31 +534,40 @@ function handleDelete(id: string, description: string) {
 
     <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta - Item 5) -->
     <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3">
-      <!-- Barra Compacta de Filtros e Busca -->
+      <!-- Barra Compacta e Unificada de Busca & Filtros (Economiza Espaço Vertical) -->
       <div
-        class="bg-surface border border-border-subtle rounded-2xl p-3 flex flex-col sm:flex-row gap-2.5 items-center justify-between"
+        class="bg-surface border border-border-subtle rounded-xl p-2 flex flex-wrap sm:flex-nowrap items-center gap-2"
       >
-        <div class="w-full sm:w-72 relative">
+        <!-- Campo de Busca Compacto e Dinâmico -->
+        <div class="relative flex-1 min-w-[140px] sm:w-64 sm:flex-initial">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none transition"
+            class="w-full h-8 sm:h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-lg pl-7 pr-7 py-1 text-xs text-white outline-none transition"
           />
-          <AppIcon name="search" size="14" class="absolute left-2.5 top-2.5 text-finance-neutral pointer-events-none" />
+          <AppIcon name="search" size="13" class="absolute left-2 top-2 sm:top-2.5 text-finance-neutral pointer-events-none" />
+          <button
+            v-if="searchTerm"
+            type="button"
+            class="absolute right-2 top-2 text-[#71717A] hover:text-white text-xs cursor-pointer"
+            @click="searchTerm = ''"
+          >
+            ✕
+          </button>
         </div>
 
-        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <!-- Chip de Dia Selecionado se houver filtro do Calendário -->
           <div
             v-if="selectedCalendarDay"
             data-testid="badge-active-day-filter"
-            class="bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            class="h-8 bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-[11px] px-2 rounded-lg flex items-center gap-1 whitespace-nowrap shrink-0"
           >
             <span>Dia: {{ selectedCalendarDay }}</span>
             <button
               type="button"
-              class="font-bold hover:text-white cursor-pointer"
+              class="font-bold hover:text-white cursor-pointer ml-0.5"
               title="Remover filtro de dia"
               @click="selectedCalendarDay = null"
             >
@@ -569,9 +578,9 @@ function handleDelete(id: string, description: string) {
           <!-- Filtro de Tipo -->
           <select
             v-model="selectedType"
-            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0 cursor-pointer"
+            class="h-8 bg-background border border-border-subtle text-white rounded-lg px-2 text-xs outline-none shrink-0 cursor-pointer"
           >
-            <option value="ALL">Todos os Tipos</option>
+            <option value="ALL">Tipos: Todos</option>
             <option value="expense">Despesas</option>
             <option value="income">Receitas</option>
             <option value="investment_deposit">Aportes</option>
@@ -580,9 +589,9 @@ function handleDelete(id: string, description: string) {
           <!-- Filtro de Categoria -->
           <select
             v-model="selectedCategory"
-            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0 cursor-pointer"
+            class="h-8 bg-background border border-border-subtle text-white rounded-lg px-2 text-xs outline-none shrink-0 cursor-pointer max-w-[130px]"
           >
-            <option value="ALL">Todas as Categorias</option>
+            <option value="ALL">Categorias: Todas</option>
             <option v-for="c in DEFAULT_CATEGORIES" :key="c.id" :value="c.id">
               {{ c.name }}
             </option>

@@ -320,27 +320,33 @@ const paginatedMonthlyPoints = computed(() => {
       </div>
 
       <!-- Presets de Exemplos em Botões Flutuantes com Espaçamento (Item 8) -->
-      <div class="grid grid-cols-3 gap-2 text-xs shrink-0 w-full lg:w-auto">
+      <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs shrink-0 w-full lg:w-auto">
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          title="1. Construção (R$ 100k)"
           @click="applyPresetCase('construcao')"
         >
-          1. Construção (R$ 100k)
+          <span class="sm:hidden">1. Construção</span>
+          <span class="hidden sm:inline">1. Construção (100k)</span>
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          title="2. Transição (R$ 500k)"
           @click="applyPresetCase('transicao')"
         >
-          2. Transição (R$ 500k)
+          <span class="sm:hidden">2. Transição</span>
+          <span class="hidden sm:inline">2. Transição (500k)</span>
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          title="3. Manutenção (R$ 5M)"
           @click="applyPresetCase('manutencao')"
         >
-          3. Manutenção (R$ 5M)
+          <span class="sm:hidden">3. Manutenção</span>
+          <span class="hidden sm:inline">3. Manutenção (5M)</span>
         </button>
       </div>
     </div>
@@ -427,7 +433,7 @@ const paginatedMonthlyPoints = computed(() => {
         <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between">
           <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-3">
             <h2 class="text-sm font-bold text-white flex items-center gap-1.5 whitespace-nowrap">
-              <span>⚙️ Seus Parâmetros Financeiros</span>
+              <span>Seus Parâmetros Financeiros</span>
             </h2>
             <!-- Checkbox para Usar Dados Reais do Trajecta -->
             <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[#A1A1AA] hover:text-white transition whitespace-nowrap shrink-0">
@@ -565,11 +571,11 @@ const paginatedMonthlyPoints = computed(() => {
               </div>
             </div>
 
-            <!-- Linha com Retorno, Prazo e Renda Passiva (100% Alinhados na Mesma Linha, Sem Quebra de Label) -->
+            <!-- Linha com Retorno, Prazo e Renda Passiva -->
             <div class="grid grid-cols-3 gap-2 sm:gap-2.5 pt-1">
               <div class="flex flex-col">
-                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1.5 whitespace-nowrap truncate">
-                  Retorno (% a.a.)
+                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1 whitespace-nowrap">
+                  Retorno (a.a.)
                 </label>
                 <input
                   v-model.number="returnRateInput"
@@ -580,14 +586,14 @@ const paginatedMonthlyPoints = computed(() => {
                   class="w-full h-10 bg-background border border-border-subtle rounded-xl px-2.5 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
                   title="Taxa de rentabilidade anual que multiplica o patrimônio mês a mês"
                 />
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight truncate">
+                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
                   Juros compostos
                 </span>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1.5 whitespace-nowrap truncate">
-                  Horizonte (anos)
+                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1 whitespace-nowrap">
+                  Prazo (anos)
                 </label>
                 <select
                   v-model.number="horizonYearsInput"
@@ -598,14 +604,14 @@ const paginatedMonthlyPoints = computed(() => {
                   <option :value="30">30 anos</option>
                   <option :value="40">40 anos</option>
                 </select>
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight truncate">
-                  Prazo ({{ horizonYearsInput * 12 }} meses)
+                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
+                  Prazo: {{ horizonYearsInput * 12 }}m
                 </span>
               </div>
 
               <div class="flex flex-col">
-                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1.5 whitespace-nowrap truncate">
-                  Renda Passiva (% a.a.)
+                <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1 whitespace-nowrap">
+                  Renda Passiva
                 </label>
                 <input
                   v-model.number="safeWithdrawalInput"
@@ -616,8 +622,8 @@ const paginatedMonthlyPoints = computed(() => {
                   class="w-full h-10 bg-background border border-border-subtle rounded-xl px-2.5 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
                   title="Apenas projeta quanto o patrimônio acumulado geraria de renda mensal (ex: 6% a.a. = 0,5% a.m.)"
                 />
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight truncate">
-                  Projeta ({{ (effectiveSafeWithdrawalRate / 12).toFixed(2).replace('.', ',') }}% a.m.)
+                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
+                  Projeta {{ (effectiveSafeWithdrawalRate / 12).toFixed(2).replace('.', ',') }}% a.m.
                 </span>
               </div>
             </div>
