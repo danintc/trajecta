@@ -8,6 +8,7 @@ import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { calculateSavingsRate, calculateNetWorth } from '@/core/use-cases/net-worth-engine.use-case';
 import { subMonths, startOfYear, format } from 'date-fns';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type PeriodFilter = '1M' | '3M' | '6M' | 'YTD' | 'ALL';
 export type HomeSubTab = 'overview' | 'allocation' | 'liabilities';
@@ -207,10 +208,10 @@ const periodLabel = computed(() => {
 
 <template>
   <div data-testid="screen-home" class="space-y-4">
-    <!-- TOPO: SELETOR DE PERÍODO & LINK PARA EXTRATO (SEM BOTÃO LANÇAR DUPLICADO) -->
+    <!-- TOPO: SELETOR DE PERÍODO & LINK PARA EXTRATO (Botões Flutuantes com Espaçamento - Item 8) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
       <div
-        class="grid grid-cols-5 gap-1 p-1 bg-surface border border-border-subtle rounded-xl w-full sm:w-auto"
+        class="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5"
       >
         <button
           v-for="p in [
@@ -223,11 +224,11 @@ const periodLabel = computed(() => {
           :key="p.key"
           :data-testid="`period-filter-${p.key}`"
           type="button"
-          class="px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-center truncate"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-center shrink-0 cursor-pointer"
           :class="
             selectedPeriod === p.key
-              ? 'bg-accent-yellow text-black shadow-sm font-bold'
-              : 'text-finance-neutral hover:text-white hover:bg-surface-hover'
+              ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+              : 'bg-surface text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
           "
           @click="selectedPeriod = p.key as PeriodFilter"
         >
@@ -240,11 +241,12 @@ const periodLabel = computed(() => {
         <span class="text-[11px] text-[#71717A] sm:hidden">{{ periodLabel }}</span>
         <button
           type="button"
-          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1 whitespace-nowrap ml-auto"
+          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1.5 whitespace-nowrap ml-auto cursor-pointer"
           @click="emit('navigateToTimeline')"
         >
-          <span>📜 Ver Linha do Tempo & Extrato</span>
-          <span>→</span>
+          <AppIcon name="timeline" size="14" />
+          <span>Ver Linha do Tempo & Extrato</span>
+          <AppIcon name="arrow-right" size="12" />
         </button>
       </div>
     </div>
@@ -323,51 +325,51 @@ const periodLabel = computed(() => {
       </div>
     </div>
 
-    <!-- SUB-ABAS INTERNAS DO DASHBOARD (3 COLUNAS QUE CABEM 100% NA TELA SEM VAZAR) -->
-    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
+    <!-- SUB-ABAS INTERNAS DO DASHBOARD (Item 8: Botões Flutuantes com Espaçamento) -->
+    <div class="grid grid-cols-3 gap-2 py-0.5">
       <button
         type="button"
         data-testid="home-subtab-overview"
-        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer"
         :class="
           activeSubTab === 'overview'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'overview'"
       >
-        <span>📊</span>
-        <span class="truncate">Patrimônio</span>
+        <AppIcon name="pie-chart" size="14" />
+        <span>Patrimônio</span>
       </button>
 
       <button
         type="button"
         data-testid="home-subtab-allocation"
-        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer"
         :class="
           activeSubTab === 'allocation'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'allocation'"
       >
-        <span>🍩</span>
-        <span class="truncate">Ativos</span>
+        <AppIcon name="line-chart" size="14" />
+        <span>Ativos</span>
       </button>
 
       <button
         type="button"
         data-testid="home-subtab-liabilities"
-        class="flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-bold transition truncate"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer"
         :class="
           activeSubTab === 'liabilities'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'liabilities'"
       >
-        <span>💳</span>
-        <span class="truncate">Passivos</span>
+        <AppIcon name="timeline" size="14" />
+        <span>Passivos</span>
       </button>
     </div>
 
@@ -420,17 +422,19 @@ const periodLabel = computed(() => {
             <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-border-subtle/70">
               <button
                 type="button"
-                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-invest transition flex items-center justify-center gap-1 truncate"
+                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-invest transition flex items-center justify-center gap-1.5 cursor-pointer"
                 @click="activeSubTab = 'allocation'"
               >
-                <span>🍩 Ativos</span>
+                <AppIcon name="line-chart" size="13" />
+                <span>Ativos</span>
               </button>
               <button
                 type="button"
-                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-neg transition flex items-center justify-center gap-1 truncate"
+                class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-neg transition flex items-center justify-center gap-1.5 cursor-pointer"
                 @click="activeSubTab = 'liabilities'"
               >
-                <span>💳 Passivos</span>
+                <AppIcon name="timeline" size="13" />
+                <span>Passivos</span>
               </button>
             </div>
           </div>
@@ -444,12 +448,12 @@ const periodLabel = computed(() => {
           </div>
         </div>
 
-        <!-- Ativos vs Passivos Interativos (SEM VAZAMENTO DE TEXTO NA LATERAL!) -->
+        <!-- Ativos vs Passivos Interativos -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <!-- Card Ativos -->
           <div class="bg-background/60 border border-border-subtle rounded-xl p-3.5 space-y-2.5 overflow-hidden">
             <div class="flex justify-between items-center border-b border-border-subtle pb-2 gap-2">
-              <span class="text-xs font-bold text-finance-pos uppercase tracking-wide truncate min-w-0">
+              <span class="text-xs font-bold text-finance-pos uppercase tracking-wide min-w-0">
                 Ativos Totais
               </span>
               <span class="text-xs sm:text-sm font-extrabold text-white font-mono shrink-0">
@@ -459,11 +463,12 @@ const periodLabel = computed(() => {
 
             <button
               type="button"
-              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden cursor-pointer"
               @click="emit('navigateToTimeline')"
             >
-              <span class="truncate min-w-0 text-left font-medium">
-                🏦 Saldos em Conta & Caixa
+              <span class="min-w-0 text-left font-medium flex items-center gap-1.5">
+                <AppIcon name="vault" size="14" class="text-finance-invest shrink-0" />
+                <span>Saldos em Conta & Caixa</span>
               </span>
               <span class="font-mono text-white font-bold shrink-0 flex items-center gap-1">
                 <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(accountsBalanceInCents) }}</span>
@@ -474,11 +479,12 @@ const periodLabel = computed(() => {
             <button
               type="button"
               data-testid="btn-home-goto-invest"
-              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden cursor-pointer"
               @click="emit('navigateToInvest')"
             >
-              <span class="truncate min-w-0 text-left font-medium">
-                📈 Custódia em Carteira
+              <span class="min-w-0 text-left font-medium flex items-center gap-1.5">
+                <AppIcon name="line-chart" size="14" class="text-finance-invest shrink-0" />
+                <span>Custódia em Carteira</span>
               </span>
               <span class="font-mono text-finance-invest font-bold shrink-0 flex items-center gap-1">
                 <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(portfolioTotalInCents) }}</span>
@@ -490,7 +496,7 @@ const periodLabel = computed(() => {
           <!-- Card Passivos -->
           <div class="bg-background/60 border border-border-subtle rounded-xl p-3.5 space-y-2.5 overflow-hidden">
             <div class="flex justify-between items-center border-b border-border-subtle pb-2 gap-2">
-              <span class="text-xs font-bold text-finance-neg uppercase tracking-wide truncate min-w-0">
+              <span class="text-xs font-bold text-finance-neg uppercase tracking-wide min-w-0">
                 Passivos Totais
               </span>
               <span class="text-xs sm:text-sm font-extrabold text-finance-neg font-mono shrink-0">
@@ -500,11 +506,12 @@ const periodLabel = computed(() => {
 
             <button
               type="button"
-              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden cursor-pointer"
               @click="emit('navigateToTimeline')"
             >
-              <span class="truncate min-w-0 text-left font-medium">
-                💳 Faturas em Aberto do Mês
+              <span class="min-w-0 text-left font-medium flex items-center gap-1.5">
+                <AppIcon name="timeline" size="14" class="text-finance-neg shrink-0" />
+                <span>Faturas em Aberto do Mês</span>
               </span>
               <span class="font-mono text-finance-neg font-bold shrink-0 flex items-center gap-1">
                 <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-currentMonthBillsInCents) }}</span>
@@ -514,11 +521,12 @@ const periodLabel = computed(() => {
 
             <button
               type="button"
-              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden"
+              class="w-full flex justify-between items-center gap-2 text-xs text-[#E4E4E7] hover:text-white py-2 px-2.5 rounded-lg bg-surface/50 hover:bg-surface-hover border border-border-subtle/40 transition group overflow-hidden cursor-pointer"
               @click="emit('navigateToTimeline')"
             >
-              <span class="truncate min-w-0 text-left font-medium">
-                🗓️ Parcelas Futuras Contratadas
+              <span class="min-w-0 text-left font-medium flex items-center gap-1.5">
+                <AppIcon name="calendar" size="14" class="text-finance-neg shrink-0" />
+                <span>Parcelas Futuras</span>
               </span>
               <span class="font-mono text-finance-neg font-bold shrink-0 flex items-center gap-1">
                 <span>{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-futureInstallmentsInCents) }}</span>
@@ -540,8 +548,9 @@ const periodLabel = computed(() => {
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
         <div class="min-w-0">
-          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 truncate">
-            <span>🍩 Alocação do Patrimônio</span>
+          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <AppIcon name="pie-chart" size="16" class="text-finance-invest" />
+            <span>Alocação do Patrimônio</span>
           </h3>
           <p class="text-xs text-[#71717A]">
             Onde seus ativos estão distribuídos • Toque em uma classe para abrir a Carteira
@@ -584,8 +593,9 @@ const periodLabel = computed(() => {
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
         <div class="min-w-0">
-          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 truncate">
-            <span>🍩 Distribuição das Dívidas & Passivos</span>
+          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <AppIcon name="timeline" size="16" class="text-finance-neg" />
+            <span>Distribuição das Dívidas & Passivos</span>
           </h3>
           <p class="text-xs text-[#71717A]">
             Faturas abertas e parcelas futuras por categoria • Toque para abrir o Extrato

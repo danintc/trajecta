@@ -6,6 +6,7 @@ import { calculateInstallmentsSchedule } from '@/core/use-cases/calculate-instal
 import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { Transaction, TransactionType } from '@/core/domain/transaction.entity';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export interface AddTransactionModalProps {
   isOpen: boolean;
@@ -77,8 +78,13 @@ const schedulePreview = computed(() => {
 });
 
 const filteredCategories = computed(() => {
-  return DEFAULT_CATEGORIES.filter((c) =>
-    type.value === 'income' ? c.type === 'income' : c.type === 'expense'
+  if (type.value === 'investment_deposit') {
+    return DEFAULT_CATEGORIES.filter(
+      (c) => c.id.startsWith('cat-invest-') || c.id === 'cat-outros'
+    );
+  }
+  return DEFAULT_CATEGORIES.filter(
+    (c) => c.type === (type.value === 'income' ? 'income' : 'expense')
   );
 });
 
@@ -233,18 +239,14 @@ async function handleSubmit() {
           <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
             <h3 id="modal-tx-title" class="font-bold text-base text-white flex items-center gap-2">
               <span>{{ isEditing ? 'Editar Lançamento' : 'Novo Lançamento' }}</span>
-              <span
-                class="text-[10px] bg-accent-yellow/10 text-accent-yellow px-2 py-0.5 rounded font-bold uppercase"
-              >
-                {{ isEditing ? 'Edição' : 'CRUD Direto' }}
-              </span>
             </h3>
             <button
               type="button"
-              class="text-finance-neutral hover:text-white text-lg transition p-1 rounded-md"
+              class="text-finance-neutral hover:text-white transition p-1.5 rounded-lg hover:bg-surface-hover flex items-center justify-center cursor-pointer"
+              aria-label="Fechar modal"
               @click="handleClose"
             >
-              ✕
+              <AppIcon name="close" size="16" />
             </button>
           </div>
 
@@ -257,15 +259,15 @@ async function handleSubmit() {
               {{ errorMessage }}
             </div>
 
-            <!-- Seletor de Tipo de Transação -->
-            <div class="grid grid-cols-3 gap-2 p-1 bg-background rounded-lg border border-border-subtle">
+            <!-- Seletor de Tipo de Transação (Botões Flutuantes com Espaçamento) -->
+            <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="py-1.5 text-xs font-semibold rounded transition"
+                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
                 :class="
                   type === 'expense'
-                    ? 'bg-finance-neg/20 text-finance-neg border border-finance-neg/30'
-                    : 'text-finance-neutral hover:text-white'
+                    ? 'bg-finance-neg text-white border-finance-neg shadow-md shadow-finance-neg/20'
+                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
                 "
                 @click="
                   type = 'expense';
@@ -276,11 +278,11 @@ async function handleSubmit() {
               </button>
               <button
                 type="button"
-                class="py-1.5 text-xs font-semibold rounded transition"
+                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
                 :class="
                   type === 'income'
-                    ? 'bg-finance-pos/20 text-finance-pos border border-finance-pos/30'
-                    : 'text-finance-neutral hover:text-white'
+                    ? 'bg-finance-pos text-black border-finance-pos shadow-md shadow-finance-pos/20'
+                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
                 "
                 @click="
                   type = 'income';
@@ -291,15 +293,15 @@ async function handleSubmit() {
               </button>
               <button
                 type="button"
-                class="py-1.5 text-xs font-semibold rounded transition"
+                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
                 :class="
                   type === 'investment_deposit'
-                    ? 'bg-finance-invest/20 text-finance-invest border border-finance-invest/30'
-                    : 'text-finance-neutral hover:text-white'
+                    ? 'bg-finance-invest text-white border-finance-invest shadow-md shadow-finance-invest/20'
+                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
                 "
                 @click="
                   type = 'investment_deposit';
-                  categoryId = 'cat-proventos';
+                  categoryId = 'cat-invest-geral';
                 "
               >
                 Aporte
@@ -336,22 +338,48 @@ async function handleSubmit() {
               </div>
             </div>
 
-            <!-- Categoria e Conta -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Categoria
-                </label>
-                <select
-                  v-model="categoryId"
-                  data-testid="select-category"
-                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
+            <!-- Grade Visual de Categorias Estilo Money Tracker -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-finance-neutral">
+                Categoria Selecionada
+              </label>
+              <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-background border border-border-subtle rounded-xl no-scrollbar">
+                <button
+                  v-for="c in filteredCategories"
+                  :key="c.id"
+                  type="button"
+                  class="flex flex-col items-center justify-center p-1.5 rounded-xl transition cursor-pointer text-center group"
+                  :class="categoryId === c.id ? 'bg-[#27272A] border border-accent-yellow/60 shadow-sm' : 'hover:bg-[#1C1C20] border border-transparent'"
+                  @click="categoryId = c.id"
                 >
-                  <option v-for="c in filteredCategories" :key="c.id" :value="c.id">
-                    {{ c.name }}
-                  </option>
-                </select>
+                  <div
+                    class="w-9 h-9 rounded-full flex items-center justify-center transition"
+                    :style="{
+                      backgroundColor: categoryId === c.id ? c.color : `${c.color}20`,
+                      color: categoryId === c.id ? '#000000' : c.color
+                    }"
+                  >
+                    <AppIcon :name="c.icon" size="16" />
+                  </div>
+                  <span class="text-[9px] text-white/90 font-medium mt-1 leading-tight line-clamp-1">
+                    {{ c.name.split('&')[0].trim() }}
+                  </span>
+                </button>
               </div>
+
+              <select
+                v-model="categoryId"
+                data-testid="select-category"
+                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-1.5 text-xs text-white outline-none transition"
+              >
+                <option v-for="c in filteredCategories" :key="c.id" :value="c.id">
+                  {{ c.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Conta / Cartão e Data -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-semibold text-finance-neutral mb-1">
                   Conta / Cartão
@@ -364,19 +392,17 @@ async function handleSubmit() {
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
                 />
               </div>
-            </div>
-
-            <!-- Data de Referência -->
-            <div>
-              <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                Data de Referência
-              </label>
-              <input
-                v-model="date"
-                type="date"
-                data-testid="input-date"
-                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
-              />
+              <div>
+                <label class="block text-xs font-semibold text-finance-neutral mb-1">
+                  Data de Referência
+                </label>
+                <input
+                  v-model="date"
+                  type="date"
+                  data-testid="input-date"
+                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
+                />
+              </div>
             </div>
 
             <!-- Compra Parcelada (apenas para despesa nova) -->

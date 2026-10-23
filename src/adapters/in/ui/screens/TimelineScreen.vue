@@ -6,6 +6,7 @@ import CategoryBreakdownChart from '../components/CategoryBreakdownChart.vue';
 import FinancialCalendar from '../components/FinancialCalendar.vue';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import {
   startOfMonth,
   endOfMonth,
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 // Sub-aba ativa no Extrato (Padrão: 'lancamentos' para tela limpa e direta, sem sobrecarga visual)
 const activeSubTab = ref<TimelineSubTab>('lancamentos');
 
-// Data de referência centralizada e fixa no mês atual (não salta para parcelas futuras)
+// Data de referência centralizada e fixa no mês atual
 const anchorDate = ref<Date>(new Date());
 const periodMode = ref<PeriodMode>('month');
 
@@ -66,7 +67,7 @@ const categoryMap = computed(() => {
   return new Map(DEFAULT_CATEGORIES.map((c) => [c.id, c]));
 });
 
-// Intervalo de datas ativo baseado no periodMode (SELETOR CENTRALIZADO ÚNICO)
+// Intervalo de datas ativo baseado no periodMode
 const activeDateRange = computed(() => {
   switch (periodMode.value) {
     case 'month':
@@ -94,14 +95,14 @@ const activeDateRange = computed(() => {
       return {
         start: customStartDate.value,
         end: customEndDate.value,
-        label: 'Período Customizado',
+        label: 'Customizado',
       };
     case 'all':
     default:
       return {
         start: '1970-01-01',
         end: '2099-12-31',
-        label: 'Todo o Histórico',
+        label: 'Histórico Completo',
       };
   }
 });
@@ -210,63 +211,60 @@ function handleDelete(id: string, description: string) {
     emit('deleteTransaction', id);
   }
 }
-
-function handleToggleAnalyticsButton() {
-  isAnalyticsVisible.value = !isAnalyticsVisible.value;
-  if (isAnalyticsVisible.value && activeSubTab.value === 'lancamentos') {
-    activeSubTab.value = 'consolidado';
-  }
-}
 </script>
 
 <template>
-  <div data-testid="screen-timeline" class="space-y-5">
-    <!-- Header com Ações e Botão de Lançamento (Sem quebra de badge) -->
+  <div data-testid="screen-timeline" class="space-y-4">
+    <!-- Header com Título e Botão de Lançamento (Item 1 & Item 2) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div class="space-y-1">
+      <div>
         <div class="flex items-center gap-2">
           <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white whitespace-nowrap">
-            Extrato & Linha do Tempo
+            Extrato
           </h1>
           <span
             class="text-[10px] bg-surface-hover text-accent-yellow font-mono font-bold px-2.5 py-0.5 rounded-full border border-border-subtle whitespace-nowrap shrink-0"
           >
-            Movimentações Diárias
+            Movimentações
           </span>
         </div>
-        <p class="text-xs text-[#71717A]">
-          Histórico completo de despesas avulsas, compras parceladas e salários
+        <p class="text-xs text-[#71717A] mt-0.5">
+          Histórico consolidado de despesas, receitas e parcelas
         </p>
       </div>
 
-      <div class="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+      <!-- Botão Primário (+) Novo Lançamento (Visível na aba de Extrato - Item 1) -->
+      <div class="flex items-center gap-2 shrink-0">
         <button
-          data-testid="btn-toggle-analytics"
+          data-testid="fab-add-transaction"
           type="button"
-          class="px-3 py-2 rounded-xl border border-border-subtle bg-surface hover:bg-surface-hover text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap"
-          :class="isAnalyticsVisible ? 'text-accent-yellow border-accent-yellow/40' : 'text-finance-neutral hover:text-white'"
-          @click="handleToggleAnalyticsButton"
+          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent-yellow/20 transition active:scale-95 cursor-pointer whitespace-nowrap"
+          @click="emit('openAddModal')"
         >
-          <span>📊</span>
-          <span>{{ isAnalyticsVisible ? 'Ocultar Análise' : 'Ver Análise' }}</span>
+          <AppIcon name="plus" size="14" stroke-width="2.5" />
+          <span>Novo Lançamento</span>
         </button>
       </div>
     </div>
 
-    <!-- SUB-ABAS INTERNAS DE VISUALIZAÇÃO (DIVISÃO MODULAR LIMPA) -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
+    <!-- SUB-ABAS INTERNAS FLUTUANTES COM ESPAÇAMENTO (Item 8) -->
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
       <button
         data-testid="subtab-lancamentos"
         type="button"
-        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
-        :class="activeSubTab === 'lancamentos' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        class="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+        :class="
+          activeSubTab === 'lancamentos'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
+        "
         @click="activeSubTab = 'lancamentos'"
       >
-        <span>📜</span>
+        <AppIcon name="timeline" size="14" />
         <span>Lançamentos</span>
         <span
-          class="text-[10px] px-1.5 py-0.2 rounded-full font-mono"
-          :class="activeSubTab === 'lancamentos' ? 'bg-black/20 text-black' : 'bg-background text-[#A1A1AA]'"
+          class="text-[10px] px-1.5 py-0.2 rounded-full font-mono ml-0.5"
+          :class="activeSubTab === 'lancamentos' ? 'bg-black/20 text-black font-bold' : 'bg-background text-[#A1A1AA]'"
         >
           {{ filteredTransactions.length }}
         </span>
@@ -275,211 +273,193 @@ function handleToggleAnalyticsButton() {
       <button
         data-testid="subtab-categorias"
         type="button"
-        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
-        :class="activeSubTab === 'categorias' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        class="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+        :class="
+          activeSubTab === 'categorias'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
+        "
         @click="
           activeSubTab = 'categorias';
           isAnalyticsVisible = true;
         "
       >
-        <span>🍩</span>
+        <AppIcon name="pie-chart" size="14" />
         <span>Gastos por Categoria</span>
       </button>
 
       <button
         data-testid="subtab-calendario"
         type="button"
-        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
-        :class="activeSubTab === 'calendario' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        class="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+        :class="
+          activeSubTab === 'calendario'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
+        "
         @click="
           activeSubTab = 'calendario';
           isAnalyticsVisible = true;
         "
       >
-        <span>📅</span>
+        <AppIcon name="calendar" size="14" />
         <span>Calendário</span>
       </button>
 
       <button
         data-testid="subtab-consolidado"
         type="button"
-        class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center justify-center gap-1.5 shrink-0 flex-1 sm:flex-initial"
-        :class="activeSubTab === 'consolidado' ? 'bg-accent-yellow text-black shadow-sm' : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'"
+        class="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+        :class="
+          activeSubTab === 'consolidado'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
+        "
         @click="
           activeSubTab = 'consolidado';
           isAnalyticsVisible = true;
         "
       >
-        <span>🔲</span>
+        <AppIcon name="layers" size="14" />
         <span>Visão Consolidada</span>
       </button>
     </div>
 
-    <!-- SELETOR DE PERÍODO CENTRALIZADO ÚNICO & COMPACTO -->
+    <!-- FITA INTEGRADA DE CONTROLE DE PERÍODO & TOTAIS (COMPACTA - Item 5) -->
     <div
       data-testid="period-selector-container"
-      class="bg-surface border border-border-subtle rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-2.5"
+      class="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 space-y-3"
     >
-      <!-- Abas de Modos de Período -->
-      <div class="flex items-center gap-1 p-1 bg-background rounded-xl border border-border-subtle w-full md:w-auto overflow-x-auto no-scrollbar">
-        <button
-          data-testid="period-tab-month"
-          type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
-          :class="periodMode === 'month' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
-          @click="periodMode = 'month'"
-        >
-          Mês
-        </button>
-        <button
-          data-testid="period-tab-week"
-          type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
-          :class="periodMode === 'week' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
-          @click="periodMode = 'week'"
-        >
-          Semana
-        </button>
-        <button
-          data-testid="period-tab-year"
-          type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
-          :class="periodMode === 'year' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
-          @click="periodMode = 'year'"
-        >
-          Ano
-        </button>
-        <button
-          data-testid="period-tab-custom"
-          type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
-          :class="periodMode === 'custom' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
-          @click="periodMode = 'custom'"
-        >
-          Customizado
-        </button>
-        <button
-          data-testid="period-tab-all"
-          type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex-1 md:flex-initial text-center"
-          :class="periodMode === 'all' ? 'bg-accent-yellow text-black font-bold' : 'text-finance-neutral hover:text-white'"
-          @click="periodMode = 'all'"
-        >
-          Todos
-        </button>
-      </div>
+      <!-- Linha 1: Controles de Período (Botões Flutuantes com Espaçamento) -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <!-- Modos de Período -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
+          <button
+            v-for="p in [
+              { key: 'month', label: 'Mês' },
+              { key: 'week', label: 'Semana' },
+              { key: 'year', label: 'Ano' },
+              { key: 'custom', label: 'Custom' },
+              { key: 'all', label: 'Todos' },
+            ]"
+            :key="p.key"
+            :data-testid="`period-tab-${p.key}`"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition text-center shrink-0 cursor-pointer"
+            :class="
+              periodMode === p.key
+                ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+                : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
+            "
+            @click="periodMode = p.key as PeriodMode"
+          >
+            {{ p.label }}
+          </button>
+        </div>
 
-      <!-- Controles de Navegação Temporal Centralizados (< [ Rótulo ] >) -->
-      <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-1.5 w-full md:w-auto justify-between md:justify-end">
-        <button
-          data-testid="btn-period-prev"
-          type="button"
-          title="Período anterior"
-          class="p-2 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
-          @click="handlePeriodPrev"
-        >
-          ◀
-        </button>
-        <span
-          data-testid="period-active-label"
-          class="text-xs font-extrabold text-white uppercase tracking-wider px-3 py-2 bg-background rounded-xl border border-border-subtle min-w-[140px] flex-1 md:flex-initial text-center whitespace-nowrap"
-        >
-          {{ activeDateRange.label }}
-        </span>
-        <button
-          data-testid="btn-period-next"
-          type="button"
-          title="Próximo período"
-          class="p-2 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
-          @click="handlePeriodNext"
-        >
-          ▶
-        </button>
-        <button
-          type="button"
-          title="Ir para hoje"
-          class="px-3 py-2 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
-          @click="handlePeriodToday"
-        >
-          Hoje
-        </button>
-      </div>
+        <!-- Navegação Temporal (< [ Data ] > Hoje) -->
+        <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
+          <button
+            data-testid="btn-period-prev"
+            type="button"
+            title="Período anterior"
+            class="p-1.5 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
+            @click="handlePeriodPrev"
+          >
+            <AppIcon name="chevron-left" size="14" />
+          </button>
+          <span
+            data-testid="period-active-label"
+            class="text-xs font-bold text-white uppercase tracking-wider px-3 py-1.5 bg-background rounded-xl border border-border-subtle min-w-[130px] text-center whitespace-nowrap"
+          >
+            {{ activeDateRange.label }}
+          </span>
+          <button
+            data-testid="btn-period-next"
+            type="button"
+            title="Próximo período"
+            class="p-1.5 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
+            @click="handlePeriodNext"
+          >
+            <AppIcon name="chevron-right" size="14" />
+          </button>
+          <button
+            type="button"
+            title="Ir para hoje"
+            class="px-2.5 py-1.5 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
+            @click="handlePeriodToday"
+          >
+            Hoje
+          </button>
+        </div>
 
-      <!-- Inputs de Data para Modo Customizado -->
-      <div v-else-if="periodMode === 'custom'" class="flex flex-wrap items-center gap-2">
-        <div class="flex items-center gap-1.5 text-xs text-finance-neutral">
-          <span>De:</span>
+        <!-- Inputs de Data para Modo Customizado -->
+        <div v-else-if="periodMode === 'custom'" class="flex items-center gap-2">
           <input
             v-model="customStartDate"
             type="date"
-            class="bg-background border border-border-subtle rounded-lg px-2.5 py-1 text-xs text-white outline-none font-mono"
+            class="bg-background border border-border-subtle rounded-lg px-2 py-1 text-xs text-white outline-none font-mono"
           />
-        </div>
-        <div class="flex items-center gap-1.5 text-xs text-finance-neutral">
-          <span>Até:</span>
+          <span class="text-xs text-finance-neutral">a</span>
           <input
             v-model="customEndDate"
             type="date"
-            class="bg-background border border-border-subtle rounded-lg px-2.5 py-1 text-xs text-white outline-none font-mono"
+            class="bg-background border border-border-subtle rounded-lg px-2 py-1 text-xs text-white outline-none font-mono"
           />
+        </div>
+
+        <div v-else class="text-xs text-finance-neutral font-medium">
+          Exibindo todo o histórico
         </div>
       </div>
 
-      <div v-else class="text-xs text-finance-neutral font-medium">
-        Exibindo todo o histórico cadastrado
-      </div>
-    </div>
-
-    <!-- BARRA DE FLUXO NA MESMA LINHA (ESTILO MONEY TRACKER: DESPESAS | RECEITAS | SALDO) -->
-    <div class="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 shadow-md">
-      <div class="grid grid-cols-3 divide-x divide-border-subtle/80 items-center">
+      <!-- Linha 2: Resumo em 3 Colunas (Despesas | Receitas | Saldo) -->
+      <div class="grid grid-cols-3 divide-x divide-border-subtle/70 pt-2 border-t border-border-subtle/50 items-center">
         <!-- Coluna 1: Total Despesas -->
         <button
           type="button"
           data-testid="timeline-summary-expense"
-          class="pr-2 sm:pr-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          class="pr-2 sm:pr-4 text-left hover:opacity-80 transition cursor-pointer min-w-0"
           :class="selectedType === 'expense' ? 'opacity-100 ring-1 ring-finance-neg/50 rounded-lg p-1 -m-1' : ''"
           title="Clique para filtrar saídas"
           @click="handleFilterBySummaryType(selectedType === 'expense' ? 'ALL' : 'expense')"
         >
           <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="w-2 h-2 rounded-full bg-finance-neg shrink-0"></span>
-            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+            <span class="w-2 h-2 rounded-full bg-finance-neg shrink-0" />
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider">
               Despesas
             </span>
           </div>
-          <p class="text-xs sm:text-base font-extrabold text-finance-neg font-mono truncate">
+          <p class="text-xs sm:text-base font-extrabold text-finance-neg font-mono">
             {{ isPrivacyActive ? '••••' : formatCentsToBrl(-totals.totalExpenses) }}
           </p>
-          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Filtrar saídas</span>
         </button>
 
         <!-- Coluna 2: Total Receitas -->
         <button
           type="button"
           data-testid="timeline-summary-income"
-          class="px-2 sm:px-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          class="px-2 sm:px-4 text-left hover:opacity-80 transition cursor-pointer min-w-0"
           :class="selectedType === 'income' ? 'opacity-100 ring-1 ring-finance-pos/50 rounded-lg p-1 -m-1' : ''"
           title="Clique para filtrar entradas"
           @click="handleFilterBySummaryType(selectedType === 'income' ? 'ALL' : 'income')"
         >
           <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0"></span>
-            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+            <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0" />
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider">
               Receitas
             </span>
           </div>
-          <p class="text-xs sm:text-base font-extrabold text-finance-pos font-mono truncate">
+          <p class="text-xs sm:text-base font-extrabold text-finance-pos font-mono">
             {{ isPrivacyActive ? '••••' : formatCentsToBrl(totals.totalIncome, { showSign: true }) }}
           </p>
-          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Filtrar entradas</span>
         </button>
 
         <!-- Coluna 3: Saldo Apurado -->
         <button
           type="button"
           data-testid="timeline-summary-balance"
-          class="pl-2 sm:pl-4 text-left hover:opacity-80 transition cursor-pointer min-w-0 group"
+          class="pl-2 sm:pl-4 text-left hover:opacity-80 transition cursor-pointer min-w-0"
           title="Ver todos os lançamentos"
           @click="
             selectedType = 'ALL';
@@ -491,13 +471,13 @@ function handleToggleAnalyticsButton() {
             <span
               class="w-2 h-2 rounded-full shrink-0"
               :class="totals.totalIncome - totals.totalExpenses >= 0 ? 'bg-accent-yellow' : 'bg-finance-neg'"
-            ></span>
-            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider truncate">
+            />
+            <span class="text-[10px] sm:text-xs font-semibold text-finance-neutral uppercase tracking-wider">
               Saldo
             </span>
           </div>
           <p
-            class="text-xs sm:text-base font-extrabold font-mono truncate"
+            class="text-xs sm:text-base font-extrabold font-mono"
             :class="totals.totalIncome - totals.totalExpenses >= 0 ? 'text-white' : 'text-finance-neg'"
           >
             {{
@@ -506,16 +486,13 @@ function handleToggleAnalyticsButton() {
                 : formatCentsToBrl(totals.totalIncome - totals.totalExpenses, { showSign: true })
             }}
           </p>
-          <span class="hidden sm:block text-[10px] text-[#71717A] truncate">Ver todos</span>
         </button>
       </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- CONTEÚDO BASEADO NA SUB-ABA SELECIONADA                                   -->
-    <!-- ========================================================================= -->
+    <!-- CONTEÚDO BASEADO NA SUB-ABA SELECIONADA -->
 
-    <!-- 1. SUB-ABA: GASTOS POR CATEGORIA (FOCADA — CLICAR EM CATEGORIA REDIRECIONA PARA LANÇAMENTOS) -->
+    <!-- 1. SUB-ABA: GASTOS POR CATEGORIA -->
     <div v-if="activeSubTab === 'categorias' && isAnalyticsVisible">
       <CategoryBreakdownChart
         :transactions="periodTransactions"
@@ -524,7 +501,7 @@ function handleToggleAnalyticsButton() {
       />
     </div>
 
-    <!-- 2. SUB-ABA: CALENDÁRIO FINANCEIRO (FOCADO) -->
+    <!-- 2. SUB-ABA: CALENDÁRIO FINANCEIRO -->
     <div v-else-if="activeSubTab === 'calendario' && isAnalyticsVisible" class="space-y-4">
       <FinancialCalendar
         :transactions="periodTransactions"
@@ -535,10 +512,10 @@ function handleToggleAnalyticsButton() {
       />
     </div>
 
-    <!-- 3. SUB-ABA: VISÃO CONSOLIDADA (GRÁFICO + CALENDÁRIO EM GRID) -->
+    <!-- 3. SUB-ABA: VISÃO CONSOLIDADA -->
     <div
       v-else-if="activeSubTab === 'consolidado' && isAnalyticsVisible"
-      class="grid grid-cols-1 lg:grid-cols-2 gap-5"
+      class="grid grid-cols-1 lg:grid-cols-2 gap-4"
     >
       <CategoryBreakdownChart
         :transactions="periodTransactions"
@@ -555,19 +532,20 @@ function handleToggleAnalyticsButton() {
       />
     </div>
 
-    <!-- 4. SEÇÃO DE LANÇAMENTOS (Exibida na aba Lançamentos, ou abaixo quando um dia do Calendário é selecionado) -->
-    <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-4">
-      <!-- Barra de Filtros e Busca -->
+    <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta - Item 5) -->
+    <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3">
+      <!-- Barra Compacta de Filtros e Busca -->
       <div
-        class="bg-surface border border-border-subtle rounded-2xl p-3.5 flex flex-col sm:flex-row gap-2.5 items-center justify-between"
+        class="bg-surface border border-border-subtle rounded-2xl p-3 flex flex-col sm:flex-row gap-2.5 items-center justify-between"
       >
-        <div class="w-full sm:w-72 flex items-center gap-2">
+        <div class="w-full sm:w-72 relative">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3.5 py-2 text-xs text-white outline-none transition"
+            class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none transition"
           />
+          <AppIcon name="search" size="14" class="absolute left-2.5 top-2.5 text-finance-neutral pointer-events-none" />
         </div>
 
         <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
@@ -577,7 +555,7 @@ function handleToggleAnalyticsButton() {
             data-testid="badge-active-day-filter"
             class="bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
-            <span>📅 Dia: {{ selectedCalendarDay }}</span>
+            <span>Dia: {{ selectedCalendarDay }}</span>
             <button
               type="button"
               class="font-bold hover:text-white cursor-pointer"
@@ -591,7 +569,7 @@ function handleToggleAnalyticsButton() {
           <!-- Filtro de Tipo -->
           <select
             v-model="selectedType"
-            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0"
+            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0 cursor-pointer"
           >
             <option value="ALL">Todos os Tipos</option>
             <option value="expense">Despesas</option>
@@ -602,7 +580,7 @@ function handleToggleAnalyticsButton() {
           <!-- Filtro de Categoria -->
           <select
             v-model="selectedCategory"
-            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0"
+            class="bg-background border border-border-subtle text-white rounded-xl px-3 py-2 text-xs outline-none shrink-0 cursor-pointer"
           >
             <option value="ALL">Todas as Categorias</option>
             <option v-for="c in DEFAULT_CATEGORIES" :key="c.id" :value="c.id">
@@ -613,74 +591,91 @@ function handleToggleAnalyticsButton() {
       </div>
 
       <!-- CONTAINER DA LINHA DO TEMPO -->
-      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4">
-        <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-3">
+      <div class="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-5 space-y-3">
+        <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-2.5">
           <div class="flex items-center gap-2 min-w-0">
-            <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-finance-neutral truncate">
+            <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-finance-neutral">
               Lançamentos Ordenados por Data
             </h2>
-            <span v-if="selectedCalendarDay" class="text-xs text-accent-yellow font-semibold whitespace-nowrap">
-              (Filtrando: {{ selectedCalendarDay }})
+            <span class="text-xs font-mono font-bold text-accent-yellow">
+              ({{ filteredTransactions.length }})
             </span>
           </div>
-          <span class="text-xs text-[#71717A] font-mono whitespace-nowrap shrink-0">
-            {{ filteredTransactions.length }} registros
-          </span>
+
+          <div v-if="selectedCategory !== 'ALL' || selectedType !== 'ALL'" class="text-xs">
+            <button
+              type="button"
+              class="text-accent-yellow hover:underline cursor-pointer"
+              @click="
+                selectedCategory = 'ALL';
+                selectedType = 'ALL';
+                searchTerm = '';
+              "
+            >
+              Limpar Filtros
+            </button>
+          </div>
         </div>
 
+        <!-- Estado Vazio -->
         <EmptyState
           v-if="filteredTransactions.length === 0"
           module="timeline"
           title="Nenhum lançamento encontrado"
-          description="Não encontramos nenhuma movimentação com os filtros aplicados. Toque no botão abaixo para adicionar uma transação."
-          primary-action-label="Novo Lançamento"
+          description="Ajuste os filtros ou registre uma nova transação para este período."
+          primary-action-label="Adicionar Lançamento"
           @primary-action="emit('openAddModal')"
         />
 
-        <div v-else class="space-y-5 pt-1">
+        <!-- Lista Agrupada por Data -->
+        <div v-else class="space-y-4">
           <div
-            v-for="{ date, transactions: dayTxs, subtotalInCents } in groupedByDay"
-            :key="date"
-            class="space-y-2"
+            v-for="group in groupedByDay"
+            :key="group.date"
+            class="space-y-1.5"
           >
-            <!-- Header do Dia com Subtotal -->
+            <!-- Header do Dia -->
             <div
-              class="flex items-center justify-between text-xs font-semibold text-[#71717A] bg-background px-3 py-1.5 rounded-xl border border-border-subtle/60"
+              class="flex items-center justify-between text-xs font-bold text-finance-neutral border-b border-border-subtle/50 pb-1 px-1"
             >
-              <span class="text-finance-neutral font-mono">{{ date }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-white font-mono font-bold">{{ group.date }}</span>
+                <span class="text-[11px] text-[#71717A] capitalize">
+                  {{ format(new Date(`${group.date}T12:00:00Z`), 'EEEE', { locale: ptBR }) }}
+                </span>
+              </div>
               <span
-                class="font-mono whitespace-nowrap"
-                :class="subtotalInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+                class="font-mono text-xs"
+                :class="group.subtotalInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
               >
-                Subtotal:
                 {{
                   isPrivacyActive
                     ? 'R$ •••••'
-                    : formatCentsToBrl(subtotalInCents, { showSign: true })
+                    : formatCentsToBrl(group.subtotalInCents, { showSign: true })
                 }}
               </span>
             </div>
 
             <!-- Itens do Dia -->
-            <div class="divide-y divide-border-subtle/60">
+            <div class="divide-y divide-border-subtle/40">
               <div
-                v-for="tx in dayTxs"
+                v-for="tx in group.transactions"
                 :key="tx.id"
-                :data-testid="`transaction-item-${tx.id}`"
                 class="py-2.5 px-2 flex items-center justify-between gap-2 hover:bg-surface-hover/50 rounded-xl transition group"
               >
                 <div class="flex items-center gap-3 min-w-0">
                   <button
                     type="button"
-                    class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 cursor-pointer transition hover:scale-105"
+                    class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition hover:scale-105 border"
                     :style="{
                       backgroundColor: `${categoryMap.get(tx.categoryId)?.color || '#71717A'}20`,
+                      borderColor: `${categoryMap.get(tx.categoryId)?.color || '#71717A'}40`,
                       color: categoryMap.get(tx.categoryId)?.color || '#71717A',
                     }"
                     :title="`Filtrar por ${categoryMap.get(tx.categoryId)?.name || 'Categoria'}`"
                     @click="selectedCategory = selectedCategory === tx.categoryId ? 'ALL' : tx.categoryId"
                   >
-                    {{ categoryMap.get(tx.categoryId)?.name[0] || 'T' }}
+                    <AppIcon :name="categoryMap.get(tx.categoryId)?.icon || 'more-horizontal'" size="16" />
                   </button>
                   <div class="min-w-0">
                     <div class="flex items-center gap-1.5">
@@ -722,24 +717,24 @@ function handleToggleAnalyticsButton() {
                     </div>
                   </div>
 
-                  <!-- Botões de Ação: Editar e Excluir -->
+                  <!-- Botões de Ação: Editar e Excluir com AppIcon -->
                   <div class="flex items-center gap-1">
                     <button
                       type="button"
                       :data-testid="`btn-edit-transaction-${tx.id}`"
                       title="Editar lançamento"
-                      class="text-finance-neutral hover:text-accent-yellow p-1 rounded opacity-70 group-hover:opacity-100 transition text-xs cursor-pointer"
+                      class="text-finance-neutral hover:text-accent-yellow p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
                       @click="emit('editTransaction', tx)"
                     >
-                      ✏️
+                      <AppIcon name="edit" size="14" />
                     </button>
                     <button
                       type="button"
                       title="Excluir lançamento"
-                      class="text-finance-neutral hover:text-finance-neg p-1 rounded opacity-70 group-hover:opacity-100 transition text-xs cursor-pointer"
+                      class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
                       @click="handleDelete(tx.id, tx.description)"
                     >
-                      🗑️
+                      <AppIcon name="trash" size="14" />
                     </button>
                   </div>
                 </div>

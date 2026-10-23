@@ -63,7 +63,7 @@ describe('TimelineScreen Component', () => {
     });
 
     expect(wrapper.find('[data-testid="screen-timeline"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Extrato & Linha do Tempo');
+    expect(wrapper.text()).toContain('Extrato');
     expect(wrapper.text()).toContain('Supermercado Central');
     expect(wrapper.text()).toContain('Salário Mensal');
     expect(wrapper.text()).toContain('Notebook Gamer');
@@ -232,7 +232,7 @@ describe('TimelineScreen Component', () => {
     expect(wrapper.text()).toContain('Notebook Gamer');
   });
 
-  it('deve permitir ocultar e reexibir o painel analítico', async () => {
+  it('deve emitir openAddModal ao clicar no botão de novo lançamento no topo', async () => {
     const wrapper = mount(TimelineScreen, {
       props: {
         transactions: mockTransactions,
@@ -240,19 +240,10 @@ describe('TimelineScreen Component', () => {
       },
     });
 
-    await wrapper.find('[data-testid="subtab-consolidado"]').trigger('click');
-
-    const toggleBtn = wrapper.find('[data-testid="btn-toggle-analytics"]');
-    expect(toggleBtn.exists()).toBe(true);
-    expect(wrapper.find('[data-testid="category-breakdown-card"]').exists()).toBe(true);
-
-    // Ocultar
-    await toggleBtn.trigger('click');
-    expect(wrapper.find('[data-testid="category-breakdown-card"]').exists()).toBe(false);
-
-    // Exibir novamente
-    await toggleBtn.trigger('click');
-    expect(wrapper.find('[data-testid="category-breakdown-card"]').exists()).toBe(true);
+    const addBtn = wrapper.find('[data-testid="fab-add-transaction"]');
+    expect(addBtn.exists()).toBe(true);
+    await addBtn.trigger('click');
+    expect(wrapper.emitted('openAddModal')).toBeTruthy();
   });
 
   it('deve alternar entre as sub-abas do extrato (Lançamentos, Categorias, Calendário, Consolidado)', async () => {

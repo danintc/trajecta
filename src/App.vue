@@ -13,6 +13,7 @@ import InvestmentsScreen from './adapters/in/ui/screens/InvestmentsScreen.vue';
 import CareerScreen from './adapters/in/ui/screens/CareerScreen.vue';
 import PhaseSimulatorScreen from './adapters/in/ui/screens/PhaseSimulatorScreen.vue';
 import AddTransactionModal from './adapters/in/ui/components/AddTransactionModal.vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career' | 'phase-simulator';
 
@@ -37,32 +38,32 @@ const transactionToEdit = ref<Transaction | null>(null);
 const appMode = ref<'empty' | 'populated'>('populated');
 
 const navItems: Array<{ key: ActiveTab; icon: string; label: string; shortLabel: string; testId: string }> = [
-  { key: 'home', icon: '🏠', label: 'Dashboard', shortLabel: 'Início', testId: 'nav-tab-home' },
+  { key: 'home', icon: 'home', label: 'Dashboard', shortLabel: 'Início', testId: 'nav-tab-home' },
   {
     key: 'timeline',
-    icon: '📜',
-    label: 'Extrato / Timeline',
+    icon: 'timeline',
+    label: 'Extrato',
     shortLabel: 'Extrato',
     testId: 'nav-tab-timeline',
   },
   {
     key: 'invest',
-    icon: '📈',
+    icon: 'invest',
     label: 'Investimentos',
     shortLabel: 'Investir',
     testId: 'nav-tab-invest',
   },
   {
     key: 'career',
-    icon: '💼',
-    label: 'Carreira & Total Cash',
+    icon: 'career',
+    label: 'Carreira',
     shortLabel: 'Carreira',
     testId: 'nav-tab-career',
   },
   {
     key: 'phase-simulator',
-    icon: '🎯',
-    label: 'Simulador de Fases',
+    icon: 'phase',
+    label: 'Fases',
     shortLabel: 'Fases',
     testId: 'nav-tab-phase-simulator',
   },
@@ -250,7 +251,7 @@ async function handleLogout() {
         <button
           data-testid="privacy-toggle"
           type="button"
-          class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg border border-border-subtle bg-background text-xs font-medium flex items-center gap-1.5 transition"
+          class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
           :class="
             isPrivacyActive
               ? 'border-accent-yellow text-accent-yellow'
@@ -259,20 +260,21 @@ async function handleLogout() {
           :aria-label="isPrivacyActive ? 'Desativar modo privacidade' : 'Ativar modo privacidade'"
           @click="isPrivacyActive = !isPrivacyActive"
         >
-          <span>{{ isPrivacyActive ? '🔒' : '👁️' }}</span>
+          <AppIcon :name="isPrivacyActive ? 'eye-off' : 'eye'" size="14" />
           <span class="hidden md:inline">
-            {{ isPrivacyActive ? 'Privacidade Ativa' : 'Modo Privacidade' }}
+            {{ isPrivacyActive ? 'Privacidade' : 'Privacidade' }}
           </span>
         </button>
 
-        <!-- Botão Global (+) — Visível no topo apenas no Desktop (no Mobile fica em destaque na barra inferior estilo Money Tracker) -->
+        <!-- Botão (+) — Visível no topo apenas quando na aba de Extrato -->
         <button
+          v-if="activeTab === 'timeline'"
           data-testid="fab-add-transaction"
           type="button"
-          class="hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95"
+          class="hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 cursor-pointer"
           @click="handleOpenAddModal"
         >
-          <span class="text-sm font-black leading-none">+</span>
+          <AppIcon name="plus" size="14" stroke-width="2.5" />
           <span>Lançar</span>
         </button>
 
@@ -389,7 +391,7 @@ async function handleLogout() {
         "
         @click="activeTab = item.key"
       >
-        <span>{{ item.icon }}</span>
+        <AppIcon :name="item.icon" size="15" />
         <span>{{ item.label }}</span>
       </button>
     </nav>
@@ -447,74 +449,30 @@ async function handleLogout() {
       />
     </main>
 
-    <!-- BOTTOM NAVIGATION BAR NATIVA COM BOTÃO (+) CENTRAL EM EVIDÊNCIA (ESTILO MONEY TRACKER) -->
+    <!-- BOTTOM NAVIGATION BAR NATIVA FLUTUANTE (ESTILO FLOATING ISLAND DOCK - 5 ABAS) -->
     <nav
       data-testid="mobile-bottom-nav"
-      class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#121215]/95 backdrop-blur-xl border-t border-border-subtle px-1 pt-1.5 pb-safe grid grid-cols-6 items-center"
+      class="md:hidden fixed bottom-3 inset-x-3 z-40 bg-[#121215]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl flex items-center justify-around gap-1"
       role="tablist"
       aria-label="Navegação Mobile"
     >
-      <!-- Abas Esquerda (Início, Extrato) -->
       <button
-        v-for="item in navItems.slice(0, 2)"
+        v-for="item in navItems"
         :key="`mob-${item.key}`"
         :data-testid="`mobile-${item.testId}`"
         type="button"
         role="tab"
         :aria-selected="activeTab === item.key"
-        class="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition relative min-w-0"
+        class="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl transition relative min-w-0 cursor-pointer"
         :class="
           activeTab === item.key
-            ? 'text-accent-yellow font-bold'
-            : 'text-finance-neutral hover:text-white font-medium'
+            ? 'bg-[#27272A] text-accent-yellow font-bold shadow-sm'
+            : 'text-finance-neutral hover:text-white font-medium hover:bg-surface-hover/30'
         "
         @click="activeTab = item.key"
       >
-        <span
-          v-if="activeTab === item.key"
-          class="absolute top-0 w-5 h-0.5 rounded-full bg-accent-yellow"
-        />
-        <span class="text-base leading-none mb-1">{{ item.icon }}</span>
-        <span class="text-[10px] tracking-tight truncate max-w-full">{{ item.shortLabel }}</span>
-      </button>
-
-      <!-- BOTÃO (+) ÚNICO E EVIDENTE DE LANÇAMENTO (ESTILO MONEY TRACKER) -->
-      <div class="col-span-1 flex flex-col items-center justify-center relative">
-        <button
-          data-testid="mobile-fab-add-transaction"
-          type="button"
-          aria-label="Novo Lançamento"
-          title="Novo Lançamento"
-          class="w-12 h-12 -mt-5 rounded-full bg-accent-yellow hover:bg-accent-yellow-hover text-black shadow-lg shadow-accent-yellow/30 border-4 border-[#121215] flex items-center justify-center transition transform active:scale-95 cursor-pointer"
-          @click="handleOpenAddModal"
-        >
-          <span class="text-2xl font-light leading-none select-none">+</span>
-        </button>
-        <span class="text-[9px] font-bold text-accent-yellow tracking-tight mt-0.5">Lançar</span>
-      </div>
-
-      <!-- Abas Direita (Investir, Carreira, Fases) -->
-      <button
-        v-for="item in navItems.slice(2)"
-        :key="`mob-${item.key}`"
-        :data-testid="`mobile-${item.testId}`"
-        type="button"
-        role="tab"
-        :aria-selected="activeTab === item.key"
-        class="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition relative min-w-0"
-        :class="
-          activeTab === item.key
-            ? 'text-accent-yellow font-bold'
-            : 'text-finance-neutral hover:text-white font-medium'
-        "
-        @click="activeTab = item.key"
-      >
-        <span
-          v-if="activeTab === item.key"
-          class="absolute top-0 w-5 h-0.5 rounded-full bg-accent-yellow"
-        />
-        <span class="text-base leading-none mb-1">{{ item.icon }}</span>
-        <span class="text-[10px] tracking-tight truncate max-w-full">{{ item.shortLabel }}</span>
+        <AppIcon :name="item.icon" size="18" class="mb-1" />
+        <span class="text-[10px] tracking-tight whitespace-nowrap">{{ item.shortLabel }}</span>
       </button>
     </nav>
 

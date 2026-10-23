@@ -10,6 +10,7 @@ import {
 } from '@/core/use-cases/calculate-total-cash.use-case';
 import AddCareerModal from '../components/AddCareerModal.vue';
 import CareerLineChart from '../components/CareerLineChart.vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import { db } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 
@@ -148,7 +149,7 @@ const maxSalaryInCents = computed(() => {
         "
         subtitle="Salário bruto × 13,33 + Benefícios + Bônus"
         variant="career"
-        icon="💼"
+        icon="career"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'totalcash'"
@@ -167,7 +168,7 @@ const maxSalaryInCents = computed(() => {
             : 'Sem cargo ativo'
         "
         variant="positive"
-        icon="💵"
+        icon="coins"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'timeline'"
@@ -184,7 +185,7 @@ const maxSalaryInCents = computed(() => {
             : 'Necessário 2 ou mais cargos'
         "
         variant="accent"
-        icon="📈"
+        icon="trending-up"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'evolution'"
@@ -193,54 +194,54 @@ const maxSalaryInCents = computed(() => {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARREIRA (GRID DE 3 COLUNAS SEM QUEBRAS OU CORTES) -->
-    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
+    <!-- SUB-ABAS INTERNAS DA CARREIRA (Item 8: Botões Flutuantes com Espaçamento) -->
+    <div class="grid grid-cols-3 gap-2 py-0.5">
       <button
         type="button"
         data-testid="career-subtab-evolution"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'evolution'
-            ? 'bg-finance-career text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-career text-black border-finance-career shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'evolution'"
       >
-        <span>📈</span>
-        <span class="sm:hidden truncate">Curva</span>
-        <span class="hidden sm:inline truncate">Evolução & Curva</span>
+        <AppIcon name="line-chart" size="14" />
+        <span class="sm:hidden">Curva</span>
+        <span class="hidden sm:inline">Evolução & Curva</span>
       </button>
 
       <button
         type="button"
         data-testid="career-subtab-timeline"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'timeline'
-            ? 'bg-finance-career text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-career text-black border-finance-career shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'timeline'"
       >
-        <span>📜</span>
-        <span class="sm:hidden truncate">Marcos</span>
-        <span class="hidden sm:inline truncate">Marcos & Histórico</span>
+        <AppIcon name="timeline" size="14" />
+        <span class="sm:hidden">Marcos</span>
+        <span class="hidden sm:inline">Marcos & Histórico</span>
       </button>
 
       <button
         type="button"
         data-testid="career-subtab-totalcash"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'totalcash'
-            ? 'bg-finance-career text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-career text-black border-finance-career shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'totalcash'"
       >
-        <span>💰</span>
-        <span class="sm:hidden truncate">Total Cash</span>
-        <span class="hidden sm:inline truncate">Composição Total Cash</span>
+        <AppIcon name="award" size="14" />
+        <span class="sm:hidden">Total Cash</span>
+        <span class="hidden sm:inline">Composição Total Cash</span>
       </button>
     </div>
 

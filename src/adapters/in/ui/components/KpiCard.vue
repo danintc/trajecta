@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export interface KpiCardProps {
   testId: string;
@@ -65,6 +66,10 @@ const displayValue = computed(() => {
   return props.isPrivacyActive ? 'R$ •••••' : props.formattedValue;
 });
 
+const isIconName = computed(() => {
+  return props.icon && !props.icon.includes(' ');
+});
+
 function handleClick() {
   emit('click');
 }
@@ -84,21 +89,22 @@ function handleClick() {
     @keydown.enter="handleClick"
   >
     <div class="flex items-center justify-between gap-2">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-finance-neutral whitespace-nowrap truncate">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-finance-neutral whitespace-nowrap">
         {{ title }}
       </span>
       <span
         v-if="icon"
-        class="w-7 h-7 rounded-lg bg-background border border-border-subtle/80 flex items-center justify-center text-xs shrink-0 group-hover:border-[#3F3F46] transition"
+        class="w-7 h-7 rounded-lg bg-background border border-border-subtle/80 flex items-center justify-center text-xs shrink-0 group-hover:border-[#3F3F46] transition text-accent-yellow"
       >
-        {{ icon }}
+        <AppIcon v-if="isIconName" :name="icon" size="14" />
+        <span v-else>{{ icon }}</span>
       </span>
     </div>
-    <div class="text-xl sm:text-2xl font-extrabold font-mono tracking-tight whitespace-nowrap truncate" :class="textColorClass">
+    <div class="text-xl sm:text-2xl font-extrabold font-mono tracking-tight whitespace-nowrap" :class="textColorClass">
       {{ displayValue }}
     </div>
     <div v-if="subtitle || actionHint" class="flex items-center justify-between gap-2 pt-0.5">
-      <span v-if="subtitle" class="text-[11px] text-[#71717A] truncate">
+      <span v-if="subtitle" class="text-[11px] text-[#71717A]">
         {{ subtitle }}
       </span>
       <span

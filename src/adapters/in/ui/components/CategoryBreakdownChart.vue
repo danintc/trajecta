@@ -4,6 +4,7 @@ import { Transaction } from '@/core/domain/transaction.entity';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import DonutChart, { DonutSlice } from './DonutChart.vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export interface CategoryBreakdownChartProps {
   transactions: Transaction[];
@@ -68,6 +69,7 @@ export interface CategoryBreakdownItem {
   categoryId: string;
   name: string;
   emoji: string;
+  icon: string;
   color: string;
   amountInCents: number;
   percent: number;
@@ -92,12 +94,14 @@ const categoryBreakdownList = computed((): CategoryBreakdownItem[] => {
     const name = meta ? meta.name : 'Geral';
     const color = meta ? meta.color : '#71717A';
     const emoji = meta ? meta.emoji : '🏷️';
+    const icon = meta ? meta.icon : 'more-horizontal';
     const percent = total > 0 ? Number(((data.amountInCents / total) * 100).toFixed(2)) : 0;
 
     items.push({
       categoryId: catId,
       name,
       emoji,
+      icon,
       color,
       amountInCents: data.amountInCents,
       percent,
@@ -148,16 +152,16 @@ function handleSliceSelect(_slice: DonutSlice, idx: number) {
         </p>
       </div>
 
-      <!-- Segmented Control estilo Mobile (Expenses / Income) -->
-      <div class="inline-flex p-1 bg-background rounded-xl border border-border-subtle self-start sm:self-auto shrink-0">
+      <!-- Segmented Control estilo Mobile (Expenses / Income) com Botões Flutuantes -->
+      <div class="inline-flex gap-1.5 self-start sm:self-auto shrink-0">
         <button
           data-testid="toggle-type-expense"
           type="button"
-          class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap cursor-pointer"
           :class="
             activeType === 'expense'
-              ? 'bg-white text-black shadow-sm font-bold'
-              : 'text-finance-neutral hover:text-white'
+              ? 'bg-finance-neg text-white border-finance-neg shadow-md shadow-finance-neg/20 font-bold'
+              : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
           "
           @click="activeType = 'expense'"
         >
@@ -166,11 +170,11 @@ function handleSliceSelect(_slice: DonutSlice, idx: number) {
         <button
           data-testid="toggle-type-income"
           type="button"
-          class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap cursor-pointer"
           :class="
             activeType === 'income'
-              ? 'bg-white text-black shadow-sm font-bold'
-              : 'text-finance-neutral hover:text-white'
+              ? 'bg-finance-pos text-black border-finance-pos shadow-md shadow-finance-pos/20 font-bold'
+              : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
           "
           @click="activeType = 'income'"
         >
@@ -219,13 +223,14 @@ function handleSliceSelect(_slice: DonutSlice, idx: number) {
             <!-- Ícone Circular e Nome da Categoria -->
             <div class="flex items-center gap-2.5 min-w-0">
               <div
-                class="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 border"
+                class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border transition"
                 :style="{
                   backgroundColor: `${item.color}20`,
                   borderColor: `${item.color}40`,
+                  color: item.color,
                 }"
               >
-                <span>{{ item.emoji }}</span>
+                <AppIcon :name="item.icon" size="14" />
               </div>
               <div class="truncate">
                 <div class="text-xs font-bold text-white group-hover:text-accent-yellow transition truncate">

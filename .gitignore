@@ -28,3 +28,7 @@ docs/CI_TESTING_ROADMAP.md
 *.njsproj
 *.sln
 *.sw?
+
+# Impeccable binaries (downloaded on demand per OS/arch)
+**/skills/**/scripts/bin/
+

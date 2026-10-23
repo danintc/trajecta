@@ -13,6 +13,7 @@ import {
 } from '@/shared/utils/currency';
 import WealthPhaseGauge from '../components/WealthPhaseGauge.vue';
 import WealthComparisonChart from '../components/WealthComparisonChart.vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type SimulatorSubTab = 'parameters' | 'overview' | 'monthly' | 'principles';
 
@@ -309,33 +310,34 @@ const paginatedMonthlyPoints = computed(() => {
             Fase: {{ simulation.guidelines.name }} ({{ simulation.currentRatioPercent }}%)
           </span>
         </div>
-        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white">
-          🎯 Simulador de Renda & Fases do Investidor
+        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+          <AppIcon name="phase" size="18" class="text-accent-yellow" />
+          <span>Simulador de Renda & Fases do Investidor</span>
         </h1>
-        <p class="text-xs text-[#71717A]">
-          Calibre seus aportes, conheça sua fase (Construção, Transição, Manutenção) e avalie o valor marginal do dinheiro e do tempo
+        <p class="text-xs text-[#71717A] mt-0.5">
+          Calibre seus aportes, conheça sua fase patrimonial e avalie a velocidade de independência financeira
         </p>
       </div>
 
-      <!-- Presets de Exemplos em Grid de 3 Colunas Iguais (Nunca quebra o 3º botão sozinho embaixo) -->
-      <div class="grid grid-cols-3 gap-1.5 bg-surface p-1.5 rounded-2xl border border-border-subtle text-xs shrink-0 w-full lg:w-auto">
+      <!-- Presets de Exemplos em Botões Flutuantes com Espaçamento (Item 8) -->
+      <div class="grid grid-cols-3 gap-2 text-xs shrink-0 w-full lg:w-auto">
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-background hover:bg-surface-hover border border-border-subtle/60 transition whitespace-nowrap truncate text-center"
+          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
           @click="applyPresetCase('construcao')"
         >
           1. Construção (R$ 100k)
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-background hover:bg-surface-hover border border-border-subtle/60 transition whitespace-nowrap truncate text-center"
+          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
           @click="applyPresetCase('transicao')"
         >
           2. Transição (R$ 500k)
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-background hover:bg-surface-hover border border-border-subtle/60 transition whitespace-nowrap truncate text-center"
+          class="px-2.5 py-2 rounded-xl text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition whitespace-nowrap text-center cursor-pointer shadow-sm"
           @click="applyPresetCase('manutencao')"
         >
           3. Manutenção (R$ 5M)
@@ -343,54 +345,54 @@ const paginatedMonthlyPoints = computed(() => {
       </div>
     </div>
 
-    <!-- BARRA DE SUB-ABAS INTERNAS (CONCEITO MODULAR EM TODO O APP — ZERO QUEBRA DE LINHA) -->
-    <div class="flex items-center gap-1.5 p-1 bg-surface border border-border-subtle rounded-2xl overflow-x-auto no-scrollbar">
+    <!-- BARRA DE SUB-ABAS INTERNAS (Item 8: Botões Flutuantes com Espaçamento) -->
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
       <button
         type="button"
         data-testid="tab-parameters"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
         :class="
           activeTab === 'parameters'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeTab = 'parameters'"
       >
-        <span>🎛️</span>
-        <span class="sm:hidden truncate">Parâmetros</span>
-        <span class="hidden sm:inline truncate">Parâmetros & Diagnóstico</span>
+        <AppIcon name="layers" size="14" />
+        <span class="sm:hidden">Parâmetros</span>
+        <span class="hidden sm:inline">Parâmetros & Diagnóstico</span>
       </button>
 
       <button
         type="button"
         data-testid="tab-overview"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
         :class="
           activeTab === 'overview'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeTab = 'overview'"
       >
-        <span>📊</span>
-        <span class="sm:hidden truncate">Visão Geral</span>
-        <span class="hidden sm:inline truncate">Visão Geral & Trajetórias</span>
+        <AppIcon name="line-chart" size="14" />
+        <span class="sm:hidden">Visão Geral</span>
+        <span class="hidden sm:inline">Visão Geral & Trajetórias</span>
       </button>
 
       <button
         type="button"
         data-testid="tab-monthly"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
         :class="
           activeTab === 'monthly'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeTab = 'monthly'"
       >
-        <span>📅</span>
-        <span class="sm:hidden truncate">Mês a Mês</span>
-        <span class="hidden sm:inline truncate">Evolução Mês a Mês</span>
+        <AppIcon name="calendar" size="14" />
+        <span class="sm:hidden">Mês a Mês</span>
+        <span class="hidden sm:inline">Evolução Mês a Mês</span>
         <span
           class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-extrabold whitespace-nowrap shrink-0"
           :class="activeTab === 'monthly' ? 'bg-black/20 text-black' : 'bg-accent-yellow/15 text-accent-yellow'"
@@ -402,17 +404,17 @@ const paginatedMonthlyPoints = computed(() => {
       <button
         type="button"
         data-testid="tab-principles"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex-1 sm:flex-initial"
+        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
         :class="
           activeTab === 'principles'
-            ? 'bg-accent-yellow text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeTab = 'principles'"
       >
-        <span>🏛️</span>
-        <span class="sm:hidden truncate">Princípios</span>
-        <span class="hidden sm:inline truncate">Princípios & Guia</span>
+        <AppIcon name="phase" size="14" />
+        <span class="sm:hidden">Princípios</span>
+        <span class="hidden sm:inline">Princípios & Guia</span>
       </button>
     </div>
 

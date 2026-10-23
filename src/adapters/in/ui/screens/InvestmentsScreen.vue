@@ -11,6 +11,7 @@ import {
 } from '@/shared/utils/currency';
 import { calculatePortfolioRebalance } from '@/core/use-cases/rebalance-portfolio.use-case';
 import AddAssetModal from '../components/AddAssetModal.vue';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type InvestSubTab = 'custody' | 'evolution' | 'rebalance';
 
@@ -180,7 +181,7 @@ function handleSelectInstitution(inst: string) {
         :formatted-value="formatCentsToBrl(totalInvestedInCents)"
         :subtitle="`${assets.length} ativos em custódia`"
         variant="invest"
-        icon="📈"
+        icon="invest"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'custody'"
@@ -189,11 +190,11 @@ function handleSelectInstitution(inst: string) {
       />
       <KpiCard
         test-id="kpi-invest-profit"
-        title="Rentabilidade Total Histórica"
+        title="Rentabilidade Histórica"
         :formatted-value="formatCentsToBrl(totalProfitInCents, { showSign: true })"
         :subtitle="`${totalProfitPercent}% sobre o custo`"
         :variant="totalProfitInCents >= 0 ? 'positive' : 'negative'"
-        icon="⚡"
+        icon="trending-up"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'evolution'"
@@ -206,7 +207,7 @@ function handleSelectInstitution(inst: string) {
         :formatted-value="`${classAllocations.length} Classes`"
         :subtitle="`${byInstitution.length} instituições`"
         variant="accent"
-        icon="🎯"
+        icon="phase"
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'rebalance'"
@@ -215,54 +216,54 @@ function handleSelectInstitution(inst: string) {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARTEIRA (GRID DE 3 COLUNAS SEM QUEBRAS OU CORTES) -->
-    <div class="grid grid-cols-3 gap-1 p-1 bg-surface border border-border-subtle rounded-2xl">
+    <!-- SUB-ABAS INTERNAS DA CARTEIRA (Item 8: Botões Flutuantes com Espaçamento) -->
+    <div class="grid grid-cols-3 gap-2 py-0.5">
       <button
         type="button"
         data-testid="invest-subtab-custody"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'custody'
-            ? 'bg-finance-invest text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'custody'"
       >
-        <span>💼</span>
-        <span class="sm:hidden truncate">Custódia</span>
-        <span class="hidden sm:inline truncate">Custódia & Corretoras</span>
+        <AppIcon name="vault" size="14" />
+        <span class="sm:hidden">Custódia</span>
+        <span class="hidden sm:inline">Custódia & Corretoras</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-evolution"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'evolution'
-            ? 'bg-finance-invest text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'evolution'"
       >
-        <span>📈</span>
-        <span class="sm:hidden truncate">Evolução</span>
-        <span class="hidden sm:inline truncate">Evolução & Performance</span>
+        <AppIcon name="line-chart" size="14" />
+        <span class="sm:hidden">Evolução</span>
+        <span class="hidden sm:inline">Evolução & Performance</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-rebalance"
-        class="flex items-center justify-center gap-1.5 px-2 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap min-w-0"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'rebalance'
-            ? 'bg-finance-invest text-black shadow-sm'
-            : 'text-[#A1A1AA] hover:text-white hover:bg-surface-hover'
+            ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
+            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeSubTab = 'rebalance'"
       >
-        <span>⚖️</span>
-        <span class="sm:hidden truncate">Aporte</span>
-        <span class="hidden sm:inline truncate">Aporte Inteligente</span>
+        <AppIcon name="phase" size="14" />
+        <span class="sm:hidden">Rebalancear</span>
+        <span class="hidden sm:inline">Rebalanceamento Ideal</span>
       </button>
     </div>
 
