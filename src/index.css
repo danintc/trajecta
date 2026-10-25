@@ -4,6 +4,7 @@
 
 @layer base {
   html {
+    color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     touch-action: pan-x pan-y;
@@ -11,9 +12,37 @@
 
   body {
     @apply bg-background text-[#F4F4F5] antialiased;
+    color-scheme: dark;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     overscroll-behavior-y: none;
     touch-action: pan-x pan-y;
+  }
+
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
+  }
+
+  /* Ícones internos de inputs (setas de número, seletores de data/mês) visíveis e claros no tema escuro */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    opacity: 0.9;
+    filter: brightness(1.8) contrast(1.2);
+    cursor: pointer;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='month']::-webkit-calendar-picker-indicator {
+    opacity: 0.85;
+    filter: brightness(1.8) contrast(1.2);
+    cursor: pointer;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator:hover,
+  input[type='month']::-webkit-calendar-picker-indicator:hover,
+  input[type='number']::-webkit-inner-spin-button:hover {
+    opacity: 1;
   }
 
   /* Evita o auto-zoom forçado do Chrome/Safari no iOS ao focar em campos de formulário */

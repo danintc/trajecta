@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import EmptyState from './EmptyState.vue';
 
-export type XpPortfolioSubPill = 'classe' | 'produto' | 'liquidez' | 'ativos' | 'objetivos';
+export type XpPortfolioSubPill =
+  | 'classe'
+  | 'produto'
+  | 'liquidez'
+  | 'instituicao'
+  | 'ativos'
+  | 'objetivos';
 
 export interface PortfolioAssetItem {
   id: string;
@@ -25,9 +31,21 @@ export interface PortfolioAssetItem {
   profit: string;
 }
 
+export interface PortfolioObjectiveDefinition {
+  key: string;
+  name: string;
+  description: string;
+  targetPercent: number;
+  color: string;
+  linkedClasses: string[];
+}
+
 export interface PortfolioCategoryGroup {
   key: string;
   name: string;
+  description?: string;
+  targetPercent?: number;
+  linkedClasses?: string[];
   color: string;
   totalCents: number;
   percent: number;
@@ -67,6 +85,196 @@ const activePill = ref<XpPortfolioSubPill>('classe');
 const expandedKeys = ref<string[]>([]);
 const selectedClassFilter = ref<string>('ALL');
 const selectedInstitutionFilter = ref<string>('ALL');
+const hoveredCategoryKey = ref<string | null>(null);
+
+// Sempre que o usuário trocar para uma visão agrupada (Classe, Produto, Liquidez, Instituição, Objetivos),
+// reseta o filtro de classe individual para evitar exibir "0 ativos listados" de um filtro anterior
+watch(activePill, (newPill) => {
+  hoveredCategoryKey.value = null;
+  if (newPill !== 'ativos') {
+    selectedClassFilter.value = 'ALL';
+  }
+  if (newPill === 'instituicao') {
+    selectedInstitutionFilter.value = 'ALL';
+  }
+});
+
+// =========================================================================
+// GESTÃO DE OBJETIVOS DA CARTEIRA (CRIAR, EDITAR E EXCLUIR)
+// =========================================================================
+const DEFAULT_OBJECTIVES: PortfolioObjectiveDefinition[] = [
+  {
+    key: 'aposentadoria',
+    name: 'Independência Financeira (FIRE)',
+    description: 'Geração de renda passiva recorrente e proteção contra a inflação no longo prazo.',
+    targetPercent: 65,
+    color: '#EAB308',
+    linkedClasses: ['fiis', 'internacional', 'renda_fixa'],
+  },
+  {
+    key: 'crescimento',
+    name: 'Construção de Patrimônio',
+    description: 'Multiplicação de capital e valorização acelerada com maior tolerância a risco.',
+    targetPercent: 25,
+    color: '#A855F7',
+    linkedClasses: ['acoes_br', 'cripto'],
+  },
+  {
+    key: 'seguranca',
+    name: 'Colchão de Oportunidade',
+    description: 'Liquidez imediata para emergências e caixa estratégico para aproveitar quedas.',
+    targetPercent: 10,
+    color: '#06B6D4',
+    linkedClasses: ['reserva_emergencia'],
+  },
+];
+
+const OBJECTIVES_STORAGE_KEY = 'trajecta_portfolio_objectives_v1';
+
+function loadInitialObjectives(): PortfolioObjectiveDefinition[] {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return DEFAULT_OBJECTIVES.map((o) => ({ ...o, linkedClasses: [...o.linkedClasses] }));
+  }
+  try {
+    const raw = window.localStorage.getItem(OBJECTIVES_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_OBJECTIVES.map((o) => ({ ...o, linkedClasses: [...o.linkedClasses] }));
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+  } catch {
+    // Fallback seguro
+  }
+  return DEFAULT_OBJECTIVES.map((o) => ({ ...o, linkedClasses: [...o.linkedClasses] }));
+}
+
+const objectives = ref<PortfolioObjectiveDefinition[]>(loadInitialObjectives());
+
+function saveObjectivesToStorage() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(OBJECTIVES_STORAGE_KEY, JSON.stringify(objectives.value));
+    } catch {
+      // Ignora erro de quota
+    }
+  }
+}
+
+// Estado do formulário de criação / edição de Objetivo
+const isObjectiveFormOpen = ref(false);
+const editingObjectiveKey = ref<string | null>(null);
+const objFormName = ref('');
+const objFormDescription = ref('');
+const objFormTarget = ref('30');
+const objFormColor = ref('#EAB308');
+const objFormClasses = ref<string[]>(['renda_fixa']);
+
+const OBJECTIVE_COLORS = [
+  '#EAB308',
+  '#A855F7',
+  '#06B6D4',
+  '#10B981',
+  '#F97316',
+  '#EC4899',
+  '#3B82F6',
+];
+
+function openCreateObjectiveForm() {
+  editingObjectiveKey.value = null;
+  objFormName.value = '';
+  objFormDescription.value = '';
+  objFormTarget.value = '20';
+  objFormColor.value = OBJECTIVE_COLORS[objectives.value.length % OBJECTIVE_COLORS.length];
+  objFormClasses.value = ['renda_fixa'];
+  isObjectiveFormOpen.value = true;
+}
+
+function openEditObjectiveForm(objKey: string) {
+  const found = objectives.value.find((o) => o.key === objKey);
+  if (!found) return;
+  editingObjectiveKey.value = found.key;
+  objFormName.value = found.name;
+  objFormDescription.value = found.description;
+  objFormTarget.value = String(found.targetPercent);
+  objFormColor.value = found.color;
+  objFormClasses.value = [...found.linkedClasses];
+  isObjectiveFormOpen.value = true;
+}
+
+function toggleObjectiveClassSelection(clsKey: string) {
+  if (objFormClasses.value.includes(clsKey)) {
+    if (objFormClasses.value.length > 1) {
+      objFormClasses.value = objFormClasses.value.filter((k) => k !== clsKey);
+    }
+  } else {
+    objFormClasses.value = [...objFormClasses.value, clsKey];
+  }
+}
+
+function handleSaveObjective() {
+  const name = objFormName.value.trim();
+  if (!name) return;
+
+  const targetPercent = Math.max(0, Math.min(100, parseFloat(objFormTarget.value) || 0));
+  const description =
+    objFormDescription.value.trim() ||
+    'Objetivo personalizado vinculado às classes selecionadas.';
+  const linkedClasses =
+    objFormClasses.value.length > 0 ? [...objFormClasses.value] : ['renda_fixa'];
+
+  if (editingObjectiveKey.value) {
+    objectives.value = objectives.value.map((o) =>
+      o.key === editingObjectiveKey.value
+        ? {
+            ...o,
+            name,
+            description,
+            targetPercent,
+            color: objFormColor.value,
+            linkedClasses,
+          }
+        : o
+    );
+  } else {
+    const newKey =
+      'obj_' +
+      name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_') +
+      '_' +
+      Date.now().toString().slice(-4);
+
+    objectives.value = [
+      ...objectives.value,
+      {
+        key: newKey,
+        name,
+        description,
+        targetPercent,
+        color: objFormColor.value,
+        linkedClasses,
+      },
+    ];
+  }
+
+  saveObjectivesToStorage();
+  isObjectiveFormOpen.value = false;
+  editingObjectiveKey.value = null;
+}
+
+function handleDeleteObjective(objKey: string) {
+  objectives.value = objectives.value.filter((o) => o.key !== objKey);
+  saveObjectivesToStorage();
+}
+
+function handleResetObjectives() {
+  objectives.value = DEFAULT_OBJECTIVES.map((o) => ({ ...o, linkedClasses: [...o.linkedClasses] }));
+  saveObjectivesToStorage();
+}
 
 function formatClassLabel(key: string): string {
   const found = props.availableClasses.find((c) => c.key === key);
@@ -88,6 +296,18 @@ const institutionFilteredAssets = computed(() => {
   return props.assets.filter(
     (a) => (a.institution || 'Outras Corretoras') === selectedInstitutionFilter.value
   );
+});
+
+// Contagem de ativos por classe (para exibir nos filtros rápidos e evitar clique cego em classe vazia)
+const classAssetCounts = computed<Record<string, number>>(() => {
+  const counts: Record<string, number> = { ALL: institutionFilteredAssets.value.length };
+  for (const cls of props.availableClasses) {
+    counts[cls.key] = 0;
+  }
+  for (const a of institutionFilteredAssets.value) {
+    counts[a.assetClass] = (counts[a.assetClass] || 0) + 1;
+  }
+  return counts;
 });
 
 // Valor Total Investido calculado a partir dos ativos ou fallback no valor de referência
@@ -198,7 +418,7 @@ function buildCategoryGroups(
       color: data.color,
       totalCents: data.totalCents,
       percent: pct,
-      percentLabel: pct < 1 ? '< 1%' : `${pct.toFixed(0)}%`,
+      percentLabel: pct < 1 && pct > 0 ? '< 1%' : `${pct.toFixed(0)}%`,
       profitPercent: Number(profit.toFixed(2)),
       assets: data.assets.map((a) => mapAssetToPortfolioItem(a, total)),
     };
@@ -517,68 +737,134 @@ const liquidityCategories = computed<PortfolioCategoryGroup[]>(() => {
   });
 });
 
-// 4. CATEGORIAS POR OBJETIVOS (Expansíveis ao clicar)
+// 4. CATEGORIAS POR OBJETIVOS (Definidos com clareza, editáveis, criáveis e excluíveis)
 const objectiveCategories = computed<PortfolioCategoryGroup[]>(() => {
+  const allDemoItems = [
+    ...demoAssetsMap.ivvb11,
+    ...demoAssetsMap.petr4,
+    ...demoAssetsMap.hglg11,
+    ...demoAssetsMap.cdb,
+    ...demoAssetsMap.caixa,
+  ];
+  const total = totalInvestedInCents.value || 1;
+
+  return objectives.value.map((objDef) => {
+    if (props.assets.length === 0) {
+      const matchingDemo = allDemoItems.filter((item) =>
+        objDef.linkedClasses.includes(item.classKey)
+      );
+      const totalCents = matchingDemo.reduce((sum, item) => sum + item.total, 0);
+      const pct = total > 0 ? (totalCents / total) * 100 : 0;
+      const avgProfit =
+        matchingDemo.length > 0
+          ? matchingDemo.reduce((sum, item) => sum + item.profitPercentNum, 0) / matchingDemo.length
+          : 0;
+
+      return {
+        key: objDef.key,
+        name: objDef.name,
+        description: objDef.description,
+        targetPercent: objDef.targetPercent,
+        linkedClasses: objDef.linkedClasses,
+        color: objDef.color,
+        totalCents,
+        percent: Number(pct.toFixed(1)),
+        percentLabel: pct < 1 && pct > 0 ? '< 1%' : `${pct.toFixed(0)}%`,
+        profitPercent: Number(avgProfit.toFixed(2)),
+        assets: matchingDemo,
+      };
+    }
+
+    const matchingAssets = institutionFilteredAssets.value.filter((a) =>
+      objDef.linkedClasses.includes(a.assetClass)
+    );
+    const totalCents = matchingAssets.reduce(
+      (sum, a) => sum + a.totalQuantity * a.currentPriceInCents,
+      0
+    );
+    const costCents = matchingAssets.reduce(
+      (sum, a) => sum + a.totalQuantity * a.averagePriceInCents,
+      0
+    );
+    const pct = total > 0 ? (totalCents / total) * 100 : 0;
+    const profit = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
+
+    return {
+      key: objDef.key,
+      name: objDef.name,
+      description: objDef.description,
+      targetPercent: objDef.targetPercent,
+      linkedClasses: objDef.linkedClasses,
+      color: objDef.color,
+      totalCents,
+      percent: Number(pct.toFixed(1)),
+      percentLabel: pct < 1 && pct > 0 ? '< 1%' : `${pct.toFixed(0)}%`,
+      profitPercent: Number(profit.toFixed(2)),
+      assets: matchingAssets.map((a) => mapAssetToPortfolioItem(a, total)),
+    };
+  });
+});
+
+// 5. CATEGORIAS POR INSTITUIÇÃO / CORRETORA (Dentro do menu 'Instituição')
+const INSTITUTION_PALETTE = ['#38BDF8', '#EAB308', '#A855F7', '#10B981', '#F97316', '#EC4899'];
+
+const institutionCategories = computed<PortfolioCategoryGroup[]>(() => {
   if (props.assets.length === 0) {
+    const allDemo = [
+      ...demoAssetsMap.ivvb11,
+      ...demoAssetsMap.petr4,
+      ...demoAssetsMap.hglg11,
+      ...demoAssetsMap.cdb,
+      ...demoAssetsMap.caixa,
+    ];
     return [
       {
-        key: 'aposentadoria',
-        name: 'Independência Financeira (FIRE)',
+        key: 'inst_xp',
+        name: 'XP Investimentos',
         color: '#EAB308',
-        totalCents: Math.round(totalInvestedInCents.value * 0.85),
-        percent: 85,
-        percentLabel: '85%',
-        profitPercent: 19.45,
-        assets: [...demoAssetsMap.ivvb11, ...demoAssetsMap.hglg11],
-      },
-      {
-        key: 'crescimento',
-        name: 'Construção de Patrimônio',
-        color: '#A855F7',
-        totalCents: Math.round(totalInvestedInCents.value * 0.12),
-        percent: 12,
-        percentLabel: '12%',
-        profitPercent: 10.03,
-        assets: [...demoAssetsMap.petr4, ...demoAssetsMap.cdb],
-      },
-      {
-        key: 'seguranca',
-        name: 'Colchão de Oportunidade',
-        color: '#06B6D4',
-        totalCents: Math.round(totalInvestedInCents.value * 0.03),
-        percent: 3,
-        percentLabel: '3%',
-        profitPercent: 4.25,
-        assets: demoAssetsMap.caixa,
+        totalCents: totalInvestedInCents.value,
+        percent: 100,
+        percentLabel: '100%',
+        profitPercent: 18.25,
+        assets: allDemo,
       },
     ];
   }
 
-  return buildCategoryGroups(institutionFilteredAssets.value, (a) => {
-    if (
-      a.assetClass === 'fiis' ||
-      a.assetClass === 'internacional' ||
-      a.assetClass === 'renda_fixa'
-    ) {
-      return {
-        key: 'aposentadoria',
-        name: 'Independência Financeira (FIRE)',
-        color: '#EAB308',
-      };
+  const instColorMap = new Map<string, string>();
+  return buildCategoryGroups(props.assets, (a) => {
+    const instName = a.institution || 'Outras Corretoras';
+    const key =
+      'inst_' +
+      instName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_');
+    if (!instColorMap.has(key)) {
+      instColorMap.set(key, INSTITUTION_PALETTE[instColorMap.size % INSTITUTION_PALETTE.length]);
     }
-    if (a.assetClass === 'acoes_br' || a.assetClass === 'cripto') {
-      return { key: 'crescimento', name: 'Construção de Patrimônio', color: '#A855F7' };
-    }
-    return { key: 'seguranca', name: 'Colchão de Oportunidade', color: '#06B6D4' };
+    return {
+      key,
+      name: instName,
+      color: instColorMap.get(key) || '#38BDF8',
+    };
   });
 });
 
-// Categorias ativas para a aba selecionada
+// Categorias ativas para a aba selecionada (No modo 'ativos', o Donut exibe as categorias por Classe)
 const activeCategoryList = computed<PortfolioCategoryGroup[]>(() => {
   if (activePill.value === 'produto') return productCategories.value;
   if (activePill.value === 'liquidez') return liquidityCategories.value;
+  if (activePill.value === 'instituicao') return institutionCategories.value;
   if (activePill.value === 'objetivos') return objectiveCategories.value;
   return classCategories.value;
+});
+
+// Categoria em foco no Donut quando o usuário passa o mouse sobre uma fatia ou categoria
+const focusedDonutCategory = computed<PortfolioCategoryGroup | null>(() => {
+  if (!hoveredCategoryKey.value) return null;
+  return activeCategoryList.value.find((c) => c.key === hoveredCategoryKey.value) || null;
 });
 
 // Lista completa de ativos filtrados (para aba 'ativos' ou filtro direto por classe)
@@ -592,6 +878,18 @@ const allPortfolioAssets = computed<PortfolioAssetItem[]>(() => {
     .map((a) => mapAssetToPortfolioItem(a, total));
 });
 
+// Quantidade exibida no badge superior: nunca mostra "0 ativos listados" por acidente
+// quando o usuário está nas abas Classe/Produto/Liquidez/Objetivos
+const headerListedAssetsCount = computed(() => {
+  if (props.assets.length === 0) {
+    return props.showEmptyState ? 0 : allPortfolioAssets.value.length;
+  }
+  if (activePill.value === 'ativos') {
+    return allPortfolioAssets.value.length;
+  }
+  return institutionFilteredAssets.value.length;
+});
+
 // Donut Ring SVG Path Generator
 const donutSegments = computed(() => {
   const categories = activeCategoryList.value;
@@ -600,9 +898,10 @@ const donutSegments = computed(() => {
   let accumulatedPercent = 0;
 
   return categories.map((c) => {
-    const strokeDasharray = `${(c.percent / 100) * circumference} ${circumference}`;
+    const clampedPct = Math.max(0, Math.min(100, c.percent));
+    const strokeDasharray = `${(clampedPct / 100) * circumference} ${circumference}`;
     const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
-    accumulatedPercent += c.percent;
+    accumulatedPercent += clampedPct;
 
     return {
       key: c.key,
@@ -641,24 +940,25 @@ function handleSelectClassFilter(clsKey: string) {
             Minha carteira
           </h2>
           <span
-            v-if="props.assets.length > 0"
-            class="text-[11px] bg-background border border-border-subtle text-[#A1A1AA] font-mono px-2 py-0.5 rounded-full"
+            v-if="headerListedAssetsCount > 0"
+            class="text-[11px] bg-background border border-border-subtle text-finance-invest font-mono font-bold px-2.5 py-0.5 rounded-full"
           >
-            {{ allPortfolioAssets.length }} ativos listados
+            {{ headerListedAssetsCount }} ativos listados
           </span>
         </div>
         <p class="text-xs text-[#71717A] mt-0.5">
-          Custódia consolidada por classe, produto, liquidez, instituição e ativos
+          Custódia consolidada por classe, produto, liquidez, instituição e objetivos
         </p>
       </div>
 
-      <!-- SUB-NAV PILLS: [ Classe ] [ Produto ] [ Liquidez ] [ Ativos ] [ Objetivos ] -->
+      <!-- SUB-NAV PILLS: [ Classe ] [ Produto ] [ Liquidez ] [ Instituição ] [ Ativos ] [ Objetivos ] -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
         <button
           v-for="pill in [
             { id: 'classe', label: 'Classe' },
             { id: 'produto', label: 'Produto' },
             { id: 'liquidez', label: 'Liquidez' },
+            { id: 'instituicao', label: 'Instituição' },
             { id: 'ativos', label: 'Ativos' },
             { id: 'objetivos', label: 'Objetivos' },
           ]"
@@ -677,11 +977,14 @@ function handleSelectClassFilter(clsKey: string) {
       </div>
     </div>
 
-    <!-- BLOCO DO ANEL (DONUT RING) + TOTAL INVESTIDO + CUSTÓDIA POR INSTITUIÇÃO NO MESMO CONTAINER -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-1">
-      <div class="flex items-center gap-5">
-        <!-- Donut Ring SVG -->
-        <div class="relative w-20 h-20 shrink-0">
+    <!-- BLOCO DO ANEL (DONUT RING) + PATRIMÔNIO REFERENTE A CADA CATEGORIA -->
+    <div
+      v-if="!props.showEmptyState || props.assets.length > 0"
+      class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-1"
+    >
+      <div class="flex items-center gap-5 shrink-0">
+        <!-- Donut Ring SVG Interativo por Categoria -->
+        <div class="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0">
           <svg class="w-full h-full -rotate-90" viewBox="0 0 80 80">
             <circle
               cx="40"
@@ -699,22 +1002,46 @@ function handleSelectClassFilter(clsKey: string) {
               r="32"
               fill="none"
               :stroke="seg.color"
-              stroke-width="7"
+              :stroke-width="hoveredCategoryKey === seg.key ? 9 : 7"
               :stroke-dasharray="seg.strokeDasharray"
               :stroke-dashoffset="seg.strokeDashoffset"
               stroke-linecap="round"
-              class="transition-all duration-500"
+              class="transition-all duration-300 cursor-pointer"
+              :class="
+                hoveredCategoryKey && hoveredCategoryKey !== seg.key
+                  ? 'opacity-35'
+                  : 'opacity-100'
+              "
+              @mouseenter="hoveredCategoryKey = seg.key"
+              @mouseleave="hoveredCategoryKey = null"
+              @click="toggleCategoryExpansion(seg.key)"
             />
           </svg>
         </div>
 
-        <!-- Informações Textuais ao lado da Rosquinha -->
-        <div class="space-y-1">
-          <div class="text-xs text-[#A1A1AA] font-medium">
-            Total investido • {{ classCategories.length }} Classes
+        <!-- Informações Textuais ao lado da Rosquinha (Mostra Total ou Patrimônio da Categoria em Foco) -->
+        <div class="space-y-1 min-w-0">
+          <div class="text-xs text-[#A1A1AA] font-medium flex items-center gap-1.5">
+            <template v-if="focusedDonutCategory">
+              <span
+                class="w-2 h-2 rounded-full shrink-0"
+                :style="{ backgroundColor: focusedDonutCategory.color }"
+              />
+              <span class="text-white font-bold truncate">{{ focusedDonutCategory.name }}</span>
+              <span class="text-accent-yellow font-mono">({{ focusedDonutCategory.percentLabel }})</span>
+            </template>
+            <template v-else>
+              Total investido • {{ classCategories.length }} Classes
+            </template>
           </div>
           <div class="text-xl sm:text-2xl font-extrabold font-mono tracking-tight text-white">
-            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totalInvestedInCents) }}
+            {{
+              isPrivacyActive
+                ? 'R$ •••••'
+                : formatCentsToBrl(
+                    focusedDonutCategory ? focusedDonutCategory.totalCents : totalInvestedInCents
+                  )
+            }}
           </div>
           <div class="text-[11px] text-[#71717A]">
             Atualizado em 21/10/2026
@@ -722,66 +1049,103 @@ function handleSelectClassFilter(clsKey: string) {
         </div>
       </div>
 
-      <!-- Custódia por Instituição Compacta integrada no mesmo container -->
-      <div v-if="byInstitution.length > 0" class="flex-1 lg:max-w-md space-y-1.5">
-        <div class="flex items-center justify-between text-[11px] text-[#A1A1AA]">
-          <span class="font-bold">🏛️ Custódia por Instituição</span>
-          <button
-            v-if="selectedInstitutionFilter !== 'ALL'"
-            type="button"
-            class="text-accent-yellow hover:underline cursor-pointer"
-            @click="selectedInstitutionFilter = 'ALL'"
-          >
-            Limpar ({{ selectedInstitutionFilter }}) ✕
-          </button>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <button
-            v-for="(inst, idx) in byInstitution"
-            :key="idx"
-            type="button"
-            class="bg-background hover:bg-surface-hover border rounded-xl p-2.5 text-left transition cursor-pointer"
-            :class="
-              selectedInstitutionFilter === inst.institution
-                ? 'border-finance-invest ring-1 ring-finance-invest/40'
-                : 'border-border-subtle'
-            "
-            @click="handleSelectInstitution(inst.institution)"
-          >
-            <div class="flex justify-between items-center text-[11px] font-bold text-white gap-1">
-              <span class="truncate">{{ inst.institution }}</span>
-              <span class="text-accent-yellow font-mono shrink-0">{{ inst.percent }}%</span>
+      <!-- Resumo de Patrimônio por Categoria do Donut (Substitui o antigo card destacado de instituição) -->
+      <div
+        v-if="activeCategoryList.length > 0"
+        data-testid="donut-category-breakdown"
+        class="flex-1 lg:max-w-xl grid grid-cols-2 sm:grid-cols-3 gap-2"
+      >
+        <button
+          v-for="cat in activeCategoryList"
+          :key="`donut-chip-${cat.key}`"
+          type="button"
+          class="bg-background/70 hover:bg-surface-hover border rounded-xl px-3 py-2 text-left transition cursor-pointer"
+          :class="
+            hoveredCategoryKey === cat.key || isCategoryExpanded(cat.key)
+              ? 'border-white/30 bg-surface-hover/60'
+              : 'border-border-subtle/70'
+          "
+          @mouseenter="hoveredCategoryKey = cat.key"
+          @mouseleave="hoveredCategoryKey = null"
+          @click="toggleCategoryExpansion(cat.key)"
+        >
+          <div class="flex items-center justify-between gap-1.5 text-[11px]">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span
+                class="w-2 h-2 rounded-full shrink-0"
+                :style="{ backgroundColor: cat.color }"
+              />
+              <span class="font-bold text-[#D4D4D8] truncate">{{ cat.name }}</span>
             </div>
-            <div class="text-xs font-extrabold font-mono text-white truncate mt-0.5">
-              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(inst.totalCents) }}
-            </div>
-            <div class="text-[10px] text-[#71717A] mt-0.5">
-              {{ inst.count }} ativo(s)
-            </div>
-          </button>
-        </div>
+            <span class="font-mono font-bold text-[#A1A1AA] shrink-0">{{ cat.percentLabel }}</span>
+          </div>
+          <div class="text-xs font-extrabold font-mono text-white truncate mt-0.5 pl-3.5">
+            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
+          </div>
+        </button>
       </div>
     </div>
 
-    <!-- FILTRO RÁPIDO POR CLASSE DE ATIVOS -->
+    <!-- BARRA DE FILTROS MINIMALISTA: CLASSES + FILTRO DISCRETO DE INSTITUIÇÃO -->
     <div
       v-if="props.assets.length > 0"
-      class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-border-subtle/60"
+      class="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-border-subtle/60"
     >
-      <button
-        v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...props.availableClasses]"
-        :key="cls.key"
-        type="button"
-        class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer"
-        :class="
-          selectedClassFilter === cls.key && activePill === 'ativos'
-            ? 'bg-finance-invest text-black font-bold border-finance-invest'
-            : 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white'
-        "
-        @click="handleSelectClassFilter(cls.key)"
+      <!-- Filtro Rápido por Classe de Ativos -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...props.availableClasses]"
+          :key="cls.key"
+          type="button"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer flex items-center gap-1"
+          :class="
+            selectedClassFilter === cls.key && activePill === 'ativos'
+              ? 'bg-finance-invest text-black font-bold border-finance-invest'
+              : (classAssetCounts[cls.key] || 0) > 0
+                ? 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white'
+                : 'bg-background/40 text-[#52525B] border-border-subtle/40 hover:text-[#A1A1AA]'
+          "
+          @click="handleSelectClassFilter(cls.key)"
+        >
+          {{ cls.label }}
+        </button>
+      </div>
+
+      <!-- Filtro Minimalista de Instituição / Corretora -->
+      <div
+        v-if="byInstitution.length > 0"
+        class="flex items-center gap-1 overflow-x-auto no-scrollbar text-[11px]"
       >
-        {{ cls.label }}
-      </button>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-[#71717A] mr-0.5">
+          Corretora:
+        </span>
+        <button
+          type="button"
+          class="px-2 py-0.5 rounded-md border text-[10px] font-semibold transition cursor-pointer whitespace-nowrap"
+          :class="
+            selectedInstitutionFilter === 'ALL'
+              ? 'bg-surface text-white border-border-subtle'
+              : 'bg-transparent text-[#71717A] border-transparent hover:text-white'
+          "
+          @click="selectedInstitutionFilter = 'ALL'"
+        >
+          Todas
+        </button>
+        <button
+          v-for="(inst, idx) in byInstitution"
+          :key="idx"
+          type="button"
+          class="px-2 py-0.5 rounded-md border text-[10px] font-semibold transition cursor-pointer whitespace-nowrap"
+          :class="
+            selectedInstitutionFilter === inst.institution
+              ? 'bg-finance-invest/15 text-finance-invest border-finance-invest/40 font-bold'
+              : 'bg-transparent text-[#71717A] border-transparent hover:text-white'
+          "
+          @click="handleSelectInstitution(inst.institution)"
+        >
+          {{ inst.institution }} ({{ inst.percent }}%)
+        </button>
+      </div>
     </div>
 
     <!-- EMPTY STATE QUANDO NÃO HÁ ATIVOS NA CARTEIRA (NO CONTEXTO DA TELA DE INVESTIMENTOS) -->
@@ -795,10 +1159,176 @@ function handleSelectClassFilter(clsKey: string) {
     />
 
     <!-- ========================================================================= -->
+    <!-- PAINEL EXPLICATIVO E GESTÃO DE OBJETIVOS (QUANDO A PILL 'OBJETIVOS' ATIVA)-->
+    <!-- ========================================================================= -->
+    <div
+      v-if="activePill === 'objetivos' && (!props.showEmptyState || props.assets.length > 0)"
+      data-testid="objectives-explainer-panel"
+      class="bg-background/90 border border-border-subtle rounded-2xl p-3.5 sm:p-4 space-y-3"
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div class="space-y-0.5">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-accent-yellow">
+              🎯 Como funcionam seus Objetivos?
+            </span>
+          </div>
+          <p class="text-[11px] text-[#A1A1AA] leading-relaxed">
+            Cada objetivo agrupa automaticamente os ativos das <strong>classes vinculadas</strong> a ele e compara o saldo acumulado com a sua <strong>Meta (%)</strong>. Você pode criar novos objetivos, editar metas/vínculos ou excluir qualquer objetivo abaixo.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            data-testid="btn-add-objective"
+            class="px-3 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+            @click="openCreateObjectiveForm"
+          >
+            <span>+</span>
+            <span>Novo Objetivo</span>
+          </button>
+          <button
+            type="button"
+            data-testid="btn-reset-objectives"
+            title="Restaurar objetivos padrão"
+            class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-semibold text-[#A1A1AA] hover:text-white transition cursor-pointer whitespace-nowrap"
+            @click="handleResetObjectives"
+          >
+            Padrão
+          </button>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO INLINE DE CRIAÇÃO / EDIÇÃO DE OBJETIVO -->
+      <div
+        v-if="isObjectiveFormOpen"
+        data-testid="form-objective-editor"
+        class="bg-surface border border-accent-yellow/40 rounded-xl p-3.5 space-y-3 pt-3"
+      >
+        <div class="flex items-center justify-between border-b border-border-subtle pb-2">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-white">
+            {{ editingObjectiveKey ? 'Editar Objetivo' : 'Criar Novo Objetivo' }}
+          </h4>
+          <button
+            type="button"
+            class="text-[11px] text-[#71717A] hover:text-white cursor-pointer"
+            @click="isObjectiveFormOpen = false"
+          >
+            Fechar ✕
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div class="sm:col-span-5">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+              Nome do Objetivo
+            </label>
+            <input
+              v-model="objFormName"
+              type="text"
+              data-testid="input-objective-name"
+              placeholder="Ex: Compra de Imóvel, Aposentadoria..."
+              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
+            />
+          </div>
+
+          <div class="sm:col-span-4">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+              Descrição / Propósito
+            </label>
+            <input
+              v-model="objFormDescription"
+              type="text"
+              data-testid="input-objective-desc"
+              placeholder="Ex: Longo prazo e renda passiva"
+              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
+            />
+          </div>
+
+          <div class="sm:col-span-3">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+              Meta na Carteira (%)
+            </label>
+            <input
+              v-model="objFormTarget"
+              type="number"
+              min="0"
+              max="100"
+              data-testid="input-objective-target"
+              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white font-mono font-bold outline-none"
+            />
+          </div>
+        </div>
+
+        <!-- Seleção de Classes Vinculadas ao Objetivo -->
+        <div class="space-y-1.5">
+          <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]">
+            Classes de Ativos que compõem este Objetivo:
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="cls in props.availableClasses"
+              :key="cls.key"
+              type="button"
+              :data-testid="`obj-class-toggle-${cls.key}`"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer"
+              :class="
+                objFormClasses.includes(cls.key)
+                  ? 'bg-accent-yellow/15 border-accent-yellow text-accent-yellow'
+                  : 'bg-background border-border-subtle text-[#71717A] hover:text-white'
+              "
+              @click="toggleObjectiveClassSelection(cls.key)"
+            >
+              {{ objFormClasses.includes(cls.key) ? '✓ ' : '' }}{{ cls.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Cor + Botões Salvar/Cancelar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase text-[#71717A] mr-1">Cor:</span>
+            <button
+              v-for="colorHex in OBJECTIVE_COLORS"
+              :key="colorHex"
+              type="button"
+              class="w-5 h-5 rounded-full border-2 transition cursor-pointer"
+              :class="objFormColor === colorHex ? 'border-white scale-110' : 'border-transparent opacity-70'"
+              :style="{ backgroundColor: colorHex }"
+              @click="objFormColor = colorHex"
+            />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg bg-background border border-border-subtle text-xs text-[#A1A1AA] hover:text-white cursor-pointer"
+              @click="isObjectiveFormOpen = false"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              data-testid="btn-save-objective"
+              class="px-4 py-1.5 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs cursor-pointer"
+              @click="handleSaveObjective"
+            >
+              {{ editingObjectiveKey ? 'Salvar Alterações' : 'Criar Objetivo' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
     <!-- MODOS CATEGORIZADOS EXPANSÍVEIS: CLASSE | PRODUTO | LIQUIDEZ | OBJETIVOS  -->
     <!-- Clicar em qualquer categoria expande todos os ativos daquela categoria    -->
     <!-- ========================================================================= -->
-    <div v-if="activePill !== 'ativos'" class="divide-y divide-border-subtle/50">
+    <div
+      v-if="activePill !== 'ativos' && (!props.showEmptyState || props.assets.length > 0)"
+      class="divide-y divide-border-subtle/50"
+    >
       <div
         v-for="cat in activeCategoryList"
         :key="cat.key"
@@ -806,7 +1336,7 @@ function handleSelectClassFilter(clsKey: string) {
         class="py-3.5 transition cursor-pointer group"
         @click="toggleCategoryExpansion(cat.key)"
       >
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <!-- Lado Esquerdo: Ponto Colorido + Nome + Quantidade de Ativos -->
           <div class="flex items-center gap-2.5 min-w-0">
             <span
@@ -821,11 +1351,38 @@ function handleSelectClassFilter(clsKey: string) {
             </span>
           </div>
 
-          <!-- Lado Direito: Valor Total + Chevron > -->
-          <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Lado Direito: Valor Total + Ações de Objetivo (se na aba Objetivos) + Chevron > -->
+          <div class="flex items-center gap-2 shrink-0">
             <span class="text-xs sm:text-sm font-mono font-bold text-white">
               {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
             </span>
+
+            <!-- Botões Editar / Excluir Objetivo (Visíveis na aba Objetivos) -->
+            <div
+              v-if="activePill === 'objetivos'"
+              class="flex items-center gap-1 ml-1"
+              @click.stop
+            >
+              <button
+                type="button"
+                :data-testid="`btn-edit-objective-${cat.key}`"
+                title="Editar objetivo"
+                class="p-1.5 rounded-lg bg-background hover:bg-surface-hover border border-border-subtle text-[#A1A1AA] hover:text-accent-yellow transition cursor-pointer"
+                @click.stop="openEditObjectiveForm(cat.key)"
+              >
+                <AppIcon name="edit" size="13" />
+              </button>
+              <button
+                type="button"
+                :data-testid="`btn-delete-objective-${cat.key}`"
+                title="Excluir objetivo"
+                class="p-1.5 rounded-lg bg-background hover:bg-surface-hover border border-border-subtle text-[#A1A1AA] hover:text-finance-neg transition cursor-pointer"
+                @click.stop="handleDeleteObjective(cat.key)"
+              >
+                <AppIcon name="trash" size="13" />
+              </button>
+            </div>
+
             <svg
               class="w-4 h-4 text-[#71717A] group-hover:text-white transition transform"
               :class="{ 'rotate-90': isCategoryExpanded(cat.key) }"
@@ -838,10 +1395,33 @@ function handleSelectClassFilter(clsKey: string) {
           </div>
         </div>
 
+        <!-- Detalhes extras quando na aba Objetivos (Descrição + Classes Vinculadas + Meta) -->
+        <div v-if="activePill === 'objetivos'" class="pl-5 pt-1.5 space-y-1.5">
+          <p v-if="cat.description" class="text-[11px] text-[#A1A1AA]">
+            {{ cat.description }}
+          </p>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[10px] text-[#71717A] font-semibold">Classes vinculadas:</span>
+            <span
+              v-for="clsKey in cat.linkedClasses || []"
+              :key="clsKey"
+              class="text-[10px] bg-background border border-border-subtle text-[#D4D4D8] px-2 py-0.5 rounded-md font-medium"
+            >
+              {{ formatClassLabel(clsKey) }}
+            </span>
+          </div>
+        </div>
+
         <!-- Linha Inferior com % da Carteira e Rentabilidade ▲ -->
         <div class="flex items-center justify-between pl-5 pt-1 text-xs font-mono">
           <span class="text-[#A1A1AA] text-[11px]">
-            {{ activePill === 'objetivos' ? `${cat.percentLabel} da meta` : cat.percentLabel }}
+            <template v-if="activePill === 'objetivos'">
+              Atual: <strong class="text-white">{{ cat.percentLabel }}</strong> • Meta definida:
+              <strong class="text-accent-yellow">{{ cat.targetPercent ?? 0 }}%</strong>
+            </template>
+            <template v-else>
+              {{ cat.percentLabel }}
+            </template>
           </span>
           <span
             class="font-bold text-[11px] flex items-center gap-0.5"
@@ -854,9 +1434,24 @@ function handleSelectClassFilter(clsKey: string) {
 
         <!-- Detalhamento Expandido ao Clicar na Categoria (Classe, Produto, Liquidez ou Objetivos) -->
         <div
-          v-if="isCategoryExpanded(cat.key) && cat.assets.length > 0"
+          v-if="isCategoryExpanded(cat.key)"
           class="mt-3 pl-4 sm:pl-5 space-y-2 pt-2.5 border-t border-border-subtle/40"
         >
+          <div
+            v-if="cat.assets.length === 0"
+            class="p-3 bg-background/60 rounded-xl border border-border-subtle/50 text-xs text-[#71717A] flex items-center justify-between"
+            @click.stop
+          >
+            <span>Nenhum ativo das classes vinculadas na carteira atual.</span>
+            <button
+              type="button"
+              class="text-finance-invest font-bold hover:underline cursor-pointer"
+              @click.stop="emit('openAddAsset')"
+            >
+              + Adicionar Ativo
+            </button>
+          </div>
+
           <div
             v-for="asset in cat.assets"
             :key="asset.id"
@@ -930,7 +1525,37 @@ function handleSelectClassFilter(clsKey: string) {
     <!-- ========================================================================= -->
     <!-- MODO ATIVOS: LISTA DIRETA DE TODOS OS ATIVOS EM CUSTÓDIA NO MESMO CARD    -->
     <!-- ========================================================================= -->
-    <div v-else class="space-y-2.5 pt-1">
+    <div
+      v-else-if="activePill === 'ativos' && (!props.showEmptyState || props.assets.length > 0)"
+      class="space-y-2.5 pt-1"
+    >
+      <!-- Caso filtro de classe selecionada não possua ativos cadastrados -->
+      <div
+        v-if="allPortfolioAssets.length === 0 && selectedClassFilter !== 'ALL'"
+        class="p-5 bg-background border border-border-subtle rounded-2xl text-center space-y-2.5"
+      >
+        <p class="text-xs text-[#A1A1AA]">
+          Nenhum ativo cadastrado na classe
+          <strong class="text-white">{{ formatClassLabel(selectedClassFilter) }}</strong>.
+        </p>
+        <div class="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            class="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-xs font-bold text-white transition cursor-pointer"
+            @click="selectedClassFilter = 'ALL'"
+          >
+            Mostrar todos os ativos ({{ institutionFilteredAssets.length }})
+          </button>
+          <button
+            type="button"
+            class="px-3.5 py-1.5 rounded-xl bg-finance-invest text-black text-xs font-extrabold transition cursor-pointer"
+            @click="emit('openAddAsset')"
+          >
+            + Cadastrar Ativo
+          </button>
+        </div>
+      </div>
+
       <div
         v-for="asset in allPortfolioAssets"
         :key="asset.id"

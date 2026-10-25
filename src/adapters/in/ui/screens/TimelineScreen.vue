@@ -295,7 +295,7 @@ function handleDelete(id: string, description: string) {
           isAnalyticsVisible = true;
         "
       >
-        <AppIcon name="pie-chart" size="14" />
+        <AppIcon name="categories" size="14" />
         <span>Gastos por Categoria</span>
       </button>
 

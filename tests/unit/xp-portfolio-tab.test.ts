@@ -141,4 +141,38 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
 
     expect(wrapper.text()).toContain('R$ •••••');
   });
+
+  it('deve explicar como funcionam os Objetivos e permitir criar, editar e excluir objetivos', async () => {
+    const wrapper = mount(XpPortfolioTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const objBtn = wrapper.findAll('button').find((b) => b.text() === 'Objetivos');
+    await objBtn!.trigger('click');
+
+    expect(wrapper.find('[data-testid="objectives-explainer-panel"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Como funcionam seus Objetivos?');
+
+    // Criar novo objetivo
+    await wrapper.find('[data-testid="btn-add-objective"]').trigger('click');
+    await wrapper.find('[data-testid="input-objective-name"]').setValue('Compra de Imóvel');
+    await wrapper.find('[data-testid="input-objective-target"]').setValue('15');
+    await wrapper.find('[data-testid="btn-save-objective"]').trigger('click');
+
+    expect(wrapper.text()).toContain('Compra de Imóvel');
+
+    // Editar objetivo existente
+    await wrapper.find('[data-testid="btn-edit-objective-aposentadoria"]').trigger('click');
+    await wrapper.find('[data-testid="input-objective-name"]').setValue('Aposentadoria Global');
+    await wrapper.find('[data-testid="btn-save-objective"]').trigger('click');
+
+    expect(wrapper.text()).toContain('Aposentadoria Global');
+
+    // Excluir objetivo
+    await wrapper.find('[data-testid="btn-delete-objective-seguranca"]').trigger('click');
+    expect(wrapper.text()).not.toContain('Colchão de Oportunidade');
+  });
 });

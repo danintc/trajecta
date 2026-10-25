@@ -24,6 +24,7 @@ export type IconName =
   | 'refresh'
   | 'check'
   | 'pie-chart'
+  | 'categories'
   | 'bar-chart'
   | 'layers'
   // Categorias de Gastos (Money Tracker)
@@ -198,6 +199,14 @@ const stroke = computed(() => Number(props.strokeWidth) || 2);
     <g v-else-if="name === 'pie-chart'">
       <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
       <path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </g>
+
+    <g v-else-if="name === 'categories'">
+      <rect width="7" height="7" x="3" y="3" rx="1.5" />
+      <rect width="7" height="7" x="14" y="3" rx="1.5" />
+      <rect width="7" height="7" x="14" y="14" rx="1.5" />
+      <path d="M6.5 14v7" />
+      <path d="M3 17.5h7" />
     </g>
 
     <g v-else-if="name === 'bar-chart' || name === 'line-chart'">

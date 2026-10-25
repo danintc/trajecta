@@ -145,9 +145,12 @@ function handleSliceSelect(_slice: DonutSlice, idx: number) {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
       <div>
         <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2 whitespace-nowrap">
-          <span>🍩 Gastos por Categoria</span>
+          <span class="w-7 h-7 rounded-lg bg-accent-yellow/15 border border-accent-yellow/30 flex items-center justify-center text-accent-yellow shrink-0">
+            <AppIcon name="categories" size="15" />
+          </span>
+          <span>Gastos por Categoria</span>
         </h3>
-        <p class="text-[11px] text-[#71717A]">
+        <p class="text-[11px] text-[#71717A] mt-0.5">
           Toque em uma categoria para filtrar seus lançamentos
         </p>
       </div>

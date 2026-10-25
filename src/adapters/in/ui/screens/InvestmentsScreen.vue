@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
-import KpiCard from '../components/KpiCard.vue';
 import {
   formatCentsToBrl,
   parseBrlToCents,
@@ -71,41 +70,6 @@ const totalInvestedInCents = computed(() => {
   return props.assets.reduce((acc, a) => acc + a.totalQuantity * a.currentPriceInCents, 0);
 });
 
-// Custo de aquisição total
-const totalCostInCents = computed(() => {
-  return props.assets.reduce((acc, a) => acc + a.totalQuantity * a.averagePriceInCents, 0);
-});
-
-const totalProfitInCents = computed(() => totalInvestedInCents.value - totalCostInCents.value);
-
-const totalProfitPercent = computed(() => {
-  return totalCostInCents.value > 0
-    ? Number(((totalProfitInCents.value / totalCostInCents.value) * 100).toFixed(2))
-    : 0;
-});
-
-// DIVISÃO POR INSTITUIÇÃO / CORRETORA
-const byInstitution = computed(() => {
-  const map = new Map<string, { totalCents: number; count: number }>();
-  for (const a of props.assets) {
-    const val = a.totalQuantity * a.currentPriceInCents;
-    const inst = a.institution || 'Outras Corretoras';
-    const curr = map.get(inst) || { totalCents: 0, count: 0 };
-    curr.totalCents += val;
-    curr.count += 1;
-    map.set(inst, curr);
-  }
-  return Array.from(map.entries()).map(([institution, data]) => ({
-    institution,
-    totalCents: data.totalCents,
-    count: data.count,
-    percent:
-      totalInvestedInCents.value > 0
-        ? Number(((data.totalCents / totalInvestedInCents.value) * 100).toFixed(1))
-        : 0,
-  }));
-});
-
 // DIVISÃO POR CLASSE DE ATIVOS (Incluindo classes recém-adicionadas e metas editadas)
 const classAllocations = computed(() => {
   const classMap = new Map<string, { value: number; target: number }>();
@@ -139,6 +103,16 @@ const rebalanceResult = computed(() => {
   const cents = parseBrlToCents(aporteInput.value);
   if (classAllocations.value.length === 0) return null;
   return calculatePortfolioRebalance(classAllocations.value, cents);
+});
+
+const totalTargetsSum = computed(() => {
+  return Number(
+    classAllocations.value.reduce((acc, c) => acc + (Number(c.targetPercent) || 0), 0).toFixed(1)
+  );
+});
+
+const projectedPortfolioInCents = computed(() => {
+  return totalInvestedInCents.value + parseBrlToCents(aporteInput.value);
 });
 
 async function handleUpdateClassTarget(assetClassKey: string, newTargetVal: number) {
@@ -236,49 +210,6 @@ async function handleDeleteAsset(asset: Asset) {
           <span>Adicionar Ativo</span>
         </button>
       </div>
-    </div>
-
-    <!-- CARDS INVESTIMENTOS LADO A LADO (COMPACTOS E ALINHADOS) -->
-    <div class="grid grid-cols-3 gap-2 sm:gap-3">
-      <KpiCard
-        test-id="kpi-invest-total"
-        title="Patrimônio em Ativos"
-        :formatted-value="formatCentsToBrl(totalInvestedInCents)"
-        :subtitle="`${assets.length} ativos em custódia`"
-        variant="invest"
-        icon="invest"
-        :is-privacy-active="isPrivacyActive"
-        clickable
-        :active="activeSubTab === 'custody'"
-        action-hint="Ver Carteira"
-        @click="activeSubTab = 'custody'"
-      />
-      <KpiCard
-        test-id="kpi-invest-profit"
-        title="Rentabilidade Histórica"
-        :formatted-value="formatCentsToBrl(totalProfitInCents, { showSign: true })"
-        :subtitle="`${totalProfitPercent}% sobre o custo`"
-        :variant="totalProfitInCents >= 0 ? 'positive' : 'negative'"
-        icon="trending-up"
-        :is-privacy-active="isPrivacyActive"
-        clickable
-        :active="activeSubTab === 'evolution'"
-        action-hint="Ver Evolução"
-        @click="activeSubTab = 'evolution'"
-      />
-      <KpiCard
-        test-id="kpi-invest-classes"
-        title="Diversificação Ativa"
-        :formatted-value="`${classAllocations.length} Classes`"
-        :subtitle="`${byInstitution.length} instituições`"
-        variant="accent"
-        icon="phase"
-        :is-privacy-active="isPrivacyActive"
-        clickable
-        :active="activeSubTab === 'rebalance'"
-        action-hint="Rebalancear"
-        @click="activeSubTab = 'rebalance'"
-      />
     </div>
 
     <!-- SUB-ABAS INTERNAS DA CARTEIRA UNIFICADAS: Carteira & Custódia | Evolução | Rebalanceamento -->
@@ -399,8 +330,9 @@ async function handleDeleteAsset(asset: Asset) {
       <div
         class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5"
       >
+        <!-- Cabeçalho Limpo do Rebalanceador -->
         <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5"
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border-subtle pb-3.5"
         >
           <div class="space-y-1">
             <div class="flex flex-wrap items-center gap-2">
@@ -414,149 +346,279 @@ async function handleDeleteAsset(asset: Asset) {
               </span>
             </div>
             <p class="text-xs text-[#71717A]">
-              Edite a meta (%) de cada classe ou insira novas classes para direcionar seu aporte.
+              Defina o valor do novo aporte e ajuste as metas (%) de cada classe para equilibrar sua carteira.
             </p>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              data-testid="btn-toggle-new-class"
-              class="px-3 py-2 rounded-xl border border-finance-invest/40 bg-finance-invest/10 hover:bg-finance-invest/20 text-finance-invest font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
-              @click="isAddingNewClass = !isAddingNewClass"
+          <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span
+              class="text-[11px] font-mono font-bold px-3 py-1 rounded-xl border"
+              :class="
+                totalTargetsSum === 100
+                  ? 'bg-finance-pos/10 text-finance-pos border-finance-pos/30'
+                  : 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/30'
+              "
             >
-              <span>+</span>
-              <span>Nova Classe</span>
-            </button>
-
-            <div class="flex items-center gap-2 bg-background p-2 rounded-xl border border-border-subtle">
-              <span class="text-xs font-semibold text-finance-neutral whitespace-nowrap">Novo Aporte (R$):</span>
-              <input
-                :value="aporteInput"
-                type="text"
-                inputmode="numeric"
-                class="bg-surface border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-white font-mono font-bold w-28 sm:w-32 text-right focus:border-accent-yellow outline-none transition"
-                @focus="(e: Event) => {
-                  const t = e.target as HTMLInputElement;
-                  if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
-                }"
-                @click="(e: Event) => {
-                  const t = e.target as HTMLInputElement;
-                  if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
-                }"
-                @input="(e: Event) => {
-                  const target = e.target as HTMLInputElement;
-                  const sanitized = sanitizeCurrencyInput(target.value);
-                  aporteInput = sanitized;
-                  target.value = sanitized;
-                  target.setSelectionRange(sanitized.length, sanitized.length);
-                }"
-                @blur="aporteInput = normalizeCurrencyOnBlur(aporteInput)"
-                @keydown.enter="($event.target as HTMLInputElement).blur()"
-              />
-            </div>
+              Soma das Metas: {{ totalTargetsSum }}% / 100%
+            </span>
           </div>
         </div>
 
-        <!-- Formulário Inline para Inserir Nova Classe no Rebalanceador -->
-        <div
-          v-if="isAddingNewClass"
-          data-testid="form-add-rebalance-class"
-          class="bg-background border border-finance-invest/40 rounded-xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-end gap-3"
-        >
-          <div class="flex-1">
-            <label class="block text-[11px] font-semibold text-finance-neutral mb-1">
-              Nome da Nova Classe
-            </label>
-            <input
-              v-model="newClassName"
-              type="text"
-              data-testid="input-new-class-name"
-              placeholder="Ex: Previdência, Ouro, REITs..."
-              class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-lg px-3 py-1.5 text-xs text-white outline-none"
-            />
-          </div>
-          <div class="w-full sm:w-32">
-            <label class="block text-[11px] font-semibold text-finance-neutral mb-1">
-              Meta Desejada (%)
-            </label>
-            <input
-              v-model="newClassTargetStr"
-              type="number"
-              min="0"
-              max="100"
-              data-testid="input-new-class-target"
-              class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-lg px-3 py-1.5 text-xs text-white font-mono outline-none"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              data-testid="btn-save-new-class"
-              class="px-4 py-1.5 rounded-lg bg-finance-invest text-black font-bold text-xs cursor-pointer"
-              @click="handleAddExtraClass"
-            >
-              Inserir Classe
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-surface text-finance-neutral hover:text-white text-xs cursor-pointer"
-              @click="isAddingNewClass = false"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <div
-            v-for="sug in rebalanceResult?.suggestions"
-            :key="sug.assetClass"
-            class="bg-background border border-border-subtle rounded-xl p-4 space-y-2.5"
-          >
-            <div class="flex justify-between items-center text-xs font-semibold gap-2">
-              <span class="text-white uppercase tracking-wider text-xs font-bold whitespace-nowrap">
-                {{ formatClassLabel(sug.assetClass) }}
-              </span>
-              <div class="flex items-center gap-2 font-mono text-[11px] text-finance-neutral whitespace-nowrap">
-                <span>Atual: <strong class="text-white">{{ sug.currentPercent }}%</strong></span>
-                <span>|</span>
-                <label class="inline-flex items-center gap-1 text-accent-yellow">
-                  <span>Meta:</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    :data-testid="`input-target-${sug.assetClass}`"
-                    :value="sug.targetPercent"
-                    class="w-14 bg-surface border border-border-subtle focus:border-accent-yellow rounded px-1.5 py-0.5 text-right text-xs font-bold text-accent-yellow outline-none"
-                    @change="(e: Event) => handleUpdateClassTarget(sug.assetClass, parseFloat((e.target as HTMLInputElement).value))"
-                  />
-                  <span>%</span>
+        <!-- Painel de Parâmetros do Aporte (Bem Distribuído) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 bg-background/80 border border-border-subtle rounded-2xl p-3.5 sm:p-4">
+          <!-- Coluna 1: Input Principal do Novo Aporte + Atalhos Rápidos -->
+          <div class="lg:col-span-7 flex flex-col justify-between gap-2.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]">
+                  Novo Aporte (R$)
                 </label>
+                <span class="text-[11px] text-[#71717A]">
+                  Valor disponível para investir agora
+                </span>
+              </div>
+
+              <div class="relative flex items-center">
+                <span class="absolute left-3 text-xs font-extrabold font-mono text-accent-yellow pointer-events-none">
+                  R$
+                </span>
+                <input
+                  :value="aporteInput"
+                  type="text"
+                  inputmode="numeric"
+                  class="bg-surface border border-border-subtle focus:border-accent-yellow rounded-xl pl-9 pr-3.5 py-2 text-sm sm:text-base text-white font-mono font-extrabold w-full sm:w-44 text-right outline-none transition"
+                  @focus="(e: Event) => {
+                    const t = e.target as HTMLInputElement;
+                    if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+                  }"
+                  @click="(e: Event) => {
+                    const t = e.target as HTMLInputElement;
+                    if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+                  }"
+                  @input="(e: Event) => {
+                    const target = e.target as HTMLInputElement;
+                    const sanitized = sanitizeCurrencyInput(target.value);
+                    aporteInput = sanitized;
+                    target.value = sanitized;
+                    target.setSelectionRange(sanitized.length, sanitized.length);
+                  }"
+                  @blur="aporteInput = normalizeCurrencyOnBlur(aporteInput)"
+                  @keydown.enter="($event.target as HTMLInputElement).blur()"
+                />
               </div>
             </div>
 
-            <div class="w-full bg-surface h-2.5 rounded-full overflow-hidden flex">
-              <div
-                class="bg-accent-yellow h-full transition-all duration-300"
-                :style="{ width: `${Math.min(100, sug.currentPercent)}%` }"
-              />
+            <!-- Atalhos de Valor de Aporte -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border-subtle/50">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-[#71717A] mr-1">
+                Simular rápido:
+              </span>
+              <button
+                v-for="preset in ['500,00', '1.000,00', '2.000,00', '5.000,00', '10.000,00']"
+                :key="preset"
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer"
+                :class="
+                  aporteInput === preset
+                    ? 'bg-accent-yellow text-black border-accent-yellow'
+                    : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white'
+                "
+                @click="aporteInput = preset"
+              >
+                R$ {{ preset.replace(',00', '') }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Coluna 2: Resumo de Impacto na Carteira -->
+          <div class="lg:col-span-5 grid grid-cols-2 gap-2.5 lg:border-l lg:border-border-subtle lg:pl-4">
+            <div class="bg-surface/70 border border-border-subtle/70 rounded-xl p-2.5 flex flex-col justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                Patrimônio Atual
+              </span>
+              <span class="text-xs sm:text-sm font-mono font-extrabold text-white mt-1 truncate">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totalInvestedInCents) }}
+              </span>
             </div>
 
-            <div class="flex items-center justify-between text-[11px] font-mono pt-0.5">
-              <span
-                :class="sug.suggestedAporteInCents > 0 ? 'text-finance-pos font-bold' : 'text-[#71717A]'"
-              >
+            <div class="bg-surface/70 border border-finance-pos/25 rounded-xl p-2.5 flex flex-col justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-finance-pos">
+                Após o Aporte
+              </span>
+              <span class="text-xs sm:text-sm font-mono font-extrabold text-finance-pos mt-1 truncate">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(projectedPortfolioInCents) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de Classes + Card '+' logo após a última classe -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <!-- Cards de Cada Classe -->
+          <div
+            v-for="sug in rebalanceResult?.suggestions"
+            :key="sug.assetClass"
+            class="bg-background border border-border-subtle hover:border-border-subtle/90 rounded-2xl p-4 flex flex-col justify-between gap-3 transition"
+          >
+            <!-- Topo do Card: Nome da Classe + Input de Meta (%) -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <span class="text-white uppercase tracking-wider text-xs sm:text-sm font-extrabold block truncate">
+                  {{ formatClassLabel(sug.assetClass) }}
+                </span>
+                <span class="text-[11px] font-mono text-[#71717A]">
+                  Saldo: {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(sug.projectedValueInCents - sug.suggestedAporteInCents) }}
+                </span>
+              </div>
+
+              <!-- Box de Meta (%) -->
+              <label class="inline-flex items-center gap-1.5 bg-surface border border-border-subtle focus-within:border-accent-yellow rounded-xl px-2.5 py-1.5 shrink-0">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]">Meta</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  :data-testid="`input-target-${sug.assetClass}`"
+                  :value="sug.targetPercent"
+                  class="w-12 bg-transparent text-right text-xs font-mono font-extrabold text-accent-yellow outline-none"
+                  @change="(e: Event) => handleUpdateClassTarget(sug.assetClass, parseFloat((e.target as HTMLInputElement).value))"
+                />
+                <span class="text-xs font-mono font-bold text-accent-yellow">%</span>
+              </label>
+            </div>
+
+            <!-- Barra de Progresso e Comparativo Atual vs Meta -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-[11px] font-mono">
+                <span class="text-[#A1A1AA]">
+                  Atual: <strong class="text-white">{{ sug.currentPercent }}%</strong>
+                </span>
+                <span
+                  v-if="sug.gapPercent > 0"
+                  class="text-finance-neg font-semibold"
+                >
+                  -{{ sug.gapPercent }}% Gap
+                </span>
+                <span v-else class="text-[#71717A]">
+                  Alvo atingido
+                </span>
+              </div>
+
+              <div class="w-full bg-surface h-2.5 rounded-full overflow-hidden flex">
+                <div
+                  class="h-full transition-all duration-300 rounded-full"
+                  :class="sug.suggestedAporteInCents > 0 ? 'bg-accent-yellow' : 'bg-finance-invest'"
+                  :style="{ width: `${Math.min(100, sug.currentPercent)}%` }"
+                />
+              </div>
+            </div>
+
+            <!-- Rodapé de Recomendação de Aporte -->
+            <div
+              class="rounded-xl px-3 py-2 flex items-center justify-between text-xs font-mono border"
+              :class="
+                sug.suggestedAporteInCents > 0
+                  ? 'bg-finance-pos/10 border-finance-pos/30 text-finance-pos font-bold'
+                  : 'bg-surface/60 border-border-subtle/60 text-[#71717A]'
+              "
+            >
+              <span>
                 {{
                   sug.suggestedAporteInCents > 0
                     ? `👉 Aportar: +${formatCentsToBrl(sug.suggestedAporteInCents)}`
                     : 'Equilibrado (Não vender)'
                 }}
               </span>
-              <span v-if="sug.gapPercent > 0" class="text-finance-neg font-semibold">
-                -{{ sug.gapPercent }}% Gap
+              <span v-if="sug.suggestedAporteInCents > 0" class="text-[10px] uppercase tracking-wider font-extrabold">
+                Prioridade
               </span>
+            </div>
+          </div>
+
+          <!-- CARD '+' PARA ADICIONAR NOVA CLASSE LOGO ABAIXO/APÓS O ÚLTIMO CARD -->
+          <button
+            v-if="!isAddingNewClass"
+            type="button"
+            data-testid="btn-toggle-new-class"
+            class="border-2 border-dashed border-border-subtle hover:border-finance-invest/60 bg-background/40 hover:bg-background/80 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 min-h-[148px] transition cursor-pointer group"
+            @click="isAddingNewClass = true"
+          >
+            <div class="w-10 h-10 rounded-full bg-finance-invest/15 border border-finance-invest/40 text-finance-invest flex items-center justify-center text-xl font-black group-hover:scale-110 transition">
+              +
+            </div>
+            <div class="text-center">
+              <span class="text-xs sm:text-sm font-extrabold text-white group-hover:text-finance-invest transition block">
+                Nova Classe de Ativo
+              </span>
+              <span class="text-[11px] text-[#71717A] block mt-0.5">
+                Clique para adicionar uma nova categoria e definir sua meta (%)
+              </span>
+            </div>
+          </button>
+
+          <!-- Formulário em Formato de Card quando o usuário clica no Card '+' -->
+          <div
+            v-else
+            data-testid="form-add-rebalance-class"
+            class="bg-background border-2 border-finance-invest/50 rounded-2xl p-4 flex flex-col justify-between gap-3"
+          >
+            <div class="flex items-center justify-between border-b border-border-subtle pb-2">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-finance-invest">
+                + Nova Classe no Rebalanceador
+              </span>
+              <button
+                type="button"
+                class="text-[11px] text-[#71717A] hover:text-white cursor-pointer"
+                @click="isAddingNewClass = false"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+              <div class="sm:col-span-8">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+                  Nome da Classe
+                </label>
+                <input
+                  v-model="newClassName"
+                  type="text"
+                  data-testid="input-new-class-name"
+                  placeholder="Ex: Previdência, Ouro, REITs..."
+                  class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+              <div class="sm:col-span-4">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+                  Meta (%)
+                </label>
+                <input
+                  v-model="newClassTargetStr"
+                  type="number"
+                  min="0"
+                  max="100"
+                  data-testid="input-new-class-target"
+                  class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-xl px-3 py-2 text-xs text-white font-mono font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-xl bg-surface text-finance-neutral hover:text-white text-xs font-semibold cursor-pointer"
+                @click="isAddingNewClass = false"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                data-testid="btn-save-new-class"
+                class="px-4 py-1.5 rounded-xl bg-finance-invest text-black font-extrabold text-xs cursor-pointer"
+                @click="handleAddExtraClass"
+              >
+                Inserir Classe
+              </button>
             </div>
           </div>
         </div>

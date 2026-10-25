@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { db } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { calculateInstallmentsSchedule } from '@/core/use-cases/calculate-installments.use-case';
@@ -31,6 +31,25 @@ const date = ref(new Date().toISOString().slice(0, 10));
 const isInstallment = ref(false);
 const installmentTotal = ref(3);
 const errorMessage = ref<string | null>(null);
+
+// Bloqueia o scroll e o arraste da página de fundo quando o modal está aberto
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = open ? 'hidden' : '';
+      document.body.style.touchAction = open ? 'none' : '';
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+  }
+});
 
 // Reset / prefill form when modal opens or transactionToEdit changes
 watch(
@@ -88,13 +107,20 @@ const filteredCategories = computed(() => {
   );
 });
 
+const selectedCategoryObj = computed(() => {
+  return (
+    filteredCategories.value.find((c) => c.id === categoryId.value) ||
+    DEFAULT_CATEGORIES.find((c) => c.id === categoryId.value) ||
+    filteredCategories.value[0]
+  );
+});
+
 function handleClose() {
   emit('close');
 }
 
 function handleAmountInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  // Allow only digits and decimal separators (, or .)
   let val = target.value.replace(/[^0-9.,]/g, '');
 
   const firstComma = val.indexOf(',');
@@ -199,7 +225,6 @@ async function handleSubmit() {
     emit('success');
     emit('close');
 
-    // Reset form fields
     description.value = '';
     amountStr.value = '';
     isInstallment.value = false;
@@ -226,23 +251,27 @@ async function handleSubmit() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-tx-title"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
+        class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-none touch-none select-none"
         @click.self="handleClose"
         @keydown.esc="handleClose"
       >
         <div
-          class="bg-surface border-t sm:border border-border-subtle rounded-t-3xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[92dvh] sm:my-8 pb-safe transform transition-all"
+          class="bg-surface border border-border-subtle rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[94dvh] touch-none"
         >
-          <!-- Alça de Arraste Mobile (Bottom Sheet Handle) -->
-          <div class="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mt-3 mb-1 sm:hidden" />
-          <!-- Header do Diálogo -->
-          <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
-            <h3 id="modal-tx-title" class="font-bold text-base text-white flex items-center gap-2">
-              <span>{{ isEditing ? 'Editar Lançamento' : 'Novo Lançamento' }}</span>
-            </h3>
+          <!-- Header Compacto e Estático -->
+          <div class="px-4 sm:px-5 py-3.5 border-b border-border-subtle flex items-center justify-between gap-2 shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-accent-yellow/15 border border-accent-yellow/30 flex items-center justify-center text-accent-yellow shrink-0">
+                <AppIcon name="plus" size="15" />
+              </span>
+              <h3 id="modal-tx-title" class="font-extrabold text-sm sm:text-base text-white tracking-tight">
+                {{ isEditing ? 'Editar Lançamento' : 'Novo Lançamento' }}
+              </h3>
+            </div>
+
             <button
               type="button"
-              class="text-finance-neutral hover:text-white transition p-1.5 rounded-lg hover:bg-surface-hover flex items-center justify-center cursor-pointer"
+              class="text-finance-neutral hover:text-white transition p-1.5 rounded-xl hover:bg-surface-hover flex items-center justify-center cursor-pointer"
               aria-label="Fechar modal"
               @click="handleClose"
             >
@@ -250,24 +279,24 @@ async function handleSubmit() {
             </button>
           </div>
 
-          <!-- Formulário -->
-          <form class="p-6 space-y-4" @submit.prevent="handleSubmit">
+          <!-- Formulário Estático e Bem Distribuído -->
+          <form class="p-4 sm:p-5 space-y-3.5 overflow-hidden flex flex-col flex-1" @submit.prevent="handleSubmit">
             <div
               v-if="errorMessage"
-              class="p-3 rounded-lg bg-finance-neg/10 border border-finance-neg/30 text-finance-neg text-xs font-medium"
+              class="p-2.5 rounded-xl bg-finance-neg/10 border border-finance-neg/30 text-finance-neg text-xs font-medium shrink-0"
             >
               {{ errorMessage }}
             </div>
 
-            <!-- Seletor de Tipo de Transação (Botões Flutuantes com Espaçamento) -->
-            <div class="flex items-center gap-2">
+            <!-- Linha 1: Seletor de Tipo (Despesa | Receita | Aporte) -->
+            <div class="grid grid-cols-3 gap-1.5 bg-background p-1 rounded-xl border border-border-subtle shrink-0">
               <button
                 type="button"
-                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
+                class="py-1.5 px-2 text-xs font-bold rounded-lg transition cursor-pointer text-center"
                 :class="
                   type === 'expense'
-                    ? 'bg-finance-neg text-white border-finance-neg shadow-md shadow-finance-neg/20'
-                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
+                    ? 'bg-finance-neg text-white shadow-sm'
+                    : 'text-finance-neutral hover:text-white'
                 "
                 @click="
                   type = 'expense';
@@ -278,11 +307,11 @@ async function handleSubmit() {
               </button>
               <button
                 type="button"
-                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
+                class="py-1.5 px-2 text-xs font-bold rounded-lg transition cursor-pointer text-center"
                 :class="
                   type === 'income'
-                    ? 'bg-finance-pos text-black border-finance-pos shadow-md shadow-finance-pos/20'
-                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
+                    ? 'bg-finance-pos text-black shadow-sm'
+                    : 'text-finance-neutral hover:text-white'
                 "
                 @click="
                   type = 'income';
@@ -293,11 +322,11 @@ async function handleSubmit() {
               </button>
               <button
                 type="button"
-                class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border transition cursor-pointer text-center"
+                class="py-1.5 px-2 text-xs font-bold rounded-lg transition cursor-pointer text-center"
                 :class="
                   type === 'investment_deposit'
-                    ? 'bg-finance-invest text-white border-finance-invest shadow-md shadow-finance-invest/20'
-                    : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
+                    ? 'bg-finance-invest text-black shadow-sm'
+                    : 'text-finance-neutral hover:text-white'
                 "
                 @click="
                   type = 'investment_deposit';
@@ -308,106 +337,129 @@ async function handleSubmit() {
               </button>
             </div>
 
-            <!-- Descrição e Valor -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Linha 2: Descrição + Valor & Data Minimalista Lado a Lado -->
+            <div class="space-y-2.5 shrink-0">
               <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Descrição
+                <label class="block text-[11px] font-semibold text-[#A1A1AA] mb-1">
+                  Descrição do Lançamento
                 </label>
                 <input
                   v-model="description"
                   type="text"
                   data-testid="input-description"
-                  placeholder="Ex: Supermercado, Aluguel"
-                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
+                  placeholder="Ex: Supermercado, Aluguel, Restaurante..."
+                  class="w-full h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 text-xs text-white outline-none transition"
                 />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Valor Total (R$)
-                </label>
-                <input
-                  :value="amountStr"
-                  type="text"
-                  inputmode="decimal"
-                  data-testid="input-amount"
-                  placeholder="Ex: 100,00 ou 100"
-                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
-                  @input="handleAmountInput"
-                />
+
+              <div class="grid grid-cols-12 gap-2.5">
+                <div class="col-span-7">
+                  <label class="block text-[11px] font-semibold text-[#A1A1AA] mb-1">
+                    Valor Total (R$)
+                  </label>
+                  <input
+                    :value="amountStr"
+                    type="text"
+                    inputmode="decimal"
+                    data-testid="input-amount"
+                    placeholder="0,00"
+                    class="w-full h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 text-xs text-white font-mono font-bold outline-none transition"
+                    @input="handleAmountInput"
+                  />
+                </div>
+
+                <!-- Campo de Data Minimalista -->
+                <div class="col-span-5">
+                  <label class="block text-[11px] font-semibold text-[#A1A1AA] mb-1">
+                    Data
+                  </label>
+                  <input
+                    v-model="date"
+                    type="date"
+                    data-testid="input-date"
+                    class="w-full h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-2.5 text-[11px] text-white font-mono outline-none transition"
+                  />
+                </div>
               </div>
             </div>
 
-            <!-- Grade Visual de Categorias Estilo Money Tracker -->
-            <div class="space-y-1.5">
-              <label class="block text-xs font-semibold text-finance-neutral">
-                Categoria Selecionada
-              </label>
-              <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-background border border-border-subtle rounded-xl no-scrollbar">
+            <!-- Linha 3 (Destaque Ampliado): Grade de Categoria Selecionada -->
+            <div class="space-y-2 flex-1 min-h-0 flex flex-col">
+              <div class="flex items-center justify-between gap-2 shrink-0">
+                <label class="text-xs font-bold text-white">
+                  Categoria Selecionada
+                </label>
+                <span
+                  v-if="selectedCategoryObj"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                  :style="{
+                    backgroundColor: `${selectedCategoryObj.color}20`,
+                    borderColor: `${selectedCategoryObj.color}50`,
+                    color: selectedCategoryObj.color,
+                  }"
+                >
+                  <AppIcon :name="selectedCategoryObj.icon" size="12" />
+                  <span>{{ selectedCategoryObj.name }}</span>
+                </span>
+              </div>
+
+              <div
+                class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-56 sm:max-h-60 overflow-y-auto custom-scrollbar p-2.5 bg-background border border-border-subtle rounded-2xl touch-pan-y overscroll-contain"
+              >
                 <button
                   v-for="c in filteredCategories"
                   :key="c.id"
                   type="button"
-                  class="flex flex-col items-center justify-center p-1.5 rounded-xl transition cursor-pointer text-center group"
-                  :class="categoryId === c.id ? 'bg-[#27272A] border border-accent-yellow/60 shadow-sm' : 'hover:bg-[#1C1C20] border border-transparent'"
+                  :data-testid="`category-option-${c.id}`"
+                  class="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl transition cursor-pointer text-center group"
+                  :class="
+                    categoryId === c.id
+                      ? 'bg-[#27272A] border border-accent-yellow ring-1 ring-accent-yellow/40 shadow-md'
+                      : 'bg-surface/40 hover:bg-[#1C1C20] border border-border-subtle/50'
+                  "
                   @click="categoryId = c.id"
                 >
                   <div
-                    class="w-9 h-9 rounded-full flex items-center justify-center transition"
+                    class="w-10 h-10 rounded-xl flex items-center justify-center transition shadow-sm"
                     :style="{
-                      backgroundColor: categoryId === c.id ? c.color : `${c.color}20`,
-                      color: categoryId === c.id ? '#000000' : c.color
+                      backgroundColor: categoryId === c.id ? c.color : `${c.color}22`,
+                      color: categoryId === c.id ? '#000000' : c.color,
                     }"
                   >
-                    <AppIcon :name="c.icon" size="16" />
+                    <AppIcon :name="c.icon" size="19" />
                   </div>
-                  <span class="text-[9px] text-white/90 font-medium mt-1 leading-tight text-center">
-                    {{ c.name.split(/[\s&]/)[0] }}
+                  <span
+                    class="text-[11px] font-semibold mt-1.5 leading-tight text-center line-clamp-1 w-full"
+                    :class="categoryId === c.id ? 'text-white font-bold' : 'text-[#D4D4D8]'"
+                  >
+                    {{ c.name }}
                   </span>
                 </button>
               </div>
             </div>
 
-            <!-- Data de Referência -->
-            <div>
-              <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                Data de Referência
-              </label>
-              <input
-                v-model="date"
-                type="date"
-                data-testid="input-date"
-                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
-              />
-            </div>
-
-            <!-- Compra Parcelada (apenas para despesa nova) -->
+            <!-- Linha 4: Compra Parcelada Compacta (apenas para despesa nova) -->
             <div
               v-if="type === 'expense' && !isEditing"
-              class="border border-border-subtle bg-background/60 rounded-xl p-3.5 space-y-3"
+              class="border border-border-subtle bg-background/60 rounded-xl p-2.5 space-y-2 shrink-0"
             >
-              <div class="flex items-center justify-between">
-                <div>
-                  <span class="text-xs font-bold text-white block">Compra Parcelada?</span>
-                  <span class="text-[11px] text-[#71717A]">
-                    Gera a série com compensação exata de centavos
-                  </span>
-                </div>
-                <input
-                  v-model="isInstallment"
-                  type="checkbox"
-                  data-testid="switch-installment"
-                  class="w-4 h-4 accent-accent-yellow rounded cursor-pointer"
-                />
-              </div>
+              <div class="flex items-center justify-between gap-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="isInstallment"
+                    type="checkbox"
+                    data-testid="switch-installment"
+                    class="w-4 h-4 accent-accent-yellow rounded cursor-pointer shrink-0"
+                  />
+                  <span class="text-xs font-bold text-white">Compra Parcelada?</span>
+                </label>
 
-              <div v-if="isInstallment" class="space-y-3 pt-2 border-t border-border-subtle/50">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-finance-neutral">Quantidade de Parcelas:</span>
+                <div v-if="isInstallment" class="flex items-center gap-1.5 text-xs">
+                  <span class="text-[#A1A1AA] text-[11px]">Parcelas:</span>
                   <select
                     v-model.number="installmentTotal"
                     data-testid="select-installment-count"
-                    class="bg-surface border border-border-subtle text-white px-2 py-1 rounded text-xs font-mono outline-none"
+                    class="bg-surface border border-border-subtle text-white px-2 py-1 rounded-lg text-xs font-mono font-bold outline-none"
                   >
                     <option
                       v-for="n in [2, 3, 4, 5, 6, 8, 10, 12, 18, 24, 36, 48]"
@@ -418,63 +470,66 @@ async function handleSubmit() {
                     </option>
                   </select>
                 </div>
+                <span v-else class="text-[10px] text-[#71717A]">
+                  Compensação exata de centavos
+                </span>
+              </div>
 
-                <!-- Live Schedule Preview -->
+              <!-- Live Schedule Preview Compacto -->
+              <div
+                v-if="isInstallment && schedulePreview"
+                data-testid="schedule-preview-box"
+                class="bg-[#121215] border border-border-subtle rounded-lg p-2.5 text-xs space-y-1 font-mono"
+              >
                 <div
-                  v-if="schedulePreview"
-                  data-testid="schedule-preview-box"
-                  class="bg-[#121215] border border-border-subtle rounded-lg p-3 text-xs space-y-1.5 font-mono"
+                  class="text-[10px] text-accent-yellow font-sans font-bold uppercase tracking-wider flex items-center justify-between"
                 >
+                  <span>Cronograma das Parcelas</span>
+                  <span class="text-[10px] text-finance-neutral">Centavos Compensados</span>
+                </div>
+                <div class="text-finance-neutral space-y-1 text-[11px] max-h-20 overflow-y-auto custom-scrollbar touch-pan-y">
                   <div
-                    class="text-[11px] text-accent-yellow font-sans font-bold uppercase tracking-wider flex items-center justify-between"
+                    v-for="item in schedulePreview"
+                    :key="item.currentInstallment"
+                    class="flex justify-between items-center"
+                    :class="
+                      item.isLast && item.residueAbsorbedInCents > 0
+                        ? 'text-accent-yellow font-semibold'
+                        : ''
+                    "
                   >
-                    <span>Cronograma das Parcelas</span>
-                    <span class="text-[10px] text-finance-neutral">Centavos Compensados</span>
-                  </div>
-                  <div class="text-finance-neutral space-y-1 text-[11px] max-h-32 overflow-y-auto">
-                    <div
-                      v-for="item in schedulePreview"
-                      :key="item.currentInstallment"
-                      class="flex justify-between items-center"
-                      :class="
-                        item.isLast && item.residueAbsorbedInCents > 0
-                          ? 'text-accent-yellow font-semibold'
-                          : ''
-                      "
-                    >
-                      <span>
-                        Parcela {{ item.currentInstallment }}/{{ item.totalInstallments }} ({{ item.date }})
+                    <span>
+                      Parcela {{ item.currentInstallment }}/{{ item.totalInstallments }} ({{ item.date }})
+                    </span>
+                    <span>
+                      {{ formatCentsToBrl(item.amountInCents) }}
+                      <span
+                        v-if="item.isLast && item.residueAbsorbedInCents > 0"
+                        class="text-[9px] bg-accent-yellow/20 px-1 py-0.2 rounded ml-1"
+                      >
+                        +{{ item.residueAbsorbedInCents }}¢
                       </span>
-                      <span>
-                        {{ formatCentsToBrl(item.amountInCents) }}
-                        <span
-                          v-if="item.isLast && item.residueAbsorbedInCents > 0"
-                          class="text-[9px] bg-accent-yellow/20 px-1 py-0.2 rounded ml-1"
-                        >
-                          +{{ item.residueAbsorbedInCents }}¢
-                        </span>
-                      </span>
-                    </div>
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Rodapé / Ações (Botão Lançar cobrindo o width da tela alinhado com outros componentes) -->
-            <div class="pt-3 border-t border-border-subtle flex flex-col gap-2">
-              <button
-                type="submit"
-                data-testid="btn-submit"
-                class="w-full h-12 py-3 px-4 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-sm transition transform active:scale-[0.99] shadow-md shadow-accent-yellow/20 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>{{ isEditing ? 'Salvar Alterações' : 'Salvar Lançamento' }}</span>
-              </button>
+            <!-- Rodapé de Ações Compacto -->
+            <div class="pt-2 border-t border-border-subtle flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
-                class="w-full py-1 text-xs text-finance-neutral hover:text-white font-medium transition text-center cursor-pointer"
+                class="px-4 h-10 rounded-xl bg-background hover:bg-surface-hover border border-border-subtle text-xs text-finance-neutral hover:text-white font-bold transition cursor-pointer"
                 @click="handleClose"
               >
                 Cancelar
+              </button>
+              <button
+                type="submit"
+                data-testid="btn-submit"
+                class="flex-1 h-10 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs sm:text-sm transition transform active:scale-[0.99] shadow-md shadow-accent-yellow/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{{ isEditing ? 'Salvar Alterações' : 'Salvar Lançamento' }}</span>
               </button>
             </div>
           </form>

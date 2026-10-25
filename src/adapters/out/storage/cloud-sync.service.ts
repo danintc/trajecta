@@ -211,19 +211,38 @@ export const cloudSyncService = {
       cloudTxs.length > 0 || cloudAssets.length > 0 || cloudCareers.length > 0;
 
     if (hasCloudData) {
-      await db.transactions.clear();
-      await db.assets.clear();
-      await db.careerRecords.clear();
-
       if (cloudTxs.length > 0) {
+        await db.transactions.clear();
         await db.transactions.bulkPut(cloudTxs.map(mapRowToTx));
+      } else {
+        const localTxs = await db.transactions.toArray();
+        if (localTxs.length > 0) {
+          await supabase.from('transactions').upsert(localTxs.map((t) => mapTxToRow(t, userId)));
+        }
       }
+
       if (cloudAssets.length > 0) {
+        await db.assets.clear();
         await db.assets.bulkPut(cloudAssets.map(mapRowToAsset));
+      } else {
+        const localAssets = await db.assets.toArray();
+        if (localAssets.length > 0) {
+          await supabase.from('assets').upsert(localAssets.map((a) => mapAssetToRow(a, userId)));
+        }
       }
+
       if (cloudCareers.length > 0) {
+        await db.careerRecords.clear();
         await db.careerRecords.bulkPut(cloudCareers.map(mapRowToCareer));
+      } else {
+        const localCareers = await db.careerRecords.toArray();
+        if (localCareers.length > 0) {
+          await supabase
+            .from('career_records')
+            .upsert(localCareers.map((c) => mapCareerToRow(c, userId)));
+        }
       }
+
       return true;
     }
 

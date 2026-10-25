@@ -1173,7 +1173,7 @@ const paginatedMonthlyPoints = computed(() => {
             :class="monthlyDisplayMode === 'cards' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
             @click="monthlyDisplayMode = 'cards'"
           >
-            📱 Cards (Sem Scroll)
+            📱 Cards
           </button>
         </div>
       </div>

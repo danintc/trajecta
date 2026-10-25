@@ -188,66 +188,69 @@ const activePt = computed(() => {
     data-testid="net-worth-line-chart"
     class="flex flex-col justify-between h-full w-full select-none space-y-3"
   >
-    <!-- Controles Superiores: Segmented Control (Rendimento / Patrimônio) e Seletor de Benchmark -->
-    <div class="flex flex-wrap items-center justify-between gap-2.5">
-      <!-- Segmented Control idêntico à aba Investir -->
-      <div class="inline-flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
-        <button
-          type="button"
-          class="px-4 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
-          :class="
-            displayMode === 'rendimento'
-              ? 'bg-white text-black shadow-md font-extrabold'
-              : 'text-[#A1A1AA] hover:text-white'
-          "
-          @click="displayMode = 'rendimento'"
-        >
-          Rendimento
-        </button>
-        <button
-          type="button"
-          class="px-4 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
-          :class="
-            displayMode === 'patrimonio'
-              ? 'bg-white text-black shadow-md font-extrabold'
-              : 'text-[#A1A1AA] hover:text-white'
-          "
-          @click="displayMode = 'patrimonio'"
-        >
-          Patrimônio
-        </button>
-      </div>
-
-      <!-- Dropdown Seletor de Benchmark -->
-      <div class="flex items-center gap-2 shrink-0">
-        <label for="benchmark-select" class="text-[11px] text-[#71717A] hidden sm:inline">Benchmark:</label>
-        <div class="relative">
-          <select
-            id="benchmark-select"
-            v-model="selectedBenchmark"
-            class="bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none transition cursor-pointer pr-7 appearance-none"
+    <!-- Cabeçalho Unificado à Esquerda: Controles (Rendimento / Patrimônio + Benchmark) + Textos e Métricas Abaixo -->
+    <div class="flex flex-col items-start justify-start gap-2.5 w-full">
+      <!-- Linha 1 (À Esquerda): Segmented Control + Benchmark lado a lado, com espaço livre à direita -->
+      <div class="flex flex-wrap items-center justify-start gap-2.5">
+        <!-- Segmented Control: Rendimento | Patrimônio -->
+        <div class="inline-flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
+          <button
+            type="button"
+            class="px-3.5 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
+            :class="
+              displayMode === 'rendimento'
+                ? 'bg-white text-black shadow-md font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="displayMode = 'rendimento'"
           >
-            <option
-              v-for="b in BENCHMARK_LIST"
-              :key="b.id"
-              :value="b.id"
-              class="bg-[#18181B] text-white"
+            Rendimento
+          </button>
+          <button
+            type="button"
+            class="px-3.5 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
+            :class="
+              displayMode === 'patrimonio'
+                ? 'bg-white text-black shadow-md font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="displayMode = 'patrimonio'"
+          >
+            Patrimônio
+          </button>
+        </div>
+
+        <!-- Seletor de Benchmark agrupado logo ao lado esquerdo -->
+        <div class="inline-flex items-center gap-1.5 bg-[#18181B] border border-[#27272A] rounded-2xl px-3 py-1 shrink-0">
+          <label for="benchmark-select" class="text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+            vs
+          </label>
+          <div class="relative flex items-center">
+            <select
+              id="benchmark-select"
+              v-model="selectedBenchmark"
+              class="bg-transparent text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-5 py-0.5 appearance-none"
             >
-              {{ b.name }}
-            </option>
-          </select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
+              <option
+                v-for="b in BENCHMARK_LIST"
+                :key="b.id"
+                :value="b.id"
+                class="bg-[#18181B] text-white"
+              >
+                {{ b.name }}
+              </option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#A1A1AA]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Cabeçalho das Legendas e Comparativo -->
-    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-      <div class="flex flex-wrap items-center gap-3">
+      <!-- Linha 2 (À Esquerda): Legendas + Badge Comparativo alinhados à esquerda com respiro à direita -->
+      <div class="flex flex-wrap items-center justify-start gap-x-3 gap-y-1.5 text-xs">
         <!-- Legenda Patrimônio / Rendimento (Montanha) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
           <span class="w-2.5 h-2.5 rounded-full bg-white shadow-sm shrink-0" />
@@ -258,6 +261,8 @@ const activePt = computed(() => {
             {{ metrics.growthPercent >= 0 ? `+${metrics.growthPercent}%` : `${metrics.growthPercent}%` }}
           </span>
         </div>
+
+        <span class="text-[#3F3F46] hidden sm:inline">•</span>
 
         <!-- Legenda do Benchmark Selecionado (Linha Pontilhada) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
@@ -275,25 +280,25 @@ const activePt = computed(() => {
             +{{ metrics.benchmarkGrowthPercent }}%
           </span>
         </div>
-      </div>
 
-      <!-- Badge Comparativo de Desempenho -->
-      <div
-        v-if="currentNetWorthInCents > 0"
-        class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 flex items-center gap-1 bg-[#27272A] border-[#3F3F46] text-white"
-      >
-        <span
-          class="w-2 h-2 rounded-full shrink-0"
-          :style="{ backgroundColor: currentBenchmark.color }"
-        />
-        <span>
-          {{
-            metrics.isBeatingBenchmark
-              ? `Superando ${currentBenchmark.shortName} em +${(metrics.growthPercent - metrics.benchmarkGrowthPercent).toFixed(1)} p.p.`
-              : `Abaixo do ${currentBenchmark.shortName} em ${(metrics.benchmarkGrowthPercent - metrics.growthPercent).toFixed(1)} p.p.`
-          }}
-        </span>
-        <span class="opacity-85 font-mono">({{ metrics.percentOfBenchmark }}% do {{ currentBenchmark.shortName }})</span>
+        <!-- Badge Comparativo de Desempenho agrupado à esquerda -->
+        <div
+          v-if="currentNetWorthInCents > 0"
+          class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 flex items-center gap-1 bg-[#27272A]/80 border-[#3F3F46] text-white"
+        >
+          <span
+            class="w-2 h-2 rounded-full shrink-0"
+            :style="{ backgroundColor: currentBenchmark.color }"
+          />
+          <span>
+            {{
+              metrics.isBeatingBenchmark
+                ? `Superando ${currentBenchmark.shortName} em +${(metrics.growthPercent - metrics.benchmarkGrowthPercent).toFixed(1)} p.p.`
+                : `Abaixo do ${currentBenchmark.shortName} em ${(metrics.benchmarkGrowthPercent - metrics.growthPercent).toFixed(1)} p.p.`
+            }}
+          </span>
+          <span class="opacity-85 font-mono">({{ metrics.percentOfBenchmark }}% do {{ currentBenchmark.shortName }})</span>
+        </div>
       </div>
     </div>
 
@@ -428,10 +433,10 @@ const activePt = computed(() => {
       </svg>
     </div>
 
-    <!-- Barra Informativa do Ponto em Foco -->
+    <!-- Barra Informativa do Ponto em Foco (Alinhada à Esquerda) -->
     <div
       v-if="activePt"
-      class="flex flex-wrap items-center justify-between gap-2 text-xs bg-background/70 px-3 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA]"
+      class="flex flex-wrap items-center justify-start gap-3 text-xs bg-background/70 px-3.5 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA] w-fit max-w-full"
     >
       <span class="font-bold text-white whitespace-nowrap">
         📅 {{ activePt.dateLabel }}
