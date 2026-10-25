@@ -260,7 +260,7 @@ const maxSalaryInCents = computed(() => {
     <div
       v-show="activeSubTab === 'evolution'"
       v-if="salaryEvolutionPoints.length > 0"
-      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 shadow-lg"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 shadow-lg subview-transition-panel"
     >
       <div
         class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5"
@@ -363,7 +363,7 @@ const maxSalaryInCents = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 2: LINHA DO TEMPO CRONOLÓGICA DE MARCOS PROFISSIONAIS             -->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'timeline'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4">
+    <div v-show="activeSubTab === 'timeline'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 subview-transition-panel">
       <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-3">
         <div>
           <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-finance-neutral">
@@ -493,7 +493,7 @@ const maxSalaryInCents = computed(() => {
     <!-- ========================================================================= -->
     <div
       v-show="activeSubTab === 'totalcash'"
-      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 subview-transition-panel"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border-subtle pb-3.5">
         <div>

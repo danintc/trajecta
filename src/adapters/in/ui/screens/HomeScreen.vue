@@ -392,7 +392,7 @@ const periodLabel = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 1: PATRIMÔNIO LÍQUIDO & GRÁFICO DE EVOLUÇÃO                       -->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'overview'" class="space-y-4">
+    <div v-show="activeSubTab === 'overview'" class="space-y-4 subview-transition-panel">
       <div
         data-testid="hero-net-worth"
         class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl overflow-hidden"
@@ -560,7 +560,7 @@ const periodLabel = computed(() => {
     <div
       v-show="activeSubTab === 'allocation'"
       data-testid="donut-asset-allocation"
-      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden subview-transition-panel"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
         <div class="min-w-0">
@@ -605,7 +605,7 @@ const periodLabel = computed(() => {
     <div
       v-show="activeSubTab === 'liabilities'"
       data-testid="donut-debt-categories"
-      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden"
+      class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 shadow-lg overflow-hidden subview-transition-panel"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3.5">
         <div class="min-w-0">

@@ -509,49 +509,51 @@ function handleDelete(id: string, description: string) {
     </div>
 
     <!-- CONTEÚDO BASEADO NA SUB-ABA SELECIONADA -->
+    <Transition name="trajecta-subview" mode="out-in">
+      <!-- 1. SUB-ABA: GASTOS POR CATEGORIA -->
+      <div v-if="activeSubTab === 'categorias' && isAnalyticsVisible" key="timeline-subtab-categorias">
+        <CategoryBreakdownChart
+          :transactions="periodTransactions"
+          :is-privacy-active="isPrivacyActive"
+          @select-category="handleSelectCategoryFromChart"
+        />
+      </div>
 
-    <!-- 1. SUB-ABA: GASTOS POR CATEGORIA -->
-    <div v-if="activeSubTab === 'categorias' && isAnalyticsVisible">
-      <CategoryBreakdownChart
-        :transactions="periodTransactions"
-        :is-privacy-active="isPrivacyActive"
-        @select-category="handleSelectCategoryFromChart"
-      />
-    </div>
+      <!-- 2. SUB-ABA: CALENDÁRIO FINANCEIRO -->
+      <div v-else-if="activeSubTab === 'calendario' && isAnalyticsVisible" key="timeline-subtab-calendario" class="space-y-4">
+        <FinancialCalendar
+          :transactions="periodTransactions"
+          :selected-date="selectedCalendarDay"
+          :current-month="anchorDate"
+          :is-privacy-active="isPrivacyActive"
+          @select-date="(d) => selectedCalendarDay = d"
+        />
+      </div>
 
-    <!-- 2. SUB-ABA: CALENDÁRIO FINANCEIRO -->
-    <div v-else-if="activeSubTab === 'calendario' && isAnalyticsVisible" class="space-y-4">
-      <FinancialCalendar
-        :transactions="periodTransactions"
-        :selected-date="selectedCalendarDay"
-        :current-month="anchorDate"
-        :is-privacy-active="isPrivacyActive"
-        @select-date="(d) => selectedCalendarDay = d"
-      />
-    </div>
+      <!-- 3. SUB-ABA: VISÃO CONSOLIDADA -->
+      <div
+        v-else-if="activeSubTab === 'consolidado' && isAnalyticsVisible"
+        key="timeline-subtab-consolidado"
+        class="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      >
+        <CategoryBreakdownChart
+          :transactions="periodTransactions"
+          :is-privacy-active="isPrivacyActive"
+          @select-category="handleSelectCategoryFromChart"
+        />
 
-    <!-- 3. SUB-ABA: VISÃO CONSOLIDADA -->
-    <div
-      v-else-if="activeSubTab === 'consolidado' && isAnalyticsVisible"
-      class="grid grid-cols-1 lg:grid-cols-2 gap-4"
-    >
-      <CategoryBreakdownChart
-        :transactions="periodTransactions"
-        :is-privacy-active="isPrivacyActive"
-        @select-category="handleSelectCategoryFromChart"
-      />
-
-      <FinancialCalendar
-        :transactions="periodTransactions"
-        :selected-date="selectedCalendarDay"
-        :current-month="anchorDate"
-        :is-privacy-active="isPrivacyActive"
-        @select-date="(d) => selectedCalendarDay = d"
-      />
-    </div>
+        <FinancialCalendar
+          :transactions="periodTransactions"
+          :selected-date="selectedCalendarDay"
+          :current-month="anchorDate"
+          :is-privacy-active="isPrivacyActive"
+          @select-date="(d) => selectedCalendarDay = d"
+        />
+      </div>
+    </Transition>
 
     <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta) -->
-    <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3">
+    <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3 subview-transition-panel">
       <!-- Barra Minimalista de Busca & Filtros -->
       <div class="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5">
         <!-- Campo de Busca Minimalista -->

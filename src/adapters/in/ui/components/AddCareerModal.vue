@@ -271,7 +271,7 @@ async function handleSubmit() {
                   </label>
                 </div>
               </div>
-              <div v-if="!isCurrent">
+              <div v-if="!isCurrent" class="expand-item-smooth">
                 <label class="block text-xs font-semibold text-finance-neutral mb-1">
                   Data de Término
                 </label>

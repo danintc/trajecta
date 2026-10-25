@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   formatCentsToBrl,
   parseBrlToCents,
@@ -9,11 +9,16 @@ import {
   setGlobalCurrency,
   toggleGlobalCurrency,
   USD_EXCHANGE_RATE,
+  usdExchangeRate,
+  usdRateSource,
+  setUsdExchangeRate,
+  fetchLiveUsdExchangeRate,
 } from '@/shared/utils/currency';
 
 describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
   beforeEach(() => {
     setGlobalCurrency('BRL');
+    setUsdExchangeRate(USD_EXCHANGE_RATE, 'Referência', null);
   });
 
   it('deve formatar centavos inteiros positivos e negativos para BRL', () => {
@@ -95,5 +100,52 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     toggleGlobalCurrency();
     expect(globalCurrency.value).toBe('BRL');
     expect(formatCentsToBrl(56500)).toContain('565,00');
+  });
+
+  it('deve buscar a cotação do dólar em tempo real na AwesomeAPI e atualizar a conversão USD reativamente', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        USDBRL: {
+          code: 'USD',
+          codein: 'BRL',
+          bid: '5.0000',
+          ask: '5.0010',
+          create_date: '2026-10-25 18:30:00',
+        },
+      }),
+    });
+
+    const rate = await fetchLiveUsdExchangeRate({
+      force: true,
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+
+    expect(rate).toBe(5);
+    expect(usdExchangeRate.value).toBe(5);
+    expect(usdRateSource.value).toBe('AwesomeAPI (Comercial)');
+
+    setGlobalCurrency('USD');
+    // R$ 500,00 (50000 centavos) na cotação em tempo real 5.00 -> $100.00
+    expect(formatCentsToBrl(50000)).toContain('$100.00');
+  });
+
+  it('deve fazer fallback para a API oficial PTAX do Banco Central do Brasil se a fonte primária falhar', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ data: '25/10/2026', valor: '5.0400' }],
+      });
+
+    const rate = await fetchLiveUsdExchangeRate({
+      force: true,
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+
+    expect(rate).toBe(5.04);
+    expect(usdExchangeRate.value).toBe(5.04);
+    expect(usdRateSource.value).toBe('Banco Central (PTAX)');
   });
 });

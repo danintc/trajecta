@@ -4,6 +4,14 @@ import { db } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { calculateInstallmentsSchedule } from '@/core/use-cases/calculate-installments.use-case';
 import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
+import {
+  onExpandBeforeEnter,
+  onExpandEnter,
+  onExpandAfterEnter,
+  onExpandBeforeLeave,
+  onExpandLeave,
+  onExpandAfterLeave,
+} from '@/shared/utils/expand-transition';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { Transaction, TransactionType } from '@/core/domain/transaction.entity';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
@@ -475,44 +483,54 @@ async function handleSubmit() {
                 </span>
               </div>
 
-              <!-- Live Schedule Preview Compacto -->
-              <div
-                v-if="isInstallment && schedulePreview"
-                data-testid="schedule-preview-box"
-                class="bg-[#121215] border border-border-subtle rounded-lg p-2.5 text-xs space-y-1 font-mono"
+              <!-- Live Schedule Preview Compacto com expansão smooth -->
+              <Transition
+                name="trajecta-expand"
+                @before-enter="onExpandBeforeEnter"
+                @enter="onExpandEnter"
+                @after-enter="onExpandAfterEnter"
+                @before-leave="onExpandBeforeLeave"
+                @leave="onExpandLeave"
+                @after-leave="onExpandAfterLeave"
               >
                 <div
-                  class="text-[10px] text-accent-yellow font-sans font-bold uppercase tracking-wider flex items-center justify-between"
+                  v-if="isInstallment && schedulePreview"
+                  data-testid="schedule-preview-box"
+                  class="bg-[#121215] border border-border-subtle rounded-lg p-2.5 text-xs space-y-1 font-mono"
                 >
-                  <span>Cronograma das Parcelas</span>
-                  <span class="text-[10px] text-finance-neutral">Centavos Compensados</span>
-                </div>
-                <div class="text-finance-neutral space-y-1 text-[11px] max-h-20 overflow-y-auto custom-scrollbar touch-pan-y">
                   <div
-                    v-for="item in schedulePreview"
-                    :key="item.currentInstallment"
-                    class="flex justify-between items-center"
-                    :class="
-                      item.isLast && item.residueAbsorbedInCents > 0
-                        ? 'text-accent-yellow font-semibold'
-                        : ''
-                    "
+                    class="text-[10px] text-accent-yellow font-sans font-bold uppercase tracking-wider flex items-center justify-between"
                   >
-                    <span>
-                      Parcela {{ item.currentInstallment }}/{{ item.totalInstallments }} ({{ item.date }})
-                    </span>
-                    <span>
-                      {{ formatCentsToBrl(item.amountInCents) }}
-                      <span
-                        v-if="item.isLast && item.residueAbsorbedInCents > 0"
-                        class="text-[9px] bg-accent-yellow/20 px-1 py-0.2 rounded ml-1"
-                      >
-                        +{{ item.residueAbsorbedInCents }}¢
+                    <span>Cronograma das Parcelas</span>
+                    <span class="text-[10px] text-finance-neutral">Centavos Compensados</span>
+                  </div>
+                  <div class="text-finance-neutral space-y-1 text-[11px] max-h-20 overflow-y-auto custom-scrollbar touch-pan-y">
+                    <div
+                      v-for="item in schedulePreview"
+                      :key="item.currentInstallment"
+                      class="flex justify-between items-center"
+                      :class="
+                        item.isLast && item.residueAbsorbedInCents > 0
+                          ? 'text-accent-yellow font-semibold'
+                          : ''
+                      "
+                    >
+                      <span>
+                        Parcela {{ item.currentInstallment }}/{{ item.totalInstallments }} ({{ item.date }})
                       </span>
-                    </span>
+                      <span>
+                        {{ formatCentsToBrl(item.amountInCents) }}
+                        <span
+                          v-if="item.isLast && item.residueAbsorbedInCents > 0"
+                          class="text-[9px] bg-accent-yellow/20 px-1 py-0.2 rounded ml-1"
+                        >
+                          +{{ item.residueAbsorbedInCents }}¢
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Transition>
             </div>
 
             <!-- Rodapé de Ações Compacto -->

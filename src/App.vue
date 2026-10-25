@@ -14,7 +14,13 @@ import CareerScreen from './adapters/in/ui/screens/CareerScreen.vue';
 import PhaseSimulatorScreen from './adapters/in/ui/screens/PhaseSimulatorScreen.vue';
 import AddTransactionModal from './adapters/in/ui/components/AddTransactionModal.vue';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
-import { globalCurrency, toggleGlobalCurrency, USD_EXCHANGE_RATE } from '@/shared/utils/currency';
+import {
+  globalCurrency,
+  toggleGlobalCurrency,
+  usdExchangeRate,
+  usdRateSource,
+  fetchLiveUsdExchangeRate,
+} from '@/shared/utils/currency';
 
 export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career' | 'phase-simulator';
 
@@ -30,6 +36,7 @@ const {
 } = useAuth();
 
 const activeTab = ref<ActiveTab>('home');
+const pageTransitionName = ref<'page-slide-left' | 'page-slide-right'>('page-slide-left');
 const isPrivacyActive = ref(false);
 const isAddModalOpen = ref(false);
 const isUserMenuOpen = ref(false);
@@ -67,6 +74,16 @@ const navItems: Array<{ key: ActiveTab; icon: string; label: string; shortLabel:
     testId: 'nav-tab-phase-simulator',
   },
 ];
+
+watch(activeTab, (newTab, oldTab) => {
+  const oldIdx = navItems.findIndex((item) => item.key === oldTab);
+  const newIdx = navItems.findIndex((item) => item.key === newTab);
+  pageTransitionName.value = newIdx >= oldIdx ? 'page-slide-left' : 'page-slide-right';
+
+  if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
 
 function handleOpenAddModal() {
   transactionToEdit.value = null;
@@ -123,6 +140,8 @@ function preventMultiTouchZoom(e: TouchEvent) {
   }
 }
 
+let usdRefreshTimer: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   if (typeof document !== 'undefined') {
     document.addEventListener('gesturestart', preventPinchZoom, { passive: false });
@@ -130,6 +149,11 @@ onMounted(async () => {
     document.addEventListener('gestureend', preventPinchZoom, { passive: false });
     document.addEventListener('touchmove', preventMultiTouchZoom, { passive: false });
   }
+
+  void fetchLiveUsdExchangeRate();
+  usdRefreshTimer = setInterval(() => {
+    void fetchLiveUsdExchangeRate({ force: true });
+  }, 60_000);
 
   await seedPopulatedDatabase();
   await loadDatabaseData();
@@ -140,6 +164,10 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (usdRefreshTimer) {
+    clearInterval(usdRefreshTimer);
+    usdRefreshTimer = null;
+  }
   if (typeof document !== 'undefined') {
     document.removeEventListener('gesturestart', preventPinchZoom);
     document.removeEventListener('gesturechange', preventPinchZoom);
@@ -239,40 +267,51 @@ async function handleLogout() {
           </span>
         </button>
 
-        <!-- Toggle Moeda Global (BRL / USD) -->
+        <!-- Toggle Moeda Global (BRL / USD) com Cotação em Tempo Real -->
         <button
           data-testid="currency-toggle"
           type="button"
           class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer hover:border-[#3F3F46]"
           :class="globalCurrency === 'USD' ? 'border-accent-yellow/40 text-accent-yellow bg-accent-yellow/5' : 'text-white'"
-          :title="globalCurrency === 'BRL' ? 'Mudar moeda para Dólar Americano (USD)' : 'Mudar moeda para Real Brasileiro (BRL)'"
+          :title="
+            globalCurrency === 'BRL'
+              ? `Mudar para Dólar (USD) • US$ 1 = R$ ${usdExchangeRate.toFixed(2).replace('.', ',')} (${usdRateSource})`
+              : `Mudar para Real (BRL) • US$ 1 = R$ ${usdExchangeRate.toFixed(2).replace('.', ',')} (${usdRateSource})`
+          "
           @click="toggleGlobalCurrency"
         >
           <span class="text-sm leading-none">{{ globalCurrency === 'BRL' ? '🇧🇷' : '🇺🇸' }}</span>
           <span class="font-mono font-bold text-[11px] sm:text-xs">{{ globalCurrency }}</span>
-          <span class="text-[10px] text-[#71717A] font-mono hidden xl:inline">
-            (US$ 1 = R$ {{ USD_EXCHANGE_RATE.toFixed(2) }})
+          <span
+            class="text-[10px] text-[#A1A1AA] font-mono"
+            :class="globalCurrency === 'USD' ? 'inline' : 'hidden sm:inline'"
+          >
+            (US$ 1 = R$ {{ usdExchangeRate.toFixed(2).replace('.', ',') }})
           </span>
         </button>
 
         <!-- Botão (+) — Visível no topo apenas quando na aba de Extrato -->
-        <button
-          v-if="activeTab === 'timeline'"
-          data-testid="fab-add-transaction"
-          type="button"
-          class="hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 cursor-pointer"
-          @click="handleOpenAddModal"
-        >
-          <AppIcon name="plus" size="14" stroke-width="2.5" />
-          <span>Lançar</span>
-        </button>
+        <Transition name="trajecta-popover">
+          <button
+            v-if="activeTab === 'timeline'"
+            data-testid="fab-add-transaction"
+            type="button"
+            class="hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs items-center gap-1.5 shadow-sm shadow-accent-yellow/20 transition transform active:scale-95 cursor-pointer"
+            @click="handleOpenAddModal"
+          >
+            <AppIcon name="plus" size="14" stroke-width="2.5" />
+            <span>Lançar</span>
+          </button>
+        </Transition>
 
         <!-- Menu de Perfil & Opções Mobile -->
         <div class="relative">
           <button
             type="button"
             data-testid="btn-user-menu"
-            class="w-9 h-9 rounded-xl bg-background border border-border-subtle hover:border-accent-yellow/60 text-xs font-extrabold text-accent-yellow flex items-center justify-center transition"
+            :aria-expanded="isUserMenuOpen"
+            class="w-9 h-9 rounded-xl bg-background border border-border-subtle hover:border-accent-yellow/60 text-xs font-extrabold text-accent-yellow flex items-center justify-center transition duration-200 cursor-pointer"
+            :class="isUserMenuOpen ? 'border-accent-yellow ring-2 ring-accent-yellow/25 scale-95' : ''"
             aria-label="Menu da conta"
             @click="isUserMenuOpen = !isUserMenuOpen"
           >
@@ -285,34 +324,36 @@ async function handleLogout() {
             class="fixed inset-0 z-40"
             @click="isUserMenuOpen = false"
           />
-          <div
-            v-if="isUserMenuOpen"
-            data-testid="user-menu-dropdown"
-            class="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-border-subtle shadow-2xl p-4 z-50 space-y-3"
-          >
-            <div class="border-b border-border-subtle pb-3">
-              <div class="text-xs font-bold text-white truncate">{{ userDisplayName }}</div>
-              <div class="text-[11px] text-finance-neutral truncate">{{ userEmail }}</div>
-              <div class="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold">
-                <span class="w-2 h-2 rounded-full bg-finance-pos" />
-                <span class="text-finance-pos">
-                  {{ isSyncingCloud ? 'Sincronizando com a nuvem...' : 'Salvo na nuvem' }}
-                </span>
+          <Transition name="trajecta-popover">
+            <div
+              v-if="isUserMenuOpen"
+              data-testid="user-menu-dropdown"
+              class="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-border-subtle shadow-2xl p-4 z-50 space-y-3"
+            >
+              <div class="border-b border-border-subtle pb-3">
+                <div class="text-xs font-bold text-white truncate">{{ userDisplayName }}</div>
+                <div class="text-[11px] text-finance-neutral truncate">{{ userEmail }}</div>
+                <div class="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold">
+                  <span class="w-2 h-2 rounded-full bg-finance-pos" />
+                  <span class="text-finance-pos">
+                    {{ isSyncingCloud ? 'Sincronizando com a nuvem...' : 'Salvo na nuvem' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="pt-1">
+                <button
+                  type="button"
+                  data-testid="btn-logout"
+                  class="w-full py-2 px-3 rounded-xl bg-finance-neg/10 hover:bg-finance-neg/20 border border-finance-neg/25 text-finance-neg text-xs font-bold flex items-center justify-center gap-2 transition"
+                  @click="handleLogout"
+                >
+                  <span>🚪</span>
+                  <span>{{ currentUser ? 'Sair da Conta' : 'Voltar para Tela de Login' }}</span>
+                </button>
               </div>
             </div>
-
-            <div class="pt-1">
-              <button
-                type="button"
-                data-testid="btn-logout"
-                class="w-full py-2 px-3 rounded-xl bg-finance-neg/10 hover:bg-finance-neg/20 border border-finance-neg/25 text-finance-neg text-xs font-bold flex items-center justify-center gap-2 transition"
-                @click="handleLogout"
-              >
-                <span>🚪</span>
-                <span>{{ currentUser ? 'Sair da Conta' : 'Voltar para Tela de Login' }}</span>
-              </button>
-            </div>
-          </div>
+          </Transition>
         </div>
       </div>
     </header>
@@ -330,70 +371,82 @@ async function handleLogout() {
         type="button"
         role="tab"
         :aria-selected="activeTab === item.key"
-        class="px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition"
+        class="px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all duration-200 ease-out cursor-pointer"
         :class="
           activeTab === item.key
-            ? 'border-accent-yellow text-accent-yellow'
-            : 'border-transparent text-finance-neutral hover:text-white'
+            ? 'border-accent-yellow text-accent-yellow bg-accent-yellow/[0.04]'
+            : 'border-transparent text-finance-neutral hover:text-white hover:bg-white/[0.02]'
         "
         @click="activeTab = item.key"
       >
-        <AppIcon :name="item.icon" size="15" />
+        <AppIcon
+          :name="item.icon"
+          size="15"
+          class="transition-transform duration-200"
+          :class="activeTab === item.key ? 'scale-110' : ''"
+        />
         <span>{{ item.label }}</span>
       </button>
     </nav>
 
-    <!-- CONTEÚDO DA ABA ATIVA (Com espaçamento inferior seguro para a Bottom Bar no iOS Mobile) -->
+    <!-- CONTEÚDO DA ABA ATIVA (Com transição direcional suave e espaçamento inferior seguro no iOS Mobile) -->
     <main class="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 pb-safe-nav md:pb-8 max-w-7xl mx-auto w-full">
-      <HomeScreen
-        v-if="activeTab === 'home'"
-        :transactions="transactions"
-        :assets="assets"
-        :is-privacy-active="isPrivacyActive"
-        @open-add-modal="handleOpenAddModal"
-        @navigate-to-timeline="activeTab = 'timeline'"
-        @navigate-to-invest="activeTab = 'invest'"
-        @navigate-to-career="activeTab = 'career'"
-        @navigate-to-simulator="activeTab = 'phase-simulator'"
-      />
+      <Transition :name="pageTransitionName" mode="out-in">
+        <HomeScreen
+          v-if="activeTab === 'home'"
+          key="screen-home"
+          :transactions="transactions"
+          :assets="assets"
+          :is-privacy-active="isPrivacyActive"
+          @open-add-modal="handleOpenAddModal"
+          @navigate-to-timeline="activeTab = 'timeline'"
+          @navigate-to-invest="activeTab = 'invest'"
+          @navigate-to-career="activeTab = 'career'"
+          @navigate-to-simulator="activeTab = 'phase-simulator'"
+        />
 
-      <TimelineScreen
-        v-else-if="activeTab === 'timeline'"
-        :transactions="transactions"
-        :is-privacy-active="isPrivacyActive"
-        @open-add-modal="handleOpenAddModal"
-        @edit-transaction="handleOpenEditModal"
-        @delete-transaction="handleDeleteTransaction"
-      />
+        <TimelineScreen
+          v-else-if="activeTab === 'timeline'"
+          key="screen-timeline"
+          :transactions="transactions"
+          :is-privacy-active="isPrivacyActive"
+          @open-add-modal="handleOpenAddModal"
+          @edit-transaction="handleOpenEditModal"
+          @delete-transaction="handleDeleteTransaction"
+        />
 
-      <InvestmentsScreen
-        v-else-if="activeTab === 'invest'"
-        :assets="assets"
-        :is-privacy-active="isPrivacyActive"
-        @refresh-data="loadDatabaseData"
-        @navigate-to-simulator="activeTab = 'phase-simulator'"
-        @navigate-to-timeline="activeTab = 'timeline'"
-      />
+        <InvestmentsScreen
+          v-else-if="activeTab === 'invest'"
+          key="screen-invest"
+          :assets="assets"
+          :is-privacy-active="isPrivacyActive"
+          @refresh-data="loadDatabaseData"
+          @navigate-to-simulator="activeTab = 'phase-simulator'"
+          @navigate-to-timeline="activeTab = 'timeline'"
+        />
 
-      <CareerScreen
-        v-else-if="activeTab === 'career'"
-        :career-records="careerRecords"
-        :is-privacy-active="isPrivacyActive"
-        @refresh-data="loadDatabaseData"
-        @navigate-to-simulator="activeTab = 'phase-simulator'"
-        @navigate-to-timeline="activeTab = 'timeline'"
-      />
+        <CareerScreen
+          v-else-if="activeTab === 'career'"
+          key="screen-career"
+          :career-records="careerRecords"
+          :is-privacy-active="isPrivacyActive"
+          @refresh-data="loadDatabaseData"
+          @navigate-to-simulator="activeTab = 'phase-simulator'"
+          @navigate-to-timeline="activeTab = 'timeline'"
+        />
 
-      <PhaseSimulatorScreen
-        v-else-if="activeTab === 'phase-simulator'"
-        :assets="assets"
-        :career-records="careerRecords"
-        :transactions="transactions"
-        :is-privacy-active="isPrivacyActive"
-        @navigate-to-invest="activeTab = 'invest'"
-        @navigate-to-career="activeTab = 'career'"
-        @navigate-to-timeline="activeTab = 'timeline'"
-      />
+        <PhaseSimulatorScreen
+          v-else-if="activeTab === 'phase-simulator'"
+          key="screen-phase-simulator"
+          :assets="assets"
+          :career-records="careerRecords"
+          :transactions="transactions"
+          :is-privacy-active="isPrivacyActive"
+          @navigate-to-invest="activeTab = 'invest'"
+          @navigate-to-career="activeTab = 'career'"
+          @navigate-to-timeline="activeTab = 'timeline'"
+        />
+      </Transition>
     </main>
 
     <!-- BOTTOM NAVIGATION BAR NATIVA FLUTUANTE (ESTILO FLOATING ISLAND DOCK - 5 ABAS) -->
@@ -410,7 +463,7 @@ async function handleLogout() {
         type="button"
         role="tab"
         :aria-selected="activeTab === item.key"
-        class="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl transition relative min-w-0 cursor-pointer"
+        class="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-200 ease-out relative min-w-0 cursor-pointer active:scale-95"
         :class="
           activeTab === item.key
             ? 'bg-[#27272A] text-accent-yellow font-bold shadow-sm'
@@ -418,7 +471,12 @@ async function handleLogout() {
         "
         @click="activeTab = item.key"
       >
-        <AppIcon :name="item.icon" size="18" class="mb-1" />
+        <AppIcon
+          :name="item.icon"
+          size="18"
+          class="mb-1 transition-transform duration-200"
+          :class="activeTab === item.key ? 'scale-110 -translate-y-0.5' : ''"
+        />
         <span class="text-[10px] tracking-tight whitespace-nowrap">{{ item.shortLabel }}</span>
       </button>
     </nav>

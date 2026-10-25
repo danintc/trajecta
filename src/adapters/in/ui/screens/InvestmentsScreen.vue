@@ -266,7 +266,7 @@ async function handleDeleteAsset(asset: Asset) {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 1 UNIFICADA: MINHA CARTEIRA & ATIVOS EM CUSTÓDIA NO MESMO CARD    -->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'custody'" class="space-y-5">
+    <div v-show="activeSubTab === 'custody'" class="space-y-5 subview-transition-panel">
       <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6">
         <XpPortfolioTab
           :assets="assets"
@@ -284,7 +284,7 @@ async function handleDeleteAsset(asset: Asset) {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 2: EVOLUÇÃO PATRIMONIAL & PERFORMANCE (ESTILO XP - Prints 1, 2, 3)-->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'evolution'" class="space-y-5">
+    <div v-show="activeSubTab === 'evolution'" class="space-y-5 subview-transition-panel">
       <XpEvolutionTab
         :assets="assets"
         :is-privacy-active="isPrivacyActive"
@@ -326,7 +326,7 @@ async function handleDeleteAsset(asset: Asset) {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 3: SIMULADOR DE APORTE INTELIGENTE (REBALANCEADOR)                -->
     <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'rebalance'" class="space-y-5">
+    <div v-show="activeSubTab === 'rebalance'" class="space-y-5 subview-transition-panel">
       <div
         class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5"
       >
@@ -560,7 +560,7 @@ async function handleDeleteAsset(asset: Asset) {
           <div
             v-else
             data-testid="form-add-rebalance-class"
-            class="bg-background border-2 border-finance-invest/50 rounded-2xl p-4 flex flex-col justify-between gap-3"
+            class="bg-background border-2 border-finance-invest/50 rounded-2xl p-4 flex flex-col justify-between gap-3 expand-item-smooth"
           >
             <div class="flex items-center justify-between border-b border-border-subtle pb-2">
               <span class="text-xs font-extrabold uppercase tracking-wider text-finance-invest">

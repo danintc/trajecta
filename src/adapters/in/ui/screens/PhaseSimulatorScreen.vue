@@ -427,7 +427,7 @@ const paginatedMonthlyPoints = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 1: PARÂMETROS FINANCEIROS & DIAGNÓSTICO DE FASE                   -->
     <!-- ========================================================================= -->
-    <div v-show="activeTab === 'parameters'" class="space-y-5">
+    <div v-show="activeTab === 'parameters'" class="space-y-5 subview-transition-panel">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         <!-- PARÂMETROS DE ENTRADA (COLUNA ESQUERDA) -->
         <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between min-w-0 overflow-hidden">
@@ -701,7 +701,7 @@ const paginatedMonthlyPoints = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 2: VISÃO GERAL, GRÁFICO DE TRAJETÓRIAS & TABELA DE CENÁRIOS       -->
     <!-- ========================================================================= -->
-    <div v-show="activeTab === 'overview'" class="space-y-5">
+    <div v-show="activeTab === 'overview'" class="space-y-5 subview-transition-panel">
       <!-- GRÁFICO DE TRAJETÓRIAS COMPARATIVAS AMPLO -->
       <WealthComparisonChart
         :scenarios="simulation.scenarios"
@@ -988,7 +988,7 @@ const paginatedMonthlyPoints = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 3: PRINCÍPIOS ESTRATÉGICOS & UTILIDADE MARGINAL                   -->
     <!-- ========================================================================= -->
-    <div v-show="activeTab === 'principles'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-show="activeTab === 'principles'" class="grid grid-cols-1 md:grid-cols-2 gap-4 subview-transition-panel">
       <!-- Princípio 1: O Dilema do Início de Carreira -->
       <div class="bg-surface border border-border-subtle rounded-2xl p-5 space-y-3">
         <div class="flex items-center gap-2 text-xs font-bold text-accent-yellow">
@@ -1025,7 +1025,8 @@ const paginatedMonthlyPoints = computed(() => {
     <!-- ========================================================================= -->
     <!-- SUB-ABA 4: EVOLUÇÃO MÊS A MÊS (OTIMIZADA + INDICADOR DE SCROLL VISÍVEL)   -->
     <!-- ========================================================================= -->
-    <div v-if="activeTab === 'monthly'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4">
+    <Transition name="trajecta-subview">
+      <div v-if="activeTab === 'monthly'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4">
       <!-- CABEÇALHO DA ABA MÊS A MÊS & SELETORES -->
       <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border-b border-border-subtle pb-4">
         <div>
@@ -1320,7 +1321,8 @@ const paginatedMonthlyPoints = computed(() => {
             Próxima
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

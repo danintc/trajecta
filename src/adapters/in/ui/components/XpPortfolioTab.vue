@@ -2,6 +2,14 @@
 import { ref, computed, watch } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
 import { formatCentsToBrl } from '@/shared/utils/currency';
+import {
+  onExpandBeforeEnter,
+  onExpandEnter,
+  onExpandAfterEnter,
+  onExpandBeforeLeave,
+  onExpandLeave,
+  onExpandAfterLeave,
+} from '@/shared/utils/expand-transition';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import EmptyState from './EmptyState.vue';
 
@@ -1236,176 +1244,207 @@ function handleSelectClassFilter(clsKey: string) {
     <!-- ========================================================================= -->
     <!-- PAINEL COMPACTO COM HINT E GESTÃO DE OBJETIVOS (QUANDO A PILL 'OBJETIVOS')-->
     <!-- ========================================================================= -->
-    <div
-      v-if="activePill === 'objetivos' && (!props.showEmptyState || props.assets.length > 0)"
-      data-testid="objectives-explainer-panel"
-      class="bg-background/90 border border-border-subtle rounded-2xl px-3.5 py-2.5 space-y-2.5"
+    <Transition
+      name="trajecta-expand"
+      @before-enter="onExpandBeforeEnter"
+      @enter="onExpandEnter"
+      @after-enter="onExpandAfterEnter"
+      @before-leave="onExpandBeforeLeave"
+      @leave="onExpandLeave"
+      @after-leave="onExpandAfterLeave"
     >
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <!-- Botão de Hint que abre/fecha ao clicar (sem ocupar espaço fixo na página) -->
-        <button
-          type="button"
-          data-testid="btn-toggle-objectives-hint"
-          class="inline-flex items-center gap-2 text-left text-xs font-bold text-accent-yellow hover:text-white transition cursor-pointer py-1"
-          @click="isObjectivesHintOpen = !isObjectivesHintOpen"
+      <div
+        v-if="activePill === 'objetivos' && (!props.showEmptyState || props.assets.length > 0)"
+        data-testid="objectives-explainer-panel"
+        class="bg-background/90 border border-border-subtle rounded-2xl px-3.5 py-2.5 space-y-2.5"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <!-- Botão de Hint que abre/fecha ao clicar (sem ocupar espaço fixo na página) -->
+          <button
+            type="button"
+            data-testid="btn-toggle-objectives-hint"
+            :aria-expanded="isObjectivesHintOpen"
+            class="inline-flex items-center gap-2 text-left text-xs font-bold text-accent-yellow hover:text-white transition cursor-pointer py-1"
+            @click="isObjectivesHintOpen = !isObjectivesHintOpen"
+          >
+            <span>🎯 Como funcionam seus Objetivos?</span>
+            <span class="text-[10px] font-semibold bg-surface border border-border-subtle text-[#A1A1AA] px-2 py-0.5 rounded-full transition-colors">
+              {{ isObjectivesHintOpen ? 'Ocultar dica ▴' : 'ⓘ Ver dica' }}
+            </span>
+          </button>
+
+          <div class="flex items-center gap-2 shrink-0 ml-auto">
+            <button
+              type="button"
+              data-testid="btn-add-objective"
+              class="px-3 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+              @click="openCreateObjectiveForm"
+            >
+              <span>+</span>
+              <span>Novo Objetivo</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-reset-objectives"
+              title="Restaurar objetivos padrão"
+              class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-semibold text-[#A1A1AA] hover:text-white transition cursor-pointer whitespace-nowrap"
+              @click="handleResetObjectives"
+            >
+              Padrão
+            </button>
+          </div>
+        </div>
+
+        <!-- Hint Expansível (Abre apenas ao clicar com animação smooth) -->
+        <Transition
+          name="trajecta-expand"
+          @before-enter="onExpandBeforeEnter"
+          @enter="onExpandEnter"
+          @after-enter="onExpandAfterEnter"
+          @before-leave="onExpandBeforeLeave"
+          @leave="onExpandLeave"
+          @after-leave="onExpandAfterLeave"
         >
-          <span>🎯 Como funcionam seus Objetivos?</span>
-          <span class="text-[10px] font-semibold bg-surface border border-border-subtle text-[#A1A1AA] px-2 py-0.5 rounded-full">
-            {{ isObjectivesHintOpen ? 'Ocultar dica ▴' : 'ⓘ Ver dica' }}
-          </span>
-        </button>
-
-        <div class="flex items-center gap-2 shrink-0 ml-auto">
-          <button
-            type="button"
-            data-testid="btn-add-objective"
-            class="px-3 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
-            @click="openCreateObjectiveForm"
+          <div
+            v-if="isObjectivesHintOpen"
+            data-testid="objectives-hint-content"
+            class="p-3 rounded-xl bg-surface border border-border-subtle text-[11px] text-[#A1A1AA] leading-relaxed"
           >
-            <span>+</span>
-            <span>Novo Objetivo</span>
-          </button>
-          <button
-            type="button"
-            data-testid="btn-reset-objectives"
-            title="Restaurar objetivos padrão"
-            class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-semibold text-[#A1A1AA] hover:text-white transition cursor-pointer whitespace-nowrap"
-            @click="handleResetObjectives"
+            Cada objetivo agrupa automaticamente os ativos das <strong>classes vinculadas</strong> a ele e compara o saldo acumulado com a sua <strong>Meta (%)</strong>. Você pode criar novos objetivos, editar metas/vínculos ou excluir qualquer objetivo abaixo.
+          </div>
+        </Transition>
+
+        <!-- FORMULÁRIO INLINE DE CRIAÇÃO / EDIÇÃO DE OBJETIVO -->
+        <Transition
+          name="trajecta-expand"
+          @before-enter="onExpandBeforeEnter"
+          @enter="onExpandEnter"
+          @after-enter="onExpandAfterEnter"
+          @before-leave="onExpandBeforeLeave"
+          @leave="onExpandLeave"
+          @after-leave="onExpandAfterLeave"
+        >
+          <div
+            v-if="isObjectiveFormOpen"
+            data-testid="form-objective-editor"
+            class="bg-surface border border-accent-yellow/40 rounded-xl p-3.5 space-y-3 pt-3"
           >
-            Padrão
-          </button>
-        </div>
+            <div class="flex items-center justify-between border-b border-border-subtle pb-2">
+              <h4 class="text-xs font-extrabold uppercase tracking-wider text-white">
+                {{ editingObjectiveKey ? 'Editar Objetivo' : 'Criar Novo Objetivo' }}
+              </h4>
+              <button
+                type="button"
+                class="text-[11px] text-[#71717A] hover:text-white cursor-pointer"
+                @click="isObjectiveFormOpen = false"
+              >
+                Fechar ✕
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div class="sm:col-span-5">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+                  Nome do Objetivo
+                </label>
+                <input
+                  v-model="objFormName"
+                  type="text"
+                  data-testid="input-objective-name"
+                  placeholder="Ex: Compra de Imóvel, Aposentadoria..."
+                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div class="sm:col-span-4">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+                  Descrição / Propósito
+                </label>
+                <input
+                  v-model="objFormDescription"
+                  type="text"
+                  data-testid="input-objective-desc"
+                  placeholder="Ex: Longo prazo e renda passiva"
+                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div class="sm:col-span-3">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
+                  Meta na Carteira (%)
+                </label>
+                <input
+                  v-model="objFormTarget"
+                  type="number"
+                  min="0"
+                  max="100"
+                  data-testid="input-objective-target"
+                  class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white font-mono font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <!-- Seleção de Classes Vinculadas ao Objetivo -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]">
+                Classes de Ativos que compõem este Objetivo:
+              </label>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="cls in props.availableClasses"
+                  :key="cls.key"
+                  type="button"
+                  :data-testid="`obj-class-toggle-${cls.key}`"
+                  class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer"
+                  :class="
+                    objFormClasses.includes(cls.key)
+                      ? 'bg-accent-yellow/15 border-accent-yellow text-accent-yellow'
+                      : 'bg-background border-border-subtle text-[#71717A] hover:text-white'
+                  "
+                  @click="toggleObjectiveClassSelection(cls.key)"
+                >
+                  {{ objFormClasses.includes(cls.key) ? '✓ ' : '' }}{{ cls.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Cor + Botões Salvar/Cancelar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase text-[#71717A] mr-1">Cor:</span>
+                <button
+                  v-for="colorHex in OBJECTIVE_COLORS"
+                  :key="colorHex"
+                  type="button"
+                  class="w-5 h-5 rounded-full border-2 transition cursor-pointer"
+                  :class="objFormColor === colorHex ? 'border-white scale-110' : 'border-transparent opacity-70'"
+                  :style="{ backgroundColor: colorHex }"
+                  @click="objFormColor = colorHex"
+                />
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded-lg bg-background border border-border-subtle text-xs text-[#A1A1AA] hover:text-white cursor-pointer"
+                  @click="isObjectiveFormOpen = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  data-testid="btn-save-objective"
+                  class="px-4 py-1.5 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs cursor-pointer"
+                  @click="handleSaveObjective"
+                >
+                  {{ editingObjectiveKey ? 'Salvar Alterações' : 'Criar Objetivo' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
-
-      <!-- Hint Expansível (Abre apenas ao clicar) -->
-      <div
-        v-if="isObjectivesHintOpen"
-        data-testid="objectives-hint-content"
-        class="p-3 rounded-xl bg-surface border border-border-subtle text-[11px] text-[#A1A1AA] leading-relaxed"
-      >
-        Cada objetivo agrupa automaticamente os ativos das <strong>classes vinculadas</strong> a ele e compara o saldo acumulado com a sua <strong>Meta (%)</strong>. Você pode criar novos objetivos, editar metas/vínculos ou excluir qualquer objetivo abaixo.
-      </div>
-
-      <!-- FORMULÁRIO INLINE DE CRIAÇÃO / EDIÇÃO DE OBJETIVO -->
-      <div
-        v-if="isObjectiveFormOpen"
-        data-testid="form-objective-editor"
-        class="bg-surface border border-accent-yellow/40 rounded-xl p-3.5 space-y-3 pt-3"
-      >
-        <div class="flex items-center justify-between border-b border-border-subtle pb-2">
-          <h4 class="text-xs font-extrabold uppercase tracking-wider text-white">
-            {{ editingObjectiveKey ? 'Editar Objetivo' : 'Criar Novo Objetivo' }}
-          </h4>
-          <button
-            type="button"
-            class="text-[11px] text-[#71717A] hover:text-white cursor-pointer"
-            @click="isObjectiveFormOpen = false"
-          >
-            Fechar ✕
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          <div class="sm:col-span-5">
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
-              Nome do Objetivo
-            </label>
-            <input
-              v-model="objFormName"
-              type="text"
-              data-testid="input-objective-name"
-              placeholder="Ex: Compra de Imóvel, Aposentadoria..."
-              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
-            />
-          </div>
-
-          <div class="sm:col-span-4">
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
-              Descrição / Propósito
-            </label>
-            <input
-              v-model="objFormDescription"
-              type="text"
-              data-testid="input-objective-desc"
-              placeholder="Ex: Longo prazo e renda passiva"
-              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
-            />
-          </div>
-
-          <div class="sm:col-span-3">
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA] mb-1">
-              Meta na Carteira (%)
-            </label>
-            <input
-              v-model="objFormTarget"
-              type="number"
-              min="0"
-              max="100"
-              data-testid="input-objective-target"
-              class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white font-mono font-bold outline-none"
-            />
-          </div>
-        </div>
-
-        <!-- Seleção de Classes Vinculadas ao Objetivo -->
-        <div class="space-y-1.5">
-          <label class="block text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]">
-            Classes de Ativos que compõem este Objetivo:
-          </label>
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="cls in props.availableClasses"
-              :key="cls.key"
-              type="button"
-              :data-testid="`obj-class-toggle-${cls.key}`"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer"
-              :class="
-                objFormClasses.includes(cls.key)
-                  ? 'bg-accent-yellow/15 border-accent-yellow text-accent-yellow'
-                  : 'bg-background border-border-subtle text-[#71717A] hover:text-white'
-              "
-              @click="toggleObjectiveClassSelection(cls.key)"
-            >
-              {{ objFormClasses.includes(cls.key) ? '✓ ' : '' }}{{ cls.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Cor + Botões Salvar/Cancelar -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-bold uppercase text-[#71717A] mr-1">Cor:</span>
-            <button
-              v-for="colorHex in OBJECTIVE_COLORS"
-              :key="colorHex"
-              type="button"
-              class="w-5 h-5 rounded-full border-2 transition cursor-pointer"
-              :class="objFormColor === colorHex ? 'border-white scale-110' : 'border-transparent opacity-70'"
-              :style="{ backgroundColor: colorHex }"
-              @click="objFormColor = colorHex"
-            />
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded-lg bg-background border border-border-subtle text-xs text-[#A1A1AA] hover:text-white cursor-pointer"
-              @click="isObjectiveFormOpen = false"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              data-testid="btn-save-objective"
-              class="px-4 py-1.5 rounded-lg bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs cursor-pointer"
-              @click="handleSaveObjective"
-            >
-              {{ editingObjectiveKey ? 'Salvar Alterações' : 'Criar Objetivo' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Transition>
 
     <!-- ========================================================================= -->
     <!-- MODOS CATEGORIZADOS EXPANSÍVEIS: CLASSE | PRODUTO | LIQUIDEZ | OBJETIVOS  -->
@@ -1413,14 +1452,16 @@ function handleSelectClassFilter(clsKey: string) {
     <!-- ========================================================================= -->
     <div
       v-if="activePill !== 'ativos' && (!props.showEmptyState || props.assets.length > 0)"
-      class="divide-y divide-border-subtle/50"
+      :key="`cat-view-${activePill}`"
+      class="divide-y divide-border-subtle/50 subview-transition-panel"
     >
       <div
         v-for="cat in activeCategoryList"
         :key="cat.key"
         :data-testid="`portfolio-category-${cat.key}`"
         :data-selected="isCategoryExpanded(cat.key) ? 'true' : 'false'"
-        class="py-3.5 transition cursor-pointer group rounded-xl px-2.5 -mx-2.5"
+        :aria-expanded="isCategoryExpanded(cat.key)"
+        class="py-3.5 transition-all duration-200 ease-out cursor-pointer group rounded-xl px-2.5 -mx-2.5"
         :class="
           isCategoryExpanded(cat.key)
             ? 'bg-surface-hover/40 ring-1 ring-finance-invest/30'
@@ -1432,7 +1473,8 @@ function handleSelectClassFilter(clsKey: string) {
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <span
-              class="w-3 h-3 rounded-full shrink-0"
+              class="w-3 h-3 rounded-full shrink-0 transition-transform duration-200"
+              :class="isCategoryExpanded(cat.key) ? 'scale-125' : ''"
               :style="{ backgroundColor: cat.color }"
             />
             <span
@@ -1471,8 +1513,8 @@ function handleSelectClassFilter(clsKey: string) {
             </div>
 
             <svg
-              class="w-4 h-4 text-[#71717A] group-hover:text-white transition transform"
-              :class="{ 'rotate-90': isCategoryExpanded(cat.key) }"
+              class="w-4 h-4 text-[#71717A] group-hover:text-white transition-transform duration-300 ease-out"
+              :class="{ 'rotate-90 text-finance-invest': isCategoryExpanded(cat.key) }"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1531,93 +1573,104 @@ function handleSelectClassFilter(clsKey: string) {
           </span>
         </div>
 
-        <!-- Detalhamento Expandido ao Clicar na Categoria (Classe, Produto, Liquidez ou Objetivos) -->
-        <div
-          v-if="isCategoryExpanded(cat.key)"
-          class="mt-3 pl-4 sm:pl-5 space-y-2 pt-2.5 border-t border-border-subtle/40"
+        <!-- Detalhamento Expandido ao Clicar na Categoria (Classe, Produto, Liquidez, Instituição ou Objetivos) com efeito smooth -->
+        <Transition
+          name="trajecta-expand"
+          @before-enter="onExpandBeforeEnter"
+          @enter="onExpandEnter"
+          @after-enter="onExpandAfterEnter"
+          @before-leave="onExpandBeforeLeave"
+          @leave="onExpandLeave"
+          @after-leave="onExpandAfterLeave"
         >
           <div
-            v-if="cat.assets.length === 0"
-            class="p-3 bg-background/60 rounded-xl border border-border-subtle/50 text-xs text-[#71717A] flex items-center justify-between"
-            @click.stop
+            v-if="isCategoryExpanded(cat.key)"
+            class="mt-3 pl-4 sm:pl-5 space-y-2 pt-2.5 border-t border-border-subtle/40"
           >
-            <span>Nenhum ativo das classes vinculadas na carteira atual.</span>
-            <button
-              type="button"
-              class="text-finance-invest font-bold hover:underline cursor-pointer"
-              @click.stop="emit('openAddAsset')"
+            <div
+              v-if="cat.assets.length === 0"
+              class="p-3 bg-background/60 rounded-xl border border-border-subtle/50 text-xs text-[#71717A] flex items-center justify-between expand-item-smooth"
+              @click.stop
             >
-              + Adicionar Ativo
-            </button>
-          </div>
-
-          <div
-            v-for="asset in cat.assets"
-            :key="asset.id"
-            class="p-3 bg-[#18181B] hover:bg-surface-hover/60 rounded-xl border border-border-subtle/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs transition"
-            @click.stop
-          >
-            <div class="space-y-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-extrabold text-white font-mono text-sm">
-                  {{ asset.ticker }}
-                </span>
-                <span class="text-[10px] uppercase font-bold bg-[#27272A] text-finance-invest px-2 py-0.5 rounded whitespace-nowrap">
-                  {{ asset.classLabel }}
-                </span>
-                <span class="text-[10px] bg-background border border-border-subtle text-finance-neutral px-2 py-0.5 rounded whitespace-nowrap">
-                  {{ asset.institution }}
-                </span>
-              </div>
-              <div class="text-[11px] text-[#71717A]">
-                {{ asset.qty }} cotas • PM:
-                <strong class="text-[#A1A1AA] font-mono">{{ asset.pm }}</strong> • Atual:
-                <strong class="text-white font-mono">{{ asset.current }}</strong>
-              </div>
+              <span>Nenhum ativo das classes vinculadas na carteira atual.</span>
+              <button
+                type="button"
+                class="text-finance-invest font-bold hover:underline cursor-pointer"
+                @click.stop="emit('openAddAsset')"
+              >
+                + Adicionar Ativo
+              </button>
             </div>
 
-            <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-              <div class="text-right font-mono">
-                <div class="font-bold text-white text-sm">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
-                  <span class="text-[10px] text-finance-neutral font-normal ml-1">
-                    ({{ asset.portfolioPercent }}%)
+            <div
+              v-for="(asset, assetIdx) in cat.assets"
+              :key="asset.id"
+              :style="{ animationDelay: `${Math.min(assetIdx * 35, 180)}ms` }"
+              class="p-3 bg-[#18181B] hover:bg-surface-hover/60 rounded-xl border border-border-subtle/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs transition expand-item-smooth"
+              @click.stop
+            >
+              <div class="space-y-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-extrabold text-white font-mono text-sm">
+                    {{ asset.ticker }}
+                  </span>
+                  <span class="text-[10px] uppercase font-bold bg-[#27272A] text-finance-invest px-2 py-0.5 rounded whitespace-nowrap">
+                    {{ asset.classLabel }}
+                  </span>
+                  <span class="text-[10px] bg-background border border-border-subtle text-finance-neutral px-2 py-0.5 rounded whitespace-nowrap">
+                    {{ asset.institution }}
                   </span>
                 </div>
-                <div
-                  class="font-semibold text-[11px]"
-                  :class="asset.profitCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
-                >
-                  {{ asset.profitCents >= 0 ? '▲' : '▼' }} {{ asset.profit }}
-                  <span v-if="asset.rawAsset">
-                    ({{ formatCentsToBrl(asset.profitCents, { showSign: true }) }})
-                  </span>
+                <div class="text-[11px] text-[#71717A]">
+                  {{ asset.qty }} cotas • PM:
+                  <strong class="text-[#A1A1AA] font-mono">{{ asset.pm }}</strong> • Atual:
+                  <strong class="text-white font-mono">{{ asset.current }}</strong>
                 </div>
               </div>
 
-              <div v-if="asset.rawAsset" class="flex items-center gap-1">
-                <button
-                  type="button"
-                  :data-testid="`btn-edit-asset-${asset.rawAsset.id}`"
-                  title="Editar ativo"
-                  class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
-                  @click.stop="emit('editAsset', asset.rawAsset)"
-                >
-                  <AppIcon name="edit" size="14" />
-                </button>
-                <button
-                  type="button"
-                  :data-testid="`btn-delete-asset-${asset.rawAsset.id}`"
-                  title="Excluir ativo"
-                  class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
-                  @click.stop="emit('deleteAsset', asset.rawAsset)"
-                >
-                  <AppIcon name="trash" size="14" />
-                </button>
+              <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                <div class="text-right font-mono">
+                  <div class="font-bold text-white text-sm">
+                    {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
+                    <span class="text-[10px] text-finance-neutral font-normal ml-1">
+                      ({{ asset.portfolioPercent }}%)
+                    </span>
+                  </div>
+                  <div
+                    class="font-semibold text-[11px]"
+                    :class="asset.profitCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+                  >
+                    {{ asset.profitCents >= 0 ? '▲' : '▼' }} {{ asset.profit }}
+                    <span v-if="asset.rawAsset">
+                      ({{ formatCentsToBrl(asset.profitCents, { showSign: true }) }})
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="asset.rawAsset" class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    :data-testid="`btn-edit-asset-${asset.rawAsset.id}`"
+                    title="Editar ativo"
+                    class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                    @click.stop="emit('editAsset', asset.rawAsset)"
+                  >
+                    <AppIcon name="edit" size="14" />
+                  </button>
+                  <button
+                    type="button"
+                    :data-testid="`btn-delete-asset-${asset.rawAsset.id}`"
+                    title="Excluir ativo"
+                    class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                    @click.stop="emit('deleteAsset', asset.rawAsset)"
+                  >
+                    <AppIcon name="trash" size="14" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Transition>
       </div>
     </div>
 
@@ -1626,7 +1679,7 @@ function handleSelectClassFilter(clsKey: string) {
     <!-- ========================================================================= -->
     <div
       v-else-if="activePill === 'ativos' && (!props.showEmptyState || props.assets.length > 0)"
-      class="space-y-2.5 pt-1"
+      class="space-y-2.5 pt-1 subview-transition-panel"
     >
       <!-- Caso filtro de classe selecionada não possua ativos cadastrados -->
       <div

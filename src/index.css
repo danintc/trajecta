@@ -8,6 +8,17 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     touch-action: pan-x pan-y;
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background-color: rgba(250, 204, 21, 0.25);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(250, 204, 21, 0.65);
+    outline-offset: 2px;
   }
 
   body {
@@ -108,4 +119,198 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #FACC15;
+}
+
+/* =========================================================================
+ * SISTEMA DE TRANSIÇÕES DE PÁGINA, SUB-ABAS E MENUS EXPANSÍVEIS (SMOOTH)
+ * Curva principal: desaceleração exponencial natural cubic-bezier(0.16, 1, 0.3, 1)
+ * ========================================================================= */
+
+/* 1. Transição direcional entre páginas principais (Avançando: Direita -> Esquerda) */
+.page-slide-left-enter-active {
+  transition:
+    opacity 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.page-slide-left-leave-active {
+  transition:
+    opacity 160ms cubic-bezier(0.4, 0, 1, 1),
+    transform 160ms cubic-bezier(0.4, 0, 1, 1),
+    filter 160ms cubic-bezier(0.4, 0, 1, 1);
+  will-change: opacity, transform;
+}
+
+.page-slide-left-enter-from {
+  opacity: 0;
+  transform: translate3d(18px, 0, 0);
+  filter: blur(2px);
+}
+
+.page-slide-left-leave-to {
+  opacity: 0;
+  transform: translate3d(-14px, 0, 0);
+  filter: blur(1px);
+}
+
+/* 2. Transição direcional entre páginas principais (Voltando: Esquerda -> Direita) */
+.page-slide-right-enter-active {
+  transition:
+    opacity 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.page-slide-right-leave-active {
+  transition:
+    opacity 160ms cubic-bezier(0.4, 0, 1, 1),
+    transform 160ms cubic-bezier(0.4, 0, 1, 1),
+    filter 160ms cubic-bezier(0.4, 0, 1, 1);
+  will-change: opacity, transform;
+}
+
+.page-slide-right-enter-from {
+  opacity: 0;
+  transform: translate3d(-18px, 0, 0);
+  filter: blur(2px);
+}
+
+.page-slide-right-leave-to {
+  opacity: 0;
+  transform: translate3d(14px, 0, 0);
+  filter: blur(1px);
+}
+
+/* 3. Transição suave de sub-abas e visões internas (v-if com mode="out-in") */
+.trajecta-subview-enter-active {
+  transition:
+    opacity 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.trajecta-subview-leave-active {
+  transition:
+    opacity 140ms cubic-bezier(0.4, 0, 1, 1),
+    transform 140ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.trajecta-subview-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+}
+
+.trajecta-subview-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+}
+
+/* 4. Animação suave para painéis controlados por v-show ao se tornarem visíveis */
+@keyframes trajectaSubViewIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.subview-transition-panel {
+  animation: trajectaSubViewIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 5. Expansão e recolhimento suave (Smooth Accordion / Menu Expand na mesma página) */
+.trajecta-expand-enter-active {
+  transition:
+    max-height 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: max-height, opacity, transform;
+}
+
+.trajecta-expand-leave-active {
+  transition:
+    max-height 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    transform 200ms cubic-bezier(0.4, 0, 1, 1);
+  will-change: max-height, opacity, transform;
+}
+
+/* Cascata sutil para itens dentro de um menu que acabou de expandir */
+@keyframes trajectaExpandedItemIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.expand-item-smooth {
+  animation: trajectaExpandedItemIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 6. Dropdown / Popover flutuante (ex: Menu de Conta) */
+.trajecta-popover-enter-active {
+  transition:
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+.trajecta-popover-leave-active {
+  transition:
+    opacity 140ms cubic-bezier(0.4, 0, 1, 1),
+    transform 140ms cubic-bezier(0.4, 0, 1, 1);
+  transform-origin: top right;
+}
+
+.trajecta-popover-enter-from,
+.trajecta-popover-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translate3d(0, -6px, 0);
+}
+
+/* 7. Respeito estrito a prefers-reduced-motion (Acessibilidade) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .page-slide-left-enter-active,
+  .page-slide-left-leave-active,
+  .page-slide-right-enter-active,
+  .page-slide-right-leave-active,
+  .trajecta-subview-enter-active,
+  .trajecta-subview-leave-active,
+  .trajecta-expand-enter-active,
+  .trajecta-expand-leave-active,
+  .trajecta-popover-enter-active,
+  .trajecta-popover-leave-active {
+    transition-duration: 80ms !important;
+    transition-property: opacity !important;
+  }
+
+  .page-slide-left-enter-from,
+  .page-slide-left-leave-to,
+  .page-slide-right-enter-from,
+  .page-slide-right-leave-to,
+  .trajecta-subview-enter-from,
+  .trajecta-subview-leave-to,
+  .trajecta-popover-enter-from,
+  .trajecta-popover-leave-to {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .subview-transition-panel,
+  .expand-item-smooth {
+    animation: none !important;
+  }
 }
