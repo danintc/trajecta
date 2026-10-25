@@ -18,7 +18,7 @@ describe('CareerLineChart Component', () => {
     },
   ];
 
-  it('deve renderizar a linha contínua de trajetória e os marcos da carreira', () => {
+  it('deve renderizar a linha contínua de trajetória com apenas a data no eixo X e legenda interativa', async () => {
     const wrapper = mount(CareerLineChart, {
       props: {
         points: mockPoints,
@@ -27,6 +27,8 @@ describe('CareerLineChart Component', () => {
     });
 
     expect(wrapper.find('[data-testid="career-line-chart"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('2022');
+    expect(wrapper.text()).toContain('2025');
     expect(wrapper.text()).toContain('StartDev (2022)');
     expect(wrapper.text()).toContain('TechCorp (2025)');
     expect(wrapper.text()).toContain('Engenheiro de Software Pleno');

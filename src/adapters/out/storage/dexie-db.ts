@@ -87,9 +87,19 @@ export async function clearTestDatabase(): Promise<void> {
 export async function seedPopulatedDatabase(): Promise<void> {
   await clearTestDatabase();
 
-  const now = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const now = today.toISOString().slice(0, 10);
+  const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 15)
+    .toISOString()
+    .slice(0, 10);
+  const twoMonthsAgoDate = new Date(today.getFullYear(), today.getMonth() - 2, 10)
+    .toISOString()
+    .slice(0, 10);
+  const fourMonthsAgoDate = new Date(today.getFullYear(), today.getMonth() - 4, 20)
+    .toISOString()
+    .slice(0, 10);
 
-  // Transações de exemplo
+  // Transações de exemplo distribuídas ao longo dos períodos
   await db.transactions.bulkAdd([
     {
       id: 'tx-1',
@@ -124,6 +134,54 @@ export async function seedPopulatedDatabase(): Promise<void> {
       description: 'Salário Líquido Mensal',
       amountInCents: 850000, // R$ 8.500,00
       date: now.slice(0, 8) + '05',
+      categoryId: 'cat-salario',
+      accountOrCard: 'Conta Itaú Corrente',
+      isInstallment: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'tx-4',
+      type: 'expense',
+      description: 'Supermercado & Feira',
+      amountInCents: 84500, // R$ 845,00
+      date: prevMonthDate,
+      categoryId: 'cat-alimentacao',
+      accountOrCard: 'Cartão Nubank',
+      isInstallment: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'tx-5',
+      type: 'income',
+      description: 'Salário Líquido Mensal',
+      amountInCents: 850000, // R$ 8.500,00
+      date: prevMonthDate.slice(0, 8) + '05',
+      categoryId: 'cat-salario',
+      accountOrCard: 'Conta Itaú Corrente',
+      isInstallment: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'tx-6',
+      type: 'expense',
+      description: 'Manutenção Revisão Auto',
+      amountInCents: 125000, // R$ 1.250,00
+      date: twoMonthsAgoDate,
+      categoryId: 'cat-transporte',
+      accountOrCard: 'Cartão Nubank',
+      isInstallment: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'tx-7',
+      type: 'income',
+      description: 'Bônus Semestral / PLR',
+      amountInCents: 450000, // R$ 4.500,00
+      date: fourMonthsAgoDate,
       categoryId: 'cat-salario',
       accountOrCard: 'Conta Itaú Corrente',
       isInstallment: false,

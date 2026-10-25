@@ -36,16 +36,32 @@ const today = new Date();
 const todayStr = format(today, 'yyyy-MM-dd');
 const currentYearMonth = format(today, 'yyyy-MM');
 
+// Data de referência baseada no lançamento mais recente até hoje (ou data atual)
+const referenceDate = computed(() => {
+  const pastDates = props.transactions
+    .map((t) => t.date)
+    .filter((d) => d <= todayStr)
+    .sort((a, b) => b.localeCompare(a));
+
+  if (pastDates.length > 0) {
+    return new Date(`${pastDates[0]}T12:00:00Z`);
+  }
+  return today;
+});
+
+const referenceYearMonth = computed(() => format(referenceDate.value, 'yyyy-MM'));
+
 const periodStartDate = computed(() => {
+  const refDate = referenceDate.value;
   switch (selectedPeriod.value) {
     case '1M':
-      return `${currentYearMonth}-01`;
+      return `${referenceYearMonth.value}-01`;
     case '3M':
-      return format(subMonths(today, 3), 'yyyy-MM-dd');
+      return format(subMonths(refDate, 3), 'yyyy-MM-dd');
     case '6M':
-      return format(subMonths(today, 6), 'yyyy-MM-dd');
+      return format(subMonths(refDate, 6), 'yyyy-MM-dd');
     case 'YTD':
-      return format(startOfYear(today), 'yyyy-MM-dd');
+      return format(startOfYear(refDate), 'yyyy-MM-dd');
     case 'ALL':
     default:
       return '1970-01-01';

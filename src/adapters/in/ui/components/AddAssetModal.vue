@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { db } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
-import { Asset, AssetClass } from '@/core/domain/asset.entity';
-import { parseBrlToCents } from '@/shared/utils/currency';
+import { Asset } from '@/core/domain/asset.entity';
+import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
 
 export interface AddAssetModalProps {
   isOpen: boolean;
+  assetToEdit?: Asset | null;
+  availableClasses?: Array<{ key: string; label: string }>;
 }
 
-const props = defineProps<AddAssetModalProps>();
+const props = withDefaults(defineProps<AddAssetModalProps>(), {
+  assetToEdit: null,
+  availableClasses: () => [
+    { key: 'renda_fixa', label: 'Renda Fixa & Tesouro' },
+    { key: 'fiis', label: 'Fundos Imobiliários (FIIs)' },
+    { key: 'acoes_br', label: 'Ações Brasileiras' },
+    { key: 'internacional', label: 'Internacional / BDRs' },
+    { key: 'cripto', label: 'Criptoativos' },
+    { key: 'reserva_emergencia', label: 'Reserva de Emergência' },
+  ],
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;
@@ -17,20 +29,41 @@ const emit = defineEmits<{
 }>();
 
 const tickerOrName = ref('');
-const assetClass = ref<AssetClass>('acoes_br');
+const assetClass = ref<string>('acoes_br');
 const institution = ref('BTG Pactual');
 const quantityStr = ref('100');
 const priceStr = ref('');
+const currentPriceStr = ref('');
 const targetPercentStr = ref('25');
 const errorMessage = ref<string | null>(null);
 
+const isEditMode = computed(() => Boolean(props.assetToEdit));
+
 watch(
-  () => props.isOpen,
-  (open) => {
+  () => [props.isOpen, props.assetToEdit],
+  ([open]) => {
     if (open) {
       errorMessage.value = null;
+      if (props.assetToEdit) {
+        tickerOrName.value = props.assetToEdit.tickerOrName;
+        assetClass.value = props.assetToEdit.assetClass;
+        institution.value = props.assetToEdit.institution;
+        quantityStr.value = String(props.assetToEdit.totalQuantity);
+        priceStr.value = formatCentsToBrl(props.assetToEdit.averagePriceInCents).replace('R$', '').trim();
+        currentPriceStr.value = formatCentsToBrl(props.assetToEdit.currentPriceInCents).replace('R$', '').trim();
+        targetPercentStr.value = String(props.assetToEdit.targetPercent);
+      } else {
+        tickerOrName.value = '';
+        assetClass.value = 'acoes_br';
+        institution.value = 'BTG Pactual';
+        quantityStr.value = '100';
+        priceStr.value = '';
+        currentPriceStr.value = '';
+        targetPercentStr.value = '25';
+      }
     }
-  }
+  },
+  { immediate: true }
 );
 
 function handleClose() {
@@ -58,29 +91,32 @@ async function handleSubmit() {
     return;
   }
 
+  const currentPriceInCents = currentPriceStr.value.trim()
+    ? parseBrlToCents(currentPriceStr.value)
+    : priceInCents;
+
   const targetPercent = parseFloat(targetPercentStr.value) || 0;
 
   try {
     const now = new Date().toISOString();
-    const existing = await db.assets.where('tickerOrName').equals(ticker).first();
 
-    if (existing) {
-      // Atualiza quantidade e recalcula preço médio ponderado
-      const currentTotal = existing.totalQuantity * existing.averagePriceInCents;
-      const newTotal = qty * priceInCents;
-      const newQty = existing.totalQuantity + qty;
-      const newAvgPrice = Math.round((currentTotal + newTotal) / newQty);
-
+    if (props.assetToEdit) {
       const updatedAsset: Asset = {
-        ...existing,
-        totalQuantity: newQty,
-        averagePriceInCents: newAvgPrice,
-        currentPriceInCents: priceInCents,
-        targetPercent: targetPercent || existing.targetPercent,
+        ...props.assetToEdit,
+        tickerOrName: ticker,
+        assetClass: assetClass.value as any,
+        institution: institution.value.trim(),
+        totalQuantity: qty,
+        averagePriceInCents: priceInCents,
+        currentPriceInCents: currentPriceInCents > 0 ? currentPriceInCents : priceInCents,
+        targetPercent,
         updatedAt: now,
       };
 
-      await db.assets.update(existing.id, {
+      await db.assets.update(props.assetToEdit.id, {
+        tickerOrName: updatedAsset.tickerOrName,
+        assetClass: updatedAsset.assetClass,
+        institution: updatedAsset.institution,
         totalQuantity: updatedAsset.totalQuantity,
         averagePriceInCents: updatedAsset.averagePriceInCents,
         currentPriceInCents: updatedAsset.currentPriceInCents,
@@ -89,20 +125,48 @@ async function handleSubmit() {
       });
       await cloudSyncService.upsertAsset(updatedAsset);
     } else {
-      const newAsset: Asset = {
-        id: `asset-${Date.now()}`,
-        tickerOrName: ticker,
-        assetClass: assetClass.value,
-        institution: institution.value.trim(),
-        totalQuantity: qty,
-        averagePriceInCents: priceInCents,
-        currentPriceInCents: priceInCents,
-        targetPercent,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.assets.add(newAsset);
-      await cloudSyncService.upsertAsset(newAsset);
+      const existing = await db.assets.where('tickerOrName').equals(ticker).first();
+
+      if (existing) {
+        // Atualiza quantidade e recalcula preço médio ponderado
+        const currentTotal = existing.totalQuantity * existing.averagePriceInCents;
+        const newTotal = qty * priceInCents;
+        const newQty = existing.totalQuantity + qty;
+        const newAvgPrice = Math.round((currentTotal + newTotal) / newQty);
+
+        const updatedAsset: Asset = {
+          ...existing,
+          totalQuantity: newQty,
+          averagePriceInCents: newAvgPrice,
+          currentPriceInCents: priceInCents,
+          targetPercent: targetPercent || existing.targetPercent,
+          updatedAt: now,
+        };
+
+        await db.assets.update(existing.id, {
+          totalQuantity: updatedAsset.totalQuantity,
+          averagePriceInCents: updatedAsset.averagePriceInCents,
+          currentPriceInCents: updatedAsset.currentPriceInCents,
+          targetPercent: updatedAsset.targetPercent,
+          updatedAt: now,
+        });
+        await cloudSyncService.upsertAsset(updatedAsset);
+      } else {
+        const newAsset: Asset = {
+          id: `asset-${Date.now()}`,
+          tickerOrName: ticker,
+          assetClass: assetClass.value as any,
+          institution: institution.value.trim(),
+          totalQuantity: qty,
+          averagePriceInCents: priceInCents,
+          currentPriceInCents: priceInCents,
+          targetPercent,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.assets.add(newAsset);
+        await cloudSyncService.upsertAsset(newAsset);
+      }
     }
 
     emit('success');
@@ -110,6 +174,7 @@ async function handleSubmit() {
 
     tickerOrName.value = '';
     priceStr.value = '';
+    currentPriceStr.value = '';
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao salvar ativo.';
     errorMessage.value = msg;
@@ -145,7 +210,7 @@ async function handleSubmit() {
           <!-- Header do Diálogo -->
           <div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
             <h3 id="modal-asset-title" class="font-bold text-base text-white flex items-center gap-2">
-              <span>Novo Ativo em Carteira</span>
+              <span>{{ isEditMode ? 'Editar Ativo em Carteira' : 'Novo Ativo em Carteira' }}</span>
               <span
                 class="text-[10px] bg-finance-invest/10 text-finance-invest px-2 py-0.5 rounded font-bold uppercase"
               >
@@ -191,12 +256,13 @@ async function handleSubmit() {
                   v-model="assetClass"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
                 >
-                  <option value="renda_fixa">Renda Fixa & Tesouro</option>
-                  <option value="fiis">Fundos Imobiliários (FIIs)</option>
-                  <option value="acoes_br">Ações Brasileiras</option>
-                  <option value="internacional">Internacional / BDRs</option>
-                  <option value="cripto">Criptoativos</option>
-                  <option value="reserva_emergencia">Reserva de Emergência</option>
+                  <option
+                    v-for="cls in availableClasses"
+                    :key="cls.key"
+                    :value="cls.key"
+                  >
+                    {{ cls.label }}
+                  </option>
                 </select>
               </div>
             </div>
@@ -243,7 +309,7 @@ async function handleSubmit() {
               </div>
               <div>
                 <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Preço Unitário Pago (R$)
+                  {{ isEditMode ? 'Preço Médio (R$)' : 'Preço Unitário Pago (R$)' }}
                 </label>
                 <input
                   v-model="priceStr"
@@ -253,6 +319,19 @@ async function handleSubmit() {
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
                 />
               </div>
+            </div>
+
+            <div v-if="isEditMode">
+              <label class="block text-xs font-semibold text-finance-neutral mb-1">
+                Cotação / Preço Atual (R$)
+              </label>
+              <input
+                v-model="currentPriceStr"
+                type="text"
+                data-testid="input-asset-current-price"
+                placeholder="Ex: 38,20"
+                class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white font-mono outline-none transition"
+              />
             </div>
 
             <div class="pt-2 border-t border-border-subtle flex items-center justify-end gap-2.5">
@@ -268,7 +347,7 @@ async function handleSubmit() {
                 data-testid="btn-submit-asset"
                 class="px-4 py-2 rounded-lg bg-finance-invest hover:bg-[#0284C7] text-black font-bold text-xs transition transform active:scale-95 shadow-sm shadow-finance-invest/20"
               >
-                Salvar Ativo
+                {{ isEditMode ? 'Salvar Alterações' : 'Salvar Ativo' }}
               </button>
             </div>
           </form>

@@ -6,12 +6,14 @@
   html {
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
+    touch-action: pan-x pan-y;
   }
 
   body {
     @apply bg-background text-[#F4F4F5] antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     overscroll-behavior-y: none;
+    touch-action: pan-x pan-y;
   }
 
   /* Evita o auto-zoom forçado do Chrome/Safari no iOS ao focar em campos de formulário */

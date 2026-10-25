@@ -31,7 +31,18 @@ const emit = defineEmits<{
 
 const activeSubTab = ref<CareerSubTab>('evolution');
 const isAddModalOpen = ref(false);
+const recordToEdit = ref<CareerRecord | null>(null);
 const chartType = ref<'line' | 'bars'>('line');
+
+function handleOpenNewRecord() {
+  recordToEdit.value = null;
+  isAddModalOpen.value = true;
+}
+
+function handleOpenEditRecord(rec: CareerRecord) {
+  recordToEdit.value = rec;
+  isAddModalOpen.value = true;
+}
 
 const sortedRecordsDesc = computed(() => {
   return [...props.careerRecords].sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -82,8 +93,14 @@ const salaryEvolutionPoints = computed(() => {
       monthlyBenefitsInCents: r.mealAllowanceInCents,
       annualBonusEstimatedInCents: r.annualBonusEstimatedInCents,
     });
+    const ym = r.startDate.slice(0, 7);
+    const parts = ym.split('-');
+    const formattedDate = parts.length === 2 ? `${parts[1]}/${parts[0]}` : r.startDate.slice(0, 4);
+
     return {
-      label: `${r.company.slice(0, 8)} (${r.startDate.slice(0, 4)})`,
+      label: `${r.company} (${formattedDate})`,
+      dateLabel: formattedDate,
+      company: r.company,
       grossSalary: r.grossSalaryInCents,
       totalCash: tc.totalCashAnnualInCents,
       role: r.role,
@@ -116,10 +133,10 @@ const maxSalaryInCents = computed(() => {
         </p>
       </div>
 
-      <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
+      <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
-          class="px-3 py-2 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center gap-1.5 transition whitespace-nowrap"
+          class="px-3.5 py-2.5 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center justify-center gap-1.5 transition whitespace-nowrap cursor-pointer"
           @click="emit('navigateToSimulator')"
         >
           <span>🎯</span>
@@ -128,10 +145,11 @@ const maxSalaryInCents = computed(() => {
 
         <button
           type="button"
-          class="px-4 py-2 rounded-xl bg-finance-career hover:bg-[#6366F1] text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-finance-career/20 transition transform active:scale-95 whitespace-nowrap"
-          @click="isAddModalOpen = true"
+          data-testid="btn-add-career"
+          class="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-finance-career hover:bg-[#6366F1] text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-finance-career/30 ring-2 ring-finance-career/40 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
+          @click="handleOpenNewRecord"
         >
-          <span class="text-sm leading-none font-black">+</span>
+          <span class="text-base leading-none font-black">+</span>
           <span>Novo Marco Profissional</span>
         </button>
       </div>
@@ -367,8 +385,8 @@ const maxSalaryInCents = computed(() => {
 
         <button
           type="button"
-          class="px-3 py-1.5 rounded-xl border border-border-subtle hover:border-finance-career text-xs font-semibold text-white flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
-          @click="isAddModalOpen = true"
+          class="px-3 py-1.5 rounded-xl border border-border-subtle hover:border-finance-career text-xs font-semibold text-white flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer"
+          @click="handleOpenNewRecord"
         >
           <span>+</span> Preencher Marco
         </button>
@@ -380,7 +398,7 @@ const maxSalaryInCents = computed(() => {
         title="Nenhum registro de carreira cadastrado"
         description="Cadastre seu cargo atual e histórico profissional para calcular seu Total Cash anualizado e a curva de valorização do seu salário."
         primary-action-label="Cadastrar Primeiro Marco"
-        @primary-action="isAddModalOpen = true"
+        @primary-action="handleOpenNewRecord"
       />
 
       <div v-else class="relative pl-6 border-l-2 border-border-subtle space-y-6 ml-3 pt-2">
@@ -454,14 +472,26 @@ const maxSalaryInCents = computed(() => {
               </div>
             </div>
 
-            <button
-              type="button"
-              title="Excluir marco"
-              class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg opacity-70 group-hover:opacity-100 transition text-xs shrink-0"
-              @click="handleDeleteRecord(record.id, record.role)"
-            >
-              🗑️
-            </button>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                :data-testid="`btn-edit-career-${record.id}`"
+                title="Editar marco"
+                class="text-finance-neutral hover:text-finance-career p-1.5 rounded-lg hover:bg-surface-hover transition text-xs cursor-pointer"
+                @click="handleOpenEditRecord(record)"
+              >
+                <AppIcon name="edit" size="15" />
+              </button>
+              <button
+                type="button"
+                :data-testid="`btn-delete-career-${record.id}`"
+                title="Excluir marco"
+                class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition text-xs cursor-pointer"
+                @click="handleDeleteRecord(record.id, record.role)"
+              >
+                <AppIcon name="trash" size="15" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -530,9 +560,14 @@ const maxSalaryInCents = computed(() => {
     <!-- Modal Interativo de Carreira -->
     <AddCareerModal
       :is-open="isAddModalOpen"
-      @close="isAddModalOpen = false"
+      :record-to-edit="recordToEdit"
+      @close="
+        isAddModalOpen = false;
+        recordToEdit = null;
+      "
       @success="
         isAddModalOpen = false;
+        recordToEdit = null;
         emit('refreshData');
       "
     />

@@ -146,7 +146,7 @@ describe('TrajectaDatabase (Dexie IndexedDB Integration)', () => {
       db.careerRecords.count(),
     ]);
 
-    expect(txCount).toBe(3);
+    expect(txCount).toBe(7);
     expect(assetCount).toBe(3);
     expect(careerCount).toBe(2);
   });

@@ -14,8 +14,10 @@ import AddAssetModal from '../components/AddAssetModal.vue';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import XpEvolutionTab from '../components/XpEvolutionTab.vue';
 import XpPortfolioTab from '../components/XpPortfolioTab.vue';
+import { db } from '@/adapters/out/storage/dexie-db';
+import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 
-export type InvestSubTab = 'xp' | 'custody' | 'evolution' | 'rebalance';
+export type InvestSubTab = 'custody' | 'evolution' | 'rebalance';
 
 export interface InvestmentsScreenProps {
   assets: Asset[];
@@ -33,8 +35,39 @@ const emit = defineEmits<{
 const activeSubTab = ref<InvestSubTab>('custody');
 const aporteInput = ref('2.000,00');
 const isAddModalOpen = ref(false);
+const assetToEdit = ref<Asset | null>(null);
 const selectedClassFilter = ref<string>('ALL');
 const selectedInstitutionFilter = ref<string>('ALL');
+
+// Metas customizáveis e novas classes no Rebalanceador
+const customClassTargets = ref<Record<string, number>>({});
+const extraClasses = ref<Array<{ key: string; label: string; targetPercent: number }>>([]);
+const newClassName = ref('');
+const newClassTargetStr = ref('10');
+const isAddingNewClass = ref(false);
+
+const baseClassOptions = [
+  { key: 'renda_fixa', label: 'Renda Fixa' },
+  { key: 'fiis', label: 'FIIs' },
+  { key: 'acoes_br', label: 'Ações BR' },
+  { key: 'internacional', label: 'Exterior' },
+  { key: 'cripto', label: 'Cripto' },
+  { key: 'reserva_emergencia', label: 'Reserva de Emergência' },
+];
+
+const allAvailableClasses = computed(() => {
+  const existingKeys = new Set(baseClassOptions.map((c) => c.key));
+  const extras = extraClasses.value
+    .filter((c) => !existingKeys.has(c.key))
+    .map((c) => ({ key: c.key, label: c.label }));
+  return [...baseClassOptions, ...extras];
+});
+
+function formatClassLabel(key: string): string {
+  const found = allAvailableClasses.value.find((c) => c.key === key);
+  if (found) return found.label;
+  return key.replace(/_/g, ' ');
+}
 
 // Total do patrimônio investido a mercado
 const totalInvestedInCents = computed(() => {
@@ -76,7 +109,7 @@ const byInstitution = computed(() => {
   }));
 });
 
-// DIVISÃO POR CLASSE DE ATIVOS
+// DIVISÃO POR CLASSE DE ATIVOS (Incluindo classes recém-adicionadas e metas editadas)
 const classAllocations = computed(() => {
   const classMap = new Map<string, { value: number; target: number }>();
 
@@ -88,11 +121,20 @@ const classAllocations = computed(() => {
     classMap.set(a.assetClass, current);
   }
 
-  return Array.from(classMap.entries()).map(([cls, data]) => ({
-    assetClass: cls as any,
-    currentValueInCents: data.value,
-    targetPercent: data.target,
-  }));
+  for (const extra of extraClasses.value) {
+    if (!classMap.has(extra.key)) {
+      classMap.set(extra.key, { value: 0, target: extra.targetPercent });
+    }
+  }
+
+  return Array.from(classMap.entries()).map(([cls, data]) => {
+    const overrideTarget = customClassTargets.value[cls];
+    return {
+      assetClass: cls as any,
+      currentValueInCents: data.value,
+      targetPercent: overrideTarget !== undefined ? overrideTarget : data.target,
+    };
+  });
 });
 
 // Rebalanceamento
@@ -101,6 +143,51 @@ const rebalanceResult = computed(() => {
   if (classAllocations.value.length === 0) return null;
   return calculatePortfolioRebalance(classAllocations.value, cents);
 });
+
+async function handleUpdateClassTarget(assetClassKey: string, newTargetVal: number) {
+  const sanitized = Math.max(0, Math.min(100, isNaN(newTargetVal) ? 0 : newTargetVal));
+  customClassTargets.value = {
+    ...customClassTargets.value,
+    [assetClassKey]: sanitized,
+  };
+
+  // Se houver ativos dessa classe no banco, distribui a meta proporcionalmente
+  const matchingAssets = props.assets.filter((a) => a.assetClass === assetClassKey);
+  if (matchingAssets.length > 0) {
+    const perAssetTarget = Number((sanitized / matchingAssets.length).toFixed(2));
+    for (const asset of matchingAssets) {
+      await db.assets.update(asset.id, { targetPercent: perAssetTarget });
+      await cloudSyncService.upsertAsset({ ...asset, targetPercent: perAssetTarget });
+    }
+    emit('refreshData');
+  }
+}
+
+function handleAddExtraClass() {
+  const label = newClassName.value.trim();
+  if (!label) return;
+  const key = label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const target = Math.max(0, Math.min(100, parseFloat(newClassTargetStr.value) || 0));
+
+  const exists = extraClasses.value.some((c) => c.key === key);
+  if (!exists) {
+    extraClasses.value.push({ key, label, targetPercent: target });
+  }
+  customClassTargets.value = {
+    ...customClassTargets.value,
+    [key]: target,
+  };
+
+  newClassName.value = '';
+  newClassTargetStr.value = '10';
+  isAddingNewClass.value = false;
+}
 
 // Filtragem de Ativos (Por Classe e Por Instituição)
 const filteredAssets = computed(() => {
@@ -118,6 +205,24 @@ function handleSelectInstitution(inst: string) {
   } else {
     selectedInstitutionFilter.value = inst;
     activeSubTab.value = 'custody';
+  }
+}
+
+function handleOpenNewAsset() {
+  assetToEdit.value = null;
+  isAddModalOpen.value = true;
+}
+
+function handleOpenEditAsset(asset: Asset) {
+  assetToEdit.value = asset;
+  isAddModalOpen.value = true;
+}
+
+async function handleDeleteAsset(asset: Asset) {
+  if (confirm(`Excluir o ativo "${asset.tickerOrName}" da carteira?`)) {
+    await db.assets.delete(asset.id);
+    await cloudSyncService.deleteAsset(asset.id);
+    emit('refreshData');
   }
 }
 </script>
@@ -142,10 +247,10 @@ function handleSelectInstitution(inst: string) {
         </p>
       </div>
 
-      <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
+      <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
-          class="px-3 py-2 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer"
+          class="px-3.5 py-2.5 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center justify-center gap-1.5 transition whitespace-nowrap cursor-pointer"
           @click="emit('navigateToSimulator')"
         >
           <span>🎯</span>
@@ -154,10 +259,11 @@ function handleSelectInstitution(inst: string) {
 
         <button
           type="button"
-          class="px-4 py-2 rounded-xl bg-finance-invest hover:bg-[#0284C7] text-black font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-finance-invest/20 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
-          @click="isAddModalOpen = true"
+          data-testid="btn-add-asset"
+          class="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-finance-invest hover:bg-[#0284C7] text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-finance-invest/30 ring-2 ring-finance-invest/40 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
+          @click="handleOpenNewAsset"
         >
-          <span class="text-sm leading-none font-black">+</span>
+          <span class="text-base leading-none font-black">+</span>
           <span>Adicionar Ativo</span>
         </button>
       </div>
@@ -174,9 +280,9 @@ function handleSelectInstitution(inst: string) {
         icon="invest"
         :is-privacy-active="isPrivacyActive"
         clickable
-        :active="activeSubTab === 'xp' || activeSubTab === 'custody'"
-        action-hint="Ver Carteira XP"
-        @click="activeSubTab = 'xp'"
+        :active="activeSubTab === 'custody'"
+        action-hint="Ver Carteira"
+        @click="activeSubTab = 'custody'"
       />
       <KpiCard
         test-id="kpi-invest-profit"
@@ -188,7 +294,7 @@ function handleSelectInstitution(inst: string) {
         :is-privacy-active="isPrivacyActive"
         clickable
         :active="activeSubTab === 'evolution'"
-        action-hint="Ver Evolução XP"
+        action-hint="Ver Evolução"
         @click="activeSubTab = 'evolution'"
       />
       <KpiCard
@@ -206,27 +312,12 @@ function handleSelectInstitution(inst: string) {
       />
     </div>
 
-    <!-- SUB-ABAS INTERNAS DA CARTEIRA: Carteira XP | Custódia | Evolução XP | Rebalancear -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 py-0.5">
-      <button
-        type="button"
-        data-testid="invest-subtab-xp"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
-        :class="
-          activeSubTab === 'xp'
-            ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
-            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
-        "
-        @click="activeSubTab = 'xp'"
-      >
-        <span>📱</span>
-        <span>Carteira XP</span>
-      </button>
-
+    <!-- SUB-ABAS INTERNAS DA CARTEIRA UNIFICADAS: Carteira & Custódia | Evolução | Rebalanceamento -->
+    <div class="grid grid-cols-3 gap-2 py-0.5">
       <button
         type="button"
         data-testid="invest-subtab-custody"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
+        class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'custody'
             ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
@@ -235,14 +326,14 @@ function handleSelectInstitution(inst: string) {
         @click="activeSubTab = 'custody'"
       >
         <AppIcon name="vault" size="14" />
-        <span class="sm:hidden">Custódia</span>
-        <span class="hidden sm:inline">Custódia & Corretoras</span>
+        <span class="sm:hidden">Carteira</span>
+        <span class="hidden sm:inline">Carteira & Custódia</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-evolution"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
+        class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'evolution'
             ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
@@ -252,13 +343,13 @@ function handleSelectInstitution(inst: string) {
       >
         <AppIcon name="line-chart" size="14" />
         <span class="sm:hidden">Evolução</span>
-        <span class="hidden sm:inline">Evolução XP</span>
+        <span class="hidden sm:inline">Evolução & Performance</span>
       </button>
 
       <button
         type="button"
         data-testid="invest-subtab-rebalance"
-        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
+        class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition whitespace-nowrap min-w-0 cursor-pointer"
         :class="
           activeSubTab === 'rebalance'
             ? 'bg-finance-invest text-black border-finance-invest shadow-sm'
@@ -273,21 +364,20 @@ function handleSelectInstitution(inst: string) {
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 0: MINHA CARTEIRA NO ESTILO XP (Print 4)                          -->
-    <!-- ========================================================================= -->
-    <div v-show="activeSubTab === 'xp'" class="space-y-5">
-      <XpPortfolioTab
-        :assets="assets"
-        :is-privacy-active="isPrivacyActive"
-        :total-invested-in-cents="totalInvestedInCents"
-        @open-add-asset="isAddModalOpen = true"
-      />
-    </div>
-
-    <!-- ========================================================================= -->
-    <!-- SUB-ABA 1: CUSTÓDIA POR CORRETORA & LISTA DE ATIVOS                       -->
+    <!-- SUB-ABA 1 UNIFICADA: MINHA CARTEIRA + CUSTÓDIA POR CORRETORA & ATIVOS      -->
     <!-- ========================================================================= -->
     <div v-show="activeSubTab === 'custody'" class="space-y-5">
+      <!-- VISÃO CONSOLIDADA DA CARTEIRA (Donut Ring, Classes, Produto, Liquidez, Objetivos) -->
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6">
+        <XpPortfolioTab
+          :assets="assets"
+          :is-privacy-active="isPrivacyActive"
+          :total-invested-in-cents="totalInvestedInCents"
+          @open-add-asset="handleOpenNewAsset"
+          @edit-asset="handleOpenEditAsset"
+          @delete-asset="handleDeleteAsset"
+        />
+      </div>
       <!-- DIVISÃO POR CORRETORA / INSTITUIÇÃO (CLICÁVEL PARA FILTRAR) -->
       <div
         v-if="byInstitution.length > 0"
@@ -358,14 +448,7 @@ function handleSelectInstitution(inst: string) {
           <!-- Filtro por Classe em Pills Horizontais -->
           <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <button
-              v-for="cls in [
-                { key: 'ALL', label: 'Todos' },
-                { key: 'renda_fixa', label: 'Renda Fixa' },
-                { key: 'fiis', label: 'FIIs' },
-                { key: 'acoes_br', label: 'Ações BR' },
-                { key: 'internacional', label: 'Exterior' },
-                { key: 'cripto', label: 'Cripto' },
-              ]"
+              v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...allAvailableClasses]"
               :key="cls.key"
               type="button"
               class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer"
@@ -387,14 +470,14 @@ function handleSelectInstitution(inst: string) {
           title="Nenhum ativo na carteira"
           description="Cadastre seus investimentos de Renda Fixa, Ações, FIIs ou Cripto para acompanhar seu preço médio e rentabilidade real."
           primary-action-label="Cadastrar Primeiro Ativo"
-          @primary-action="isAddModalOpen = true"
+          @primary-action="handleOpenNewAsset"
         />
 
         <div v-else class="divide-y divide-border-subtle/60">
           <div
             v-for="asset in filteredAssets"
             :key="asset.id"
-            class="py-3.5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/50 rounded-xl transition"
+            class="py-3.5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/50 rounded-xl transition group"
           >
             <div class="space-y-1 min-w-0">
               <div class="flex flex-wrap items-center gap-2">
@@ -404,7 +487,7 @@ function handleSelectInstitution(inst: string) {
                 <span
                   class="text-[10px] uppercase font-bold bg-[#27272A] text-finance-invest px-2 py-0.5 rounded whitespace-nowrap"
                 >
-                  {{ asset.assetClass.replace('_', ' ') }}
+                  {{ formatClassLabel(asset.assetClass) }}
                 </span>
                 <span
                   class="text-[10px] bg-background border border-border-subtle text-finance-neutral px-2 py-0.5 rounded whitespace-nowrap"
@@ -419,61 +502,85 @@ function handleSelectInstitution(inst: string) {
               </div>
             </div>
 
-            <div class="flex sm:flex-col items-center sm:items-end justify-between text-right shrink-0">
-              <div class="text-sm font-extrabold text-white font-mono whitespace-nowrap">
-                {{
-                  isPrivacyActive
-                    ? 'R$ •••••'
-                    : formatCentsToBrl(asset.totalQuantity * asset.currentPriceInCents)
-                }}
-                <span class="text-[10px] text-finance-neutral font-normal ml-1">
-                  ({{
-                    totalInvestedInCents > 0
+            <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+              <div class="text-right">
+                <div class="text-sm font-extrabold text-white font-mono whitespace-nowrap">
+                  {{
+                    isPrivacyActive
+                      ? 'R$ •••••'
+                      : formatCentsToBrl(asset.totalQuantity * asset.currentPriceInCents)
+                  }}
+                  <span class="text-[10px] text-finance-neutral font-normal ml-1">
+                    ({{
+                      totalInvestedInCents > 0
+                        ? Number(
+                            (
+                              ((asset.totalQuantity * asset.currentPriceInCents) /
+                                totalInvestedInCents) *
+                              100
+                            ).toFixed(1)
+                          )
+                        : 0
+                    }}%)
+                  </span>
+                </div>
+                <div
+                  class="text-xs font-mono font-bold whitespace-nowrap"
+                  :class="
+                    asset.totalQuantity * asset.currentPriceInCents -
+                      asset.totalQuantity * asset.averagePriceInCents >=
+                    0
+                      ? 'text-finance-pos'
+                      : 'text-finance-neg'
+                  "
+                >
+                  {{
+                    asset.totalQuantity * asset.currentPriceInCents -
+                      asset.totalQuantity * asset.averagePriceInCents >=
+                    0
+                      ? '+'
+                      : ''
+                  }}{{
+                    asset.totalQuantity * asset.averagePriceInCents > 0
                       ? Number(
                           (
-                            ((asset.totalQuantity * asset.currentPriceInCents) /
-                              totalInvestedInCents) *
+                            ((asset.totalQuantity * asset.currentPriceInCents -
+                              asset.totalQuantity * asset.averagePriceInCents) /
+                              (asset.totalQuantity * asset.averagePriceInCents)) *
                             100
-                          ).toFixed(1)
+                          ).toFixed(2)
                         )
                       : 0
-                  }}%)
-                </span>
+                  }}% ({{
+                    formatCentsToBrl(
+                      asset.totalQuantity * asset.currentPriceInCents -
+                        asset.totalQuantity * asset.averagePriceInCents,
+                      { showSign: true }
+                    )
+                  }})
+                </div>
               </div>
-              <div
-                class="text-xs font-mono font-bold whitespace-nowrap"
-                :class="
-                  asset.totalQuantity * asset.currentPriceInCents -
-                    asset.totalQuantity * asset.averagePriceInCents >=
-                  0
-                    ? 'text-finance-pos'
-                    : 'text-finance-neg'
-                "
-              >
-                {{
-                  asset.totalQuantity * asset.currentPriceInCents -
-                    asset.totalQuantity * asset.averagePriceInCents >=
-                  0
-                    ? '+'
-                    : ''
-                }}{{
-                  asset.totalQuantity * asset.averagePriceInCents > 0
-                    ? Number(
-                        (
-                          ((asset.totalQuantity * asset.currentPriceInCents -
-                            asset.totalQuantity * asset.averagePriceInCents) /
-                            (asset.totalQuantity * asset.averagePriceInCents)) *
-                          100
-                        ).toFixed(2)
-                      )
-                    : 0
-                }}% ({{
-                  formatCentsToBrl(
-                    asset.totalQuantity * asset.currentPriceInCents -
-                      asset.totalQuantity * asset.averagePriceInCents,
-                    { showSign: true }
-                  )
-                }})
+
+              <!-- Botões de Ação do Ativo: Editar e Excluir -->
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  :data-testid="`btn-edit-asset-${asset.id}`"
+                  title="Editar ativo"
+                  class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                  @click="handleOpenEditAsset(asset)"
+                >
+                  <AppIcon name="edit" size="15" />
+                </button>
+                <button
+                  type="button"
+                  :data-testid="`btn-delete-asset-${asset.id}`"
+                  title="Excluir ativo"
+                  class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                  @click="handleDeleteAsset(asset)"
+                >
+                  <AppIcon name="trash" size="15" />
+                </button>
               </div>
             </div>
           </div>
@@ -528,7 +635,6 @@ function handleSelectInstitution(inst: string) {
     <!-- ========================================================================= -->
     <div v-show="activeSubTab === 'rebalance'" class="space-y-5">
       <div
-        v-if="assets.length > 0"
         class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5"
       >
         <div
@@ -546,35 +652,97 @@ function handleSelectInstitution(inst: string) {
               </span>
             </div>
             <p class="text-xs text-[#71717A]">
-              O algoritmo direciona 100% do aporte para equilibrar classes abaixo da meta.
+              Edite a meta (%) de cada classe ou insira novas classes para direcionar seu aporte.
             </p>
           </div>
 
-          <div class="flex items-center gap-2 bg-background p-2 rounded-xl border border-border-subtle self-start sm:self-auto shrink-0">
-            <span class="text-xs font-semibold text-finance-neutral whitespace-nowrap">Novo Aporte (R$):</span>
+          <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              type="button"
+              data-testid="btn-toggle-new-class"
+              class="px-3 py-2 rounded-xl border border-finance-invest/40 bg-finance-invest/10 hover:bg-finance-invest/20 text-finance-invest font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              @click="isAddingNewClass = !isAddingNewClass"
+            >
+              <span>+</span>
+              <span>Nova Classe</span>
+            </button>
+
+            <div class="flex items-center gap-2 bg-background p-2 rounded-xl border border-border-subtle">
+              <span class="text-xs font-semibold text-finance-neutral whitespace-nowrap">Novo Aporte (R$):</span>
+              <input
+                :value="aporteInput"
+                type="text"
+                inputmode="numeric"
+                class="bg-surface border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-white font-mono font-bold w-28 sm:w-32 text-right focus:border-accent-yellow outline-none transition"
+                @focus="(e: Event) => {
+                  const t = e.target as HTMLInputElement;
+                  if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+                }"
+                @click="(e: Event) => {
+                  const t = e.target as HTMLInputElement;
+                  if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
+                }"
+                @input="(e: Event) => {
+                  const target = e.target as HTMLInputElement;
+                  const sanitized = sanitizeCurrencyInput(target.value);
+                  aporteInput = sanitized;
+                  target.value = sanitized;
+                  target.setSelectionRange(sanitized.length, sanitized.length);
+                }"
+                @blur="aporteInput = normalizeCurrencyOnBlur(aporteInput)"
+                @keydown.enter="($event.target as HTMLInputElement).blur()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulário Inline para Inserir Nova Classe no Rebalanceador -->
+        <div
+          v-if="isAddingNewClass"
+          data-testid="form-add-rebalance-class"
+          class="bg-background border border-finance-invest/40 rounded-xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-end gap-3"
+        >
+          <div class="flex-1">
+            <label class="block text-[11px] font-semibold text-finance-neutral mb-1">
+              Nome da Nova Classe
+            </label>
             <input
-              :value="aporteInput"
+              v-model="newClassName"
               type="text"
-              inputmode="numeric"
-              class="bg-surface border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-white font-mono font-bold w-32 text-right focus:border-accent-yellow outline-none transition"
-              @focus="(e: Event) => {
-                const t = e.target as HTMLInputElement;
-                if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
-              }"
-              @click="(e: Event) => {
-                const t = e.target as HTMLInputElement;
-                if (t.selectionStart === t.selectionEnd) t.setSelectionRange(t.value.length, t.value.length);
-              }"
-              @input="(e: Event) => {
-                const target = e.target as HTMLInputElement;
-                const sanitized = sanitizeCurrencyInput(target.value);
-                aporteInput = sanitized;
-                target.value = sanitized;
-                target.setSelectionRange(sanitized.length, sanitized.length);
-              }"
-              @blur="aporteInput = normalizeCurrencyOnBlur(aporteInput)"
-              @keydown.enter="($event.target as HTMLInputElement).blur()"
+              data-testid="input-new-class-name"
+              placeholder="Ex: Previdência, Ouro, REITs..."
+              class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-lg px-3 py-1.5 text-xs text-white outline-none"
             />
+          </div>
+          <div class="w-full sm:w-32">
+            <label class="block text-[11px] font-semibold text-finance-neutral mb-1">
+              Meta Desejada (%)
+            </label>
+            <input
+              v-model="newClassTargetStr"
+              type="number"
+              min="0"
+              max="100"
+              data-testid="input-new-class-target"
+              class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-lg px-3 py-1.5 text-xs text-white font-mono outline-none"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="btn-save-new-class"
+              class="px-4 py-1.5 rounded-lg bg-finance-invest text-black font-bold text-xs cursor-pointer"
+              @click="handleAddExtraClass"
+            >
+              Inserir Classe
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg bg-surface text-finance-neutral hover:text-white text-xs cursor-pointer"
+              @click="isAddingNewClass = false"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
 
@@ -582,15 +750,29 @@ function handleSelectInstitution(inst: string) {
           <div
             v-for="sug in rebalanceResult?.suggestions"
             :key="sug.assetClass"
-            class="bg-background border border-border-subtle rounded-xl p-4 space-y-2"
+            class="bg-background border border-border-subtle rounded-xl p-4 space-y-2.5"
           >
             <div class="flex justify-between items-center text-xs font-semibold gap-2">
               <span class="text-white uppercase tracking-wider text-xs font-bold whitespace-nowrap">
-                {{ sug.assetClass.replace('_', ' ') }}
+                {{ formatClassLabel(sug.assetClass) }}
               </span>
-              <span class="font-mono text-[11px] text-finance-neutral whitespace-nowrap">
-                Atual: <strong class="text-white">{{ sug.currentPercent }}%</strong> | Meta: <strong class="text-accent-yellow">{{ sug.targetPercent }}%</strong>
-              </span>
+              <div class="flex items-center gap-2 font-mono text-[11px] text-finance-neutral whitespace-nowrap">
+                <span>Atual: <strong class="text-white">{{ sug.currentPercent }}%</strong></span>
+                <span>|</span>
+                <label class="inline-flex items-center gap-1 text-accent-yellow">
+                  <span>Meta:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    :data-testid="`input-target-${sug.assetClass}`"
+                    :value="sug.targetPercent"
+                    class="w-14 bg-surface border border-border-subtle focus:border-accent-yellow rounded px-1.5 py-0.5 text-right text-xs font-bold text-accent-yellow outline-none"
+                    @change="(e: Event) => handleUpdateClassTarget(sug.assetClass, parseFloat((e.target as HTMLInputElement).value))"
+                  />
+                  <span>%</span>
+                </label>
+              </div>
             </div>
 
             <div class="w-full bg-surface h-2.5 rounded-full overflow-hidden flex">
@@ -619,12 +801,18 @@ function handleSelectInstitution(inst: string) {
       </div>
     </div>
 
-    <!-- Modal de Adicionar Ativo -->
+    <!-- Modal de Adicionar / Editar Ativo -->
     <AddAssetModal
       :is-open="isAddModalOpen"
-      @close="isAddModalOpen = false"
+      :asset-to-edit="assetToEdit"
+      :available-classes="allAvailableClasses"
+      @close="
+        isAddModalOpen = false;
+        assetToEdit = null;
+      "
       @success="
         isAddModalOpen = false;
+        assetToEdit = null;
         emit('refreshData');
       "
     />

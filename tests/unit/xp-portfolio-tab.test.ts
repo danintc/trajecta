@@ -3,23 +3,18 @@ import { mount } from '@vue/test-utils';
 import XpPortfolioTab from '@/adapters/in/ui/components/XpPortfolioTab.vue';
 
 describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
-  it('deve renderizar o cabeçalho no estilo XP com avatar, título e pills', () => {
+  it('deve renderizar o cabeçalho da carteira com título e pills de visualização', () => {
     const wrapper = mount(XpPortfolioTab, {
       props: {
         assets: [],
         isPrivacyActive: false,
-        userName: 'Daniel',
-        userInitials: 'DS',
       },
     });
 
     expect(wrapper.find('[data-testid="xp-portfolio-tab"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('DS');
-    expect(wrapper.text()).toContain('Daniel');
-    expect(wrapper.text()).toContain('31'); // badge de notificações
     expect(wrapper.text()).toContain('Minha carteira');
 
-    // Sub-nav pills (Print 4)
+    // Sub-nav pills
     expect(wrapper.text()).toContain('Classe');
     expect(wrapper.text()).toContain('Produto');
     expect(wrapper.text()).toContain('Liquidez');
@@ -112,7 +107,7 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.text()).toContain('54 cotas');
   });
 
-  it('deve renderizar o card de assessoria Liberta Digital com botão de contato e modal', async () => {
+  it('não deve exibir cabeçalho de nome/busca/bandeira nem card de assessoria desnecessários', () => {
     const wrapper = mount(XpPortfolioTab, {
       props: {
         assets: [],
@@ -120,16 +115,8 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('Assessoria de investimentos');
-    expect(wrapper.text()).toContain('Sua assessoria');
-    expect(wrapper.text()).toContain('Liberta Digital');
-
-    const contatoBtn = wrapper.findAll('button').find((b) => b.text() === 'Contato');
-    expect(contatoBtn).toBeDefined();
-    await contatoBtn!.trigger('click');
-
-    expect(wrapper.text()).toContain('Chamar no WhatsApp');
-    expect(wrapper.text()).toContain('Enviar E-mail');
+    expect(wrapper.text()).not.toContain('Assessoria de investimentos');
+    expect(wrapper.text()).not.toContain('Liberta Digital');
   });
 
   it('deve mascarar os valores quando a privacidade estiver ativa', () => {

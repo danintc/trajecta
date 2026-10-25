@@ -88,7 +88,7 @@ describe('InvestmentsScreen Component', () => {
     expect(wrapper.emitted('navigateToSimulator')).toBeTruthy();
   });
 
-  it('deve alternar para a sub-aba Carteira XP exibindo o estilo visual solicitado', async () => {
+  it('deve unificar Carteira e Custódia na mesma visualização sem referências a Carteira XP ou Assessoria', async () => {
     const wrapper = mount(InvestmentsScreen, {
       props: {
         assets: mockAssets,
@@ -96,13 +96,45 @@ describe('InvestmentsScreen Component', () => {
       },
     });
 
-    const xpTabBtn = wrapper.find('[data-testid="invest-subtab-xp"]');
-    expect(xpTabBtn.exists()).toBe(true);
-    await xpTabBtn.trigger('click');
-
+    expect(wrapper.find('[data-testid="invest-subtab-xp"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="invest-subtab-custody"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="xp-portfolio-tab"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Minha carteira');
-    expect(wrapper.text()).toContain('Liberta Digital');
+    expect(wrapper.text()).not.toContain('Carteira XP');
+    expect(wrapper.text()).not.toContain('Liberta Digital');
+  });
+
+  it('deve permitir editar metas e inserir novas classes no Rebalanceador', async () => {
+    const wrapper = mount(InvestmentsScreen, {
+      props: {
+        assets: mockAssets,
+        isPrivacyActive: false,
+      },
+    });
+
+    await wrapper.find('[data-testid="invest-subtab-rebalance"]').trigger('click');
+
+    const newClassBtn = wrapper.find('[data-testid="btn-toggle-new-class"]');
+    expect(newClassBtn.exists()).toBe(true);
+    await newClassBtn.trigger('click');
+
+    await wrapper.find('[data-testid="input-new-class-name"]').setValue('Previdência');
+    await wrapper.find('[data-testid="input-new-class-target"]').setValue('15');
+    await wrapper.find('[data-testid="btn-save-new-class"]').trigger('click');
+
+    expect(wrapper.text()).toContain('Previdência');
+  });
+
+  it('deve exibir botões de editar e excluir para cada ativo em carteira', () => {
+    const wrapper = mount(InvestmentsScreen, {
+      props: {
+        assets: mockAssets,
+        isPrivacyActive: false,
+      },
+    });
+
+    expect(wrapper.find('[data-testid="btn-edit-asset-asset-1"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="btn-delete-asset-asset-1"]').exists()).toBe(true);
   });
 
   it('deve alternar para a sub-aba Rentabilidade & Evolução XP exibindo o gráfico de montanha e benchmarks', async () => {

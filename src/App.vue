@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { db, clearTestDatabase, seedPopulatedDatabase } from '@/adapters/out/storage/dexie-db';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { db, seedPopulatedDatabase } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { useAuth } from '@/adapters/in/ui/composables/useAuth';
 import { Transaction } from '@/core/domain/transaction.entity';
@@ -20,7 +20,6 @@ export type ActiveTab = 'home' | 'timeline' | 'invest' | 'career' | 'phase-simul
 
 const {
   currentUser,
-  isDemoSession,
   isAuthLoading,
   isAuthenticated,
   userDisplayName,
@@ -36,7 +35,6 @@ const isAddModalOpen = ref(false);
 const isUserMenuOpen = ref(false);
 const isSyncingCloud = ref(false);
 const transactionToEdit = ref<Transaction | null>(null);
-const appMode = ref<'empty' | 'populated'>('populated');
 
 const navItems: Array<{ key: ActiveTab; icon: string; label: string; shortLabel: string; testId: string }> = [
   { key: 'home', icon: 'home', label: 'Dashboard', shortLabel: 'Início', testId: 'nav-tab-home' },
@@ -80,7 +78,7 @@ function handleOpenEditModal(tx: Transaction) {
   isAddModalOpen.value = true;
 }
 
-// Estados sincronizados com IndexedDB + Supabase Cloud
+// Estados sincronizados com IndexedDB + Nuvem
 const transactions = ref<Transaction[]>([]);
 const assets = ref<Asset[]>([]);
 const careerRecords = ref<CareerRecord[]>([]);
@@ -100,7 +98,7 @@ async function syncAndLoadWorkspace() {
   isSyncingCloud.value = true;
   try {
     const localCount = await db.transactions.count();
-    if (localCount === 0 && appMode.value === 'populated') {
+    if (localCount === 0) {
       await seedPopulatedDatabase();
     }
 
@@ -114,12 +112,39 @@ async function syncAndLoadWorkspace() {
   }
 }
 
+// Bloqueia o zoom de pinça (pinch-to-zoom) para experiência de app nativo mobile
+function preventPinchZoom(e: Event) {
+  e.preventDefault();
+}
+
+function preventMultiTouchZoom(e: TouchEvent) {
+  if (e.touches && e.touches.length > 1) {
+    e.preventDefault();
+  }
+}
+
 onMounted(async () => {
+  if (typeof document !== 'undefined') {
+    document.addEventListener('gesturestart', preventPinchZoom, { passive: false });
+    document.addEventListener('gesturechange', preventPinchZoom, { passive: false });
+    document.addEventListener('gestureend', preventPinchZoom, { passive: false });
+    document.addEventListener('touchmove', preventMultiTouchZoom, { passive: false });
+  }
+
   await seedPopulatedDatabase();
   await loadDatabaseData();
   await initAuth();
   if (currentUser.value) {
     await syncAndLoadWorkspace();
+  }
+});
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('gesturestart', preventPinchZoom);
+    document.removeEventListener('gesturechange', preventPinchZoom);
+    document.removeEventListener('gestureend', preventPinchZoom);
+    document.removeEventListener('touchmove', preventMultiTouchZoom);
   }
 });
 
@@ -131,24 +156,6 @@ watch(
     }
   }
 );
-
-// Alternar entre Clean Slate (Vazio) e Populado
-async function handleToggleState(mode: 'empty' | 'populated') {
-  appMode.value = mode;
-  isSyncingCloud.value = true;
-  try {
-    if (mode === 'empty') {
-      await clearTestDatabase();
-    } else {
-      await seedPopulatedDatabase();
-    }
-    await cloudSyncService.pushAllLocalToCloud();
-    await loadDatabaseData();
-  } finally {
-    isSyncingCloud.value = false;
-    isUserMenuOpen.value = false;
-  }
-}
 
 async function handleDeleteTransaction(id: string) {
   await db.transactions.delete(id);
@@ -200,14 +207,9 @@ async function handleLogout() {
               Trajecta
             </span>
             <span
-              class="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0"
-              :class="
-                currentUser
-                  ? 'bg-finance-pos/15 text-finance-pos border border-finance-pos/30'
-                  : 'bg-[#27272A] text-finance-neutral'
-              "
+              class="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 bg-finance-pos/15 text-finance-pos border border-finance-pos/30"
             >
-              {{ isSyncingCloud ? 'Sincronizando...' : currentUser ? 'Cloud Sync' : 'Local Demo' }}
+              {{ isSyncingCloud ? 'Sincronizando...' : 'Salvo na nuvem' }}
             </span>
           </div>
           <p class="text-xs text-[#71717A] hidden sm:block truncate">
@@ -218,36 +220,6 @@ async function handleLogout() {
 
       <!-- CONTROLES GLOBAIS -->
       <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        <!-- Seletor Estado Cru vs Populado (Visível direto no Desktop; no Mobile fica no menu de perfil) -->
-        <div
-          class="hidden lg:flex bg-background p-1 rounded-lg border border-border-subtle items-center text-xs"
-        >
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded font-medium transition"
-            :class="
-              appMode === 'populated'
-                ? 'bg-surface-hover text-white'
-                : 'text-finance-neutral hover:text-white'
-            "
-            @click="handleToggleState('populated')"
-          >
-            Populado
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded font-medium transition"
-            :class="
-              appMode === 'empty'
-                ? 'bg-surface-hover text-white'
-                : 'text-finance-neutral hover:text-white'
-            "
-            @click="handleToggleState('empty')"
-          >
-            Clean Slate (Vazio)
-          </button>
-        </div>
-
         <!-- Toggle Modo Privacidade -->
         <button
           data-testid="privacy-toggle"
@@ -322,56 +294,14 @@ async function handleLogout() {
               <div class="text-xs font-bold text-white truncate">{{ userDisplayName }}</div>
               <div class="text-[11px] text-finance-neutral truncate">{{ userEmail }}</div>
               <div class="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold">
-                <span
-                  class="w-2 h-2 rounded-full"
-                  :class="currentUser ? 'bg-finance-pos' : 'bg-accent-yellow'"
-                />
-                <span class="text-finance-neutral">
-                  {{
-                    currentUser
-                      ? 'Sincronizado com Supabase Cloud'
-                      : isDemoSession
-                        ? 'Sessão de Demonstração Local'
-                        : 'Armazenamento Local'
-                  }}
+                <span class="w-2 h-2 rounded-full bg-finance-pos" />
+                <span class="text-finance-pos">
+                  {{ isSyncingCloud ? 'Sincronizando com a nuvem...' : 'Salvo na nuvem' }}
                 </span>
               </div>
             </div>
 
-            <!-- Controle de Base de Dados (Essencial para Mobile onde o toggle superior fica oculto) -->
-            <div class="space-y-1.5">
-              <span class="block text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-                Modo da Base de Dados
-              </span>
-              <div class="grid grid-cols-2 gap-1.5 p-1 bg-background rounded-xl border border-border-subtle text-xs">
-                <button
-                  type="button"
-                  class="py-1.5 rounded-lg font-semibold transition"
-                  :class="
-                    appMode === 'populated'
-                      ? 'bg-surface-hover text-white'
-                      : 'text-finance-neutral hover:text-white'
-                  "
-                  @click="handleToggleState('populated')"
-                >
-                  Populado
-                </button>
-                <button
-                  type="button"
-                  class="py-1.5 rounded-lg font-semibold transition"
-                  :class="
-                    appMode === 'empty'
-                      ? 'bg-surface-hover text-white'
-                      : 'text-finance-neutral hover:text-white'
-                  "
-                  @click="handleToggleState('empty')"
-                >
-                  Vazio (Zero)
-                </button>
-              </div>
-            </div>
-
-            <div class="pt-2 border-t border-border-subtle">
+            <div class="pt-1">
               <button
                 type="button"
                 data-testid="btn-logout"

@@ -43,8 +43,19 @@ const emit = defineEmits<{
 // Sub-aba ativa no Extrato (Padrão: 'lancamentos' para tela limpa e direta, sem sobrecarga visual)
 const activeSubTab = ref<TimelineSubTab>('lancamentos');
 
-// Data de referência centralizada e fixa no mês atual
-const anchorDate = ref<Date>(new Date());
+// Data de referência centralizada (se o mês atual não tiver lançamentos, usa a data mais recente disponível)
+const initialAnchorDate = (() => {
+  const now = new Date();
+  const currentYm = format(now, 'yyyy-MM');
+  const hasCurrentMonthTx = props.transactions.some((t) => t.date.startsWith(currentYm));
+  if (!hasCurrentMonthTx && props.transactions.length > 0) {
+    const sortedDates = props.transactions.map((t) => t.date).sort((a, b) => b.localeCompare(a));
+    return new Date(`${sortedDates[0]}T12:00:00Z`);
+  }
+  return now;
+})();
+
+const anchorDate = ref<Date>(initialAnchorDate);
 const periodMode = ref<PeriodMode>('month');
 
 // Período customizado
@@ -215,7 +226,7 @@ function handleDelete(id: string, description: string) {
 
 <template>
   <div data-testid="screen-timeline" class="space-y-4">
-    <!-- Header com Título e Botão de Lançamento (Item 1 & Item 2) -->
+    <!-- Header com Título e Botão de Lançamento Enfático -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <div class="flex items-center gap-2">
@@ -233,15 +244,15 @@ function handleDelete(id: string, description: string) {
         </p>
       </div>
 
-      <!-- Botão Primário (+) Novo Lançamento (Visível na aba de Extrato - Item 1) -->
-      <div class="flex items-center gap-2 shrink-0">
+      <!-- Botão Primário (+) Novo Lançamento (Maior e bem enfático) -->
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
         <button
           data-testid="fab-add-transaction"
           type="button"
-          class="px-4 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent-yellow/20 transition active:scale-95 cursor-pointer whitespace-nowrap"
+          class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-accent-yellow/30 ring-2 ring-accent-yellow/40 transition transform active:scale-95 cursor-pointer whitespace-nowrap"
           @click="emit('openAddModal')"
         >
-          <AppIcon name="plus" size="14" stroke-width="2.5" />
+          <AppIcon name="plus" size="18" stroke-width="3" />
           <span>Novo Lançamento</span>
         </button>
       </div>
@@ -532,37 +543,35 @@ function handleDelete(id: string, description: string) {
       />
     </div>
 
-    <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta - Item 5) -->
+    <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta) -->
     <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3">
-      <!-- Barra Compacta e Unificada de Busca & Filtros (Economiza Espaço Vertical) -->
-      <div
-        class="bg-surface border border-border-subtle rounded-xl p-2 flex flex-wrap sm:flex-nowrap items-center gap-2"
-      >
-        <!-- Campo de Busca Compacto e Dinâmico -->
-        <div class="relative flex-1 min-w-[140px] sm:w-64 sm:flex-initial">
+      <!-- Barra Minimalista de Busca & Filtros -->
+      <div class="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <!-- Campo de Busca Minimalista -->
+        <div class="relative flex items-center shrink-0">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="w-full h-8 sm:h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-lg pl-7 pr-7 py-1 text-xs text-white outline-none transition"
+            class="h-7 bg-surface/80 border border-border-subtle/70 focus:border-accent-yellow rounded-lg pl-6 pr-5 text-[11px] text-white placeholder-[#71717A] outline-none transition-all duration-200 w-32 sm:w-44 focus:w-48 sm:focus:w-60"
           />
-          <AppIcon name="search" size="13" class="absolute left-2 top-2 sm:top-2.5 text-finance-neutral pointer-events-none" />
+          <AppIcon name="search" size="11" class="absolute left-2 text-[#71717A] pointer-events-none" />
           <button
             v-if="searchTerm"
             type="button"
-            class="absolute right-2 top-2 text-[#71717A] hover:text-white text-xs cursor-pointer"
+            class="absolute right-1.5 text-[#71717A] hover:text-white text-[10px] cursor-pointer"
             @click="searchTerm = ''"
           >
             ✕
           </button>
         </div>
 
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        <div class="flex items-center gap-1.5 shrink-0">
           <!-- Chip de Dia Selecionado se houver filtro do Calendário -->
           <div
             v-if="selectedCalendarDay"
             data-testid="badge-active-day-filter"
-            class="h-8 bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-[11px] px-2 rounded-lg flex items-center gap-1 whitespace-nowrap shrink-0"
+            class="h-7 bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-[10px] px-2 rounded-lg flex items-center gap-1 whitespace-nowrap shrink-0"
           >
             <span>Dia: {{ selectedCalendarDay }}</span>
             <button
@@ -575,23 +584,23 @@ function handleDelete(id: string, description: string) {
             </button>
           </div>
 
-          <!-- Filtro de Tipo -->
+          <!-- Filtro de Tipo Minimalista -->
           <select
             v-model="selectedType"
-            class="h-8 bg-background border border-border-subtle text-white rounded-lg px-2 text-xs outline-none shrink-0 cursor-pointer"
+            class="h-7 bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-lg px-2 text-[11px] outline-none shrink-0 cursor-pointer"
           >
-            <option value="ALL">Tipos: Todos</option>
+            <option value="ALL">Tipos</option>
             <option value="expense">Despesas</option>
             <option value="income">Receitas</option>
             <option value="investment_deposit">Aportes</option>
           </select>
 
-          <!-- Filtro de Categoria -->
+          <!-- Filtro de Categoria Minimalista -->
           <select
             v-model="selectedCategory"
-            class="h-8 bg-background border border-border-subtle text-white rounded-lg px-2 text-xs outline-none shrink-0 cursor-pointer max-w-[130px]"
+            class="h-7 bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-lg px-2 text-[11px] outline-none shrink-0 cursor-pointer max-w-[115px]"
           >
-            <option value="ALL">Categorias: Todas</option>
+            <option value="ALL">Categorias</option>
             <option v-for="c in DEFAULT_CATEGORIES" :key="c.id" :value="c.id">
               {{ c.name }}
             </option>
@@ -641,20 +650,24 @@ function handleDelete(id: string, description: string) {
           <div
             v-for="group in groupedByDay"
             :key="group.date"
-            class="space-y-1.5"
+            class="space-y-2"
           >
-            <!-- Header do Dia -->
+            <!-- Header do Dia (Destacado e sem mostrar o ano) -->
             <div
-              class="flex items-center justify-between text-xs font-bold text-finance-neutral border-b border-border-subtle/50 pb-1 px-1"
+              class="flex items-center justify-between bg-background/90 border border-border-subtle/80 rounded-xl px-3 py-2 shadow-sm"
             >
-              <div class="flex items-center gap-2">
-                <span class="text-white font-mono font-bold">{{ group.date }}</span>
-                <span class="text-[11px] text-[#71717A] capitalize">
+              <div class="flex items-center gap-2.5">
+                <span
+                  class="px-2.5 py-1 rounded-lg bg-accent-yellow text-black font-mono font-extrabold text-xs sm:text-sm tracking-tight uppercase shadow-sm"
+                >
+                  {{ format(new Date(`${group.date}T12:00:00Z`), "dd 'de' MMM", { locale: ptBR }) }}
+                </span>
+                <span class="text-xs font-bold text-white capitalize">
                   {{ format(new Date(`${group.date}T12:00:00Z`), 'EEEE', { locale: ptBR }) }}
                 </span>
               </div>
               <span
-                class="font-mono text-xs"
+                class="font-mono font-extrabold text-xs sm:text-sm"
                 :class="group.subtotalInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
               >
                 {{
@@ -701,8 +714,13 @@ function handleDelete(id: string, description: string) {
                         [{{ tx.currentInstallment }}/{{ tx.totalInstallments }}]
                       </span>
                     </div>
-                    <div class="text-xs text-[#71717A] truncate">
-                      {{ categoryMap.get(tx.categoryId)?.name || 'Geral' }} • {{ tx.accountOrCard }}
+                    <div class="flex items-center gap-1.5 text-xs text-[#71717A] truncate mt-0.5">
+                      <span class="font-mono font-bold text-accent-yellow/90 bg-accent-yellow/10 px-1.5 py-0.2 rounded text-[10px] shrink-0">
+                        {{ format(new Date(`${tx.date}T12:00:00Z`), 'dd/MM') }}
+                      </span>
+                      <span class="truncate">
+                        {{ categoryMap.get(tx.categoryId)?.name || 'Geral' }} • {{ tx.accountOrCard }}
+                      </span>
                     </div>
                   </div>
                 </div>

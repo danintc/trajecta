@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
 import { formatCentsToBrl } from '@/shared/utils/currency';
+import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type XpPortfolioSubPill = 'classe' | 'produto' | 'liquidez' | 'ativos' | 'objetivos';
 
@@ -9,25 +10,20 @@ export interface XpPortfolioTabProps {
   assets: Asset[];
   isPrivacyActive: boolean;
   totalInvestedInCents?: number;
-  userName?: string;
-  userInitials?: string;
 }
 
 const props = withDefaults(defineProps<XpPortfolioTabProps>(), {
-  totalInvestedInCents: 2292215, // R$ 22.922,15 padrão XP
-  userName: 'Daniel',
-  userInitials: 'DS',
+  totalInvestedInCents: 2292215,
 });
 
 const emit = defineEmits<{
-  (e: 'togglePrivacy'): void;
   (e: 'openAddAsset'): void;
+  (e: 'editAsset', asset: Asset): void;
+  (e: 'deleteAsset', asset: Asset): void;
 }>();
 
 const activePill = ref<XpPortfolioSubPill>('classe');
 const expandedCategoryKey = ref<string | null>(null);
-const isAdvisorModalOpen = ref(false);
-const activeCurrency = ref<'BRL' | 'GLOBAL'>('BRL');
 
 // Valor Total Investido calculado a partir dos ativos ou fallback no valor de referência XP
 const totalInvestedInCents = computed(() => {
@@ -131,6 +127,7 @@ const classCategories = computed(() => {
       percentLabel: pct < 1 ? '< 1%' : `${pct.toFixed(0)}%`,
       profitPercent: Number(profit.toFixed(2)),
       assets: data.assets.map((a) => ({
+        rawAsset: a,
         ticker: a.tickerOrName,
         name: a.institution,
         qty: a.totalQuantity,
@@ -277,81 +274,11 @@ function toggleCategoryExpansion(key: string) {
 
 <template>
   <div data-testid="xp-portfolio-tab" class="space-y-5 text-white select-none">
-    <!-- BARRA DE STATUS / PERFIL ESTILO XP (DS Daniel, 31, Busca, Olho, Bandeiras) -->
-    <div class="flex items-center justify-between pt-1">
-      <div class="flex items-center gap-3">
-        <!-- Avatar Circle DS com Badge de Notificação -->
-        <div class="relative">
-          <div class="w-10 h-10 rounded-full bg-[#27272A] border border-[#3F3F46] flex items-center justify-center font-bold text-xs text-white">
-            {{ userInitials }}
-          </div>
-          <span class="absolute -top-1 -right-1 bg-finance-neg text-white font-mono font-extrabold text-[9px] px-1.5 py-0.2 rounded-full border border-background">
-            31
-          </span>
-        </div>
-
-        <span class="text-base sm:text-lg font-bold tracking-tight text-white">
-          {{ userName }}
-        </span>
-      </div>
-
-      <!-- Ícones da barra superior: Busca, Olho de Privacidade, Bandeira Brasil e Globo -->
-      <div class="flex items-center gap-2.5">
-        <button
-          type="button"
-          class="p-2 rounded-full bg-[#18181B] hover:bg-[#27272A] text-[#A1A1AA] hover:text-white transition"
-          title="Buscar ativos"
-          @click="emit('openAddAsset')"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="p-2 rounded-full bg-[#18181B] hover:bg-[#27272A] text-[#A1A1AA] hover:text-white transition"
-          :title="isPrivacyActive ? 'Mostrar valores' : 'Ocultar valores'"
-          @click="emit('togglePrivacy')"
-        >
-          <svg v-if="!isPrivacyActive" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          <svg v-else class="w-4 h-4 text-accent-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-          </svg>
-        </button>
-
-        <!-- Seletor de Câmbio / Moeda (Bandeira BR e Globo) -->
-        <div class="flex items-center bg-[#18181B] rounded-full p-0.5 border border-[#27272A]">
-          <button
-            type="button"
-            class="px-1.5 py-1 rounded-full text-xs transition"
-            :class="activeCurrency === 'BRL' ? 'bg-[#27272A]' : 'opacity-60'"
-            title="Visualização Brasil (BRL)"
-            @click="activeCurrency = 'BRL'"
-          >
-            🇧🇷
-          </button>
-          <button
-            type="button"
-            class="px-1.5 py-1 rounded-full text-xs transition"
-            :class="activeCurrency === 'GLOBAL' ? 'bg-[#27272A]' : 'opacity-60'"
-            title="Visualização Global (USD)"
-            @click="activeCurrency = 'GLOBAL'"
-          >
-            🌐
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- TÍTULO: Minha carteira -->
     <div>
-      <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">
+      <h2 class="text-base sm:text-lg font-bold tracking-tight text-white">
         Minha carteira
-      </h1>
+      </h2>
     </div>
 
     <!-- SUB-NAV PILLS: [ Classe ] [ Produto ] [ Liquidez ] [ Ativos ] [ Objetivos ] -->
@@ -479,18 +406,39 @@ function toggleCategoryExpansion(key: string) {
           <div
             v-for="(asset, idx) in cat.assets"
             :key="idx"
-            class="p-2.5 bg-[#18181B] rounded-xl border border-border-subtle/60 flex items-center justify-between text-xs"
+            class="p-2.5 bg-[#18181B] rounded-xl border border-border-subtle/60 flex items-center justify-between gap-2 text-xs"
+            @click.stop
           >
             <div>
               <div class="font-bold text-white font-mono">{{ asset.ticker }}</div>
               <div class="text-[10px] text-[#71717A]">{{ asset.name }} • {{ asset.qty }} cotas</div>
             </div>
-            <div class="text-right font-mono">
-              <div class="font-bold text-white">
-                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
+            <div class="flex items-center gap-2">
+              <div class="text-right font-mono">
+                <div class="font-bold text-white">
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
+                </div>
+                <div class="text-finance-pos font-semibold text-[11px]">
+                  ▲ {{ asset.profit }}
+                </div>
               </div>
-              <div class="text-finance-pos font-semibold text-[11px]">
-                ▲ {{ asset.profit }}
+              <div v-if="(asset as any).rawAsset" class="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="Editar ativo"
+                  class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                  @click.stop="emit('editAsset', (asset as any).rawAsset)"
+                >
+                  <AppIcon name="edit" size="13" />
+                </button>
+                <button
+                  type="button"
+                  title="Excluir ativo"
+                  class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
+                  @click.stop="emit('deleteAsset', (asset as any).rawAsset)"
+                >
+                  <AppIcon name="trash" size="13" />
+                </button>
               </div>
             </div>
           </div>
@@ -553,17 +501,37 @@ function toggleCategoryExpansion(key: string) {
         <div
           v-for="(asset, idx) in cat.assets"
           :key="idx"
-          class="p-3 bg-surface hover:bg-surface-hover rounded-xl border border-border-subtle flex items-center justify-between text-xs mb-2 transition"
+          class="p-3 bg-surface hover:bg-surface-hover rounded-xl border border-border-subtle flex items-center justify-between gap-2 text-xs mb-2 transition"
         >
           <div>
             <div class="font-bold text-white font-mono text-sm">{{ asset.ticker }}</div>
             <div class="text-[11px] text-[#A1A1AA]">{{ asset.name }} • {{ asset.qty }} cotas • PM: {{ asset.pm }}</div>
           </div>
-          <div class="text-right font-mono">
-            <div class="font-bold text-white text-sm">
-              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
+          <div class="flex items-center gap-2">
+            <div class="text-right font-mono">
+              <div class="font-bold text-white text-sm">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(asset.total) }}
+              </div>
+              <div class="text-finance-pos font-bold text-[11px]">▲ {{ asset.profit }}</div>
             </div>
-            <div class="text-finance-pos font-bold text-[11px]">▲ {{ asset.profit }}</div>
+            <div v-if="(asset as any).rawAsset" class="flex items-center gap-1">
+              <button
+                type="button"
+                title="Editar ativo"
+                class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-background transition cursor-pointer"
+                @click="emit('editAsset', (asset as any).rawAsset)"
+              >
+                <AppIcon name="edit" size="14" />
+              </button>
+              <button
+                type="button"
+                title="Excluir ativo"
+                class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-background transition cursor-pointer"
+                @click="emit('deleteAsset', (asset as any).rawAsset)"
+              >
+                <AppIcon name="trash" size="14" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -588,83 +556,6 @@ function toggleCategoryExpansion(key: string) {
         <div class="flex items-center justify-between pl-5 pt-1 text-xs font-mono">
           <span class="text-[#A1A1AA] text-[11px]">{{ obj.percentLabel }} da meta</span>
           <span class="text-finance-pos font-bold text-[11px]">▲ {{ obj.profitPercent.toFixed(2).replace('.', ',') }}%</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- CARD ASSESSORIA DE INVESTIMENTOS (LIBERTA DIGITAL COM BOTÃO CONTATO) -->
-    <div class="pt-4">
-      <div class="text-xs text-[#71717A] mb-2 font-semibold">
-        Assessoria de investimentos
-      </div>
-
-      <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-4 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-full bg-[#27272A] border border-[#3F3F46] flex items-center justify-center font-bold text-xs text-[#E4E4E7] shrink-0">
-            LD
-          </div>
-          <div class="min-w-0">
-            <div class="text-[11px] text-[#A1A1AA]">Sua assessoria</div>
-            <div class="text-sm font-bold text-white truncate">Liberta Digital</div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="px-4 py-2 rounded-xl bg-[#EAB308]/20 hover:bg-[#EAB308]/30 border border-[#EAB308]/40 text-[#EAB308] text-xs font-bold transition shrink-0 cursor-pointer"
-          @click="isAdvisorModalOpen = true"
-        >
-          Contato
-        </button>
-      </div>
-    </div>
-
-    <!-- MODAL DE CONTATO COM ASSESSORIA -->
-    <div
-      v-if="isAdvisorModalOpen"
-      class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-      @click.self="isAdvisorModalOpen = false"
-    >
-      <div class="bg-surface border border-border-subtle rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-        <div class="flex items-center justify-between border-b border-border-subtle pb-3">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-full bg-[#27272A] border border-[#3F3F46] flex items-center justify-center font-bold text-xs text-[#EAB308]">
-              LD
-            </div>
-            <div>
-              <h4 class="text-xs text-[#A1A1AA]">Assessoria Especializada</h4>
-              <h3 class="text-sm font-bold text-white">Liberta Digital</h3>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="text-[#A1A1AA] hover:text-white p-1 text-base"
-            @click="isAdvisorModalOpen = false"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          <p class="text-[#A1A1AA]">
-            Seu assessor exclusivo está à disposição para dúvidas sobre alocação, balanceamento e produtos.
-          </p>
-
-          <a
-            href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20gostaria%20de%20conversar%20sobre%20minha%20carteira%20na%20XP"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-finance-pos/20 hover:bg-finance-pos/30 text-finance-pos font-bold border border-finance-pos/30 transition text-center"
-          >
-            <span>💬 Chamar no WhatsApp</span>
-          </a>
-
-          <a
-            href="mailto:assessoria@libertadigital.com.br"
-            class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#27272A] hover:bg-[#3F3F46] text-white font-bold transition text-center"
-          >
-            <span>✉️ Enviar E-mail</span>
-          </a>
         </div>
       </div>
     </div>

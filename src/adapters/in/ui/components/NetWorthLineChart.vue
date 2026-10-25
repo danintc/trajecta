@@ -41,13 +41,22 @@ const displayMode = ref<ChartDisplayMode>(props.initialMode);
 const currentBenchmark = computed(() => getBenchmark(selectedBenchmark.value));
 
 const dataPoints = computed((): NetWorthPoint[] => {
-  const months = ['Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set (Atual)'];
-  const factors = currentBenchmark.value.factors;
+  const months = [
+    { label: 'Jan/26', nwFactor: 0.82, bmFactor: 0.88 },
+    { label: 'Fev/26', nwFactor: 0.78, bmFactor: 0.89 },
+    { label: 'Mar/26', nwFactor: 0.83, bmFactor: 0.91 },
+    { label: 'Abr/26', nwFactor: 0.88, bmFactor: 0.93 },
+    { label: 'Mai/26', nwFactor: 0.94, bmFactor: 0.95 },
+    { label: 'Jun/26', nwFactor: 0.91, bmFactor: 0.96 },
+    { label: 'Jul/26', nwFactor: 0.96, bmFactor: 0.975 },
+    { label: 'Ago/26', nwFactor: 0.95, bmFactor: 0.985 },
+    { label: 'Set/26', nwFactor: 0.985, bmFactor: 0.993 },
+    { label: 'Out/26', nwFactor: 1.0, bmFactor: 1.0 },
+  ];
 
   if (props.currentNetWorthInCents <= 0) {
-    const emptyMonths = ['Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'];
-    return emptyMonths.map((m) => ({
-      dateLabel: m,
+    return months.map((m) => ({
+      dateLabel: m.label,
       netWorthInCents: 0,
       benchmarkInCents: 0,
       yieldInCents: 0,
@@ -56,20 +65,20 @@ const dataPoints = computed((): NetWorthPoint[] => {
     }));
   }
 
-  const multipliers = [0.88, 0.90, 0.93, 0.95, 0.98, 1.0];
-  const baseVal = Math.round(props.currentNetWorthInCents * multipliers[0]);
-  const startFactor = factors[0] || 0.88;
+  const baseVal = Math.round(props.currentNetWorthInCents * months[0].nwFactor);
+  const bmReturn = currentBenchmark.value.defaultPeriodReturn;
+  const totalPortfolioGrowthPct = 13.8; // Crescimento do período (superando CDI de 10.90%)
 
   return months.map((m, idx) => {
-    const nw = Math.round(props.currentNetWorthInCents * multipliers[idx]);
-    const factor = factors[idx] !== undefined ? factors[idx] : 1.0;
-    const bmVal = Math.round(baseVal * (factor / startFactor));
+    const nw = Math.round(props.currentNetWorthInCents * m.nwFactor);
+    const progress = idx / (months.length - 1);
+    const bmVal = Math.round(baseVal * (1 + (bmReturn / 100) * progress * (m.bmFactor / months[0].bmFactor)));
 
-    const yieldNw = Math.max(0, nw - baseVal);
-    const yieldBm = Math.max(0, bmVal - baseVal);
+    const yieldNw = Math.max(0, Math.round((props.currentNetWorthInCents - baseVal) * ((m.nwFactor - months[0].nwFactor) / (1 - months[0].nwFactor || 1))));
+    const yieldBm = Math.max(0, Math.round( yieldNw * (bmReturn / totalPortfolioGrowthPct) * m.bmFactor ));
 
     return {
-      dateLabel: m,
+      dateLabel: m.label,
       netWorthInCents: nw,
       benchmarkInCents: bmVal,
       yieldInCents: yieldNw,
@@ -90,11 +99,9 @@ const metrics = computed(() => {
   }
   const startNw = dataPoints.value[0].netWorthInCents;
   const endNw = dataPoints.value[dataPoints.value.length - 1].netWorthInCents;
-  const startBm = dataPoints.value[0].benchmarkInCents;
-  const endBm = dataPoints.value[dataPoints.value.length - 1].benchmarkInCents;
 
   const nwGrowth = ((endNw - startNw) / startNw) * 100;
-  const bmGrowth = ((endBm - startBm) / startBm) * 100;
+  const bmGrowth = currentBenchmark.value.defaultPeriodReturn;
 
   return {
     growthPercent: Number(nwGrowth.toFixed(1)),
@@ -104,12 +111,12 @@ const metrics = computed(() => {
   };
 });
 
-const width = 560;
-const height = 210;
-const paddingLeft = 18;
-const paddingRight = 18;
-const paddingTop = 26;
-const paddingBottom = 32;
+const width = 640;
+const height = 230;
+const paddingLeft = 14;
+const paddingRight = 14;
+const paddingTop = 20;
+const paddingBottom = 30;
 
 const plotWidth = width - paddingLeft - paddingRight;
 const plotHeight = height - paddingTop - paddingBottom;
@@ -121,8 +128,8 @@ const coords = computed(() => {
   const getBmVal = (d: NetWorthPoint) => (isRendimento ? d.benchmarkYieldInCents : d.benchmarkInCents);
 
   const allValues = dataPoints.value.flatMap((d) => [getVal(d), getBmVal(d)]);
-  const minVal = allValues.length ? Math.min(...allValues) : 0;
-  const maxVal = allValues.length ? Math.max(...allValues) : 1;
+  const minVal = (allValues.length ? Math.min(...allValues) : 0) * 0.95;
+  const maxVal = (allValues.length ? Math.max(...allValues) : 1) * 1.05 || 1;
   const range = maxVal - minVal || 1;
 
   return dataPoints.value.map((d, i) => {
@@ -130,8 +137,8 @@ const coords = computed(() => {
     const currentVal = getVal(d);
     const currentBmVal = getBmVal(d);
 
-    const yNw = paddingTop + plotHeight - ((currentVal - minVal) / range) * (plotHeight * 0.88) - plotHeight * 0.06;
-    const yBm = paddingTop + plotHeight - ((currentBmVal - minVal) / range) * (plotHeight * 0.88) - plotHeight * 0.06;
+    const yNw = paddingTop + plotHeight - ((currentVal - minVal) / range) * plotHeight;
+    const yBm = paddingTop + plotHeight - ((currentBmVal - minVal) / range) * plotHeight;
 
     return {
       x,
@@ -144,7 +151,7 @@ const coords = computed(() => {
   });
 });
 
-// Curva de Montanha do Patrimônio/Rendimento
+// Curva de Montanha do Patrimônio/Rendimento (Crista)
 const nwPath = computed(() => {
   return coords.value.reduce(
     (acc, pt, idx) => `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)},${pt.yNw.toFixed(1)}`,
@@ -161,7 +168,7 @@ const nwMountainAreaPath = computed(() => {
   return `${nwPath.value} L ${last.x.toFixed(1)},${groundY.toFixed(1)} L ${first.x.toFixed(1)},${groundY.toFixed(1)} Z`;
 });
 
-// Linha do Benchmark selecionado
+// Linha Pontilhada do Benchmark selecionado
 const benchmarkPath = computed(() => {
   return coords.value.reduce(
     (acc, pt, idx) => `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)},${pt.yBm.toFixed(1)}`,
@@ -181,16 +188,16 @@ const activePt = computed(() => {
     data-testid="net-worth-line-chart"
     class="flex flex-col justify-between h-full w-full select-none space-y-3"
   >
-    <!-- Controles Superiores: Toggle Patrimônio/Rendimento e Seletor de Benchmark -->
+    <!-- Controles Superiores: Segmented Control (Rendimento / Patrimônio) e Seletor de Benchmark -->
     <div class="flex flex-wrap items-center justify-between gap-2.5">
-      <!-- Alternador de Modo: Rentabilidade / Patrimônio (Estilo XP) -->
-      <div class="inline-flex items-center p-1 bg-surface-hover/70 rounded-xl border border-border-subtle shrink-0">
+      <!-- Segmented Control idêntico à aba Investir -->
+      <div class="inline-flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
         <button
           type="button"
-          class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition"
+          class="px-4 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
           :class="
             displayMode === 'rendimento'
-              ? 'bg-white text-black shadow-sm font-extrabold'
+              ? 'bg-white text-black shadow-md font-extrabold'
               : 'text-[#A1A1AA] hover:text-white'
           "
           @click="displayMode = 'rendimento'"
@@ -199,10 +206,10 @@ const activePt = computed(() => {
         </button>
         <button
           type="button"
-          class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition"
+          class="px-4 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
           :class="
             displayMode === 'patrimonio'
-              ? 'bg-white text-black shadow-sm font-extrabold'
+              ? 'bg-white text-black shadow-md font-extrabold'
               : 'text-[#A1A1AA] hover:text-white'
           "
           @click="displayMode = 'patrimonio'"
@@ -218,13 +225,13 @@ const activePt = computed(() => {
           <select
             id="benchmark-select"
             v-model="selectedBenchmark"
-            class="bg-surface border border-border-subtle rounded-xl px-2.5 py-1 text-xs font-semibold text-white focus:outline-none focus:border-finance-invest transition cursor-pointer pr-7 appearance-none"
+            class="bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none transition cursor-pointer pr-7 appearance-none"
           >
             <option
               v-for="b in BENCHMARK_LIST"
               :key="b.id"
               :value="b.id"
-              class="bg-surface text-white"
+              class="bg-[#18181B] text-white"
             >
               {{ b.name }}
             </option>
@@ -243,7 +250,7 @@ const activePt = computed(() => {
       <div class="flex flex-wrap items-center gap-3">
         <!-- Legenda Patrimônio / Rendimento (Montanha) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
-          <span class="w-2.5 h-2.5 rounded-full bg-finance-pos shadow-sm shadow-finance-pos/50 shrink-0" />
+          <span class="w-2.5 h-2.5 rounded-full bg-white shadow-sm shrink-0" />
           <span class="text-white font-semibold">
             {{ displayMode === 'patrimonio' ? 'Patrimônio Líquido' : 'Rendimento Acumulado' }}
           </span>
@@ -252,11 +259,11 @@ const activePt = computed(() => {
           </span>
         </div>
 
-        <!-- Legenda do Benchmark Selecionado (Linha) -->
+        <!-- Legenda do Benchmark Selecionado (Linha Pontilhada) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
           <span
-            class="w-3 h-0.5 shrink-0 border-b border-dashed"
-            :style="{ borderColor: currentBenchmark.color, backgroundColor: currentBenchmark.color }"
+            class="w-3.5 h-0.5 shrink-0 border-b-2 border-dashed"
+            :style="{ borderColor: currentBenchmark.color }"
           />
           <span class="text-[#A1A1AA]">
             {{ currentBenchmark.name }} ({{ periodLabel }})
@@ -273,13 +280,12 @@ const activePt = computed(() => {
       <!-- Badge Comparativo de Desempenho -->
       <div
         v-if="currentNetWorthInCents > 0"
-        class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 flex items-center gap-1"
-        :class="
-          metrics.isBeatingBenchmark
-            ? 'bg-finance-pos/10 text-finance-pos border-finance-pos/25'
-            : 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/25'
-        "
+        class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 flex items-center gap-1 bg-[#27272A] border-[#3F3F46] text-white"
       >
+        <span
+          class="w-2 h-2 rounded-full shrink-0"
+          :style="{ backgroundColor: currentBenchmark.color }"
+        />
         <span>
           {{
             metrics.isBeatingBenchmark
@@ -287,86 +293,78 @@ const activePt = computed(() => {
               : `Abaixo do ${currentBenchmark.shortName} em ${(metrics.benchmarkGrowthPercent - metrics.growthPercent).toFixed(1)} p.p.`
           }}
         </span>
-        <span class="opacity-75 font-mono">({{ metrics.percentOfBenchmark }}% do {{ currentBenchmark.shortName }})</span>
+        <span class="opacity-85 font-mono">({{ metrics.percentOfBenchmark }}% do {{ currentBenchmark.shortName }})</span>
       </div>
     </div>
 
-    <!-- SVG do Gráfico com Efeito Montanha (Área Gradiente) e Benchmark em Linha -->
-    <div class="relative w-full h-44 sm:h-52 lg:h-56 bg-background/50 rounded-xl border border-border-subtle/50 p-2">
+    <!-- SVG do Gráfico idêntico ao da aba Investir (Montanha + Linha Pontilhada de Benchmark) -->
+    <div class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden">
       <svg
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
         preserveAspectRatio="none"
       >
         <defs>
-          <!-- Gradiente Vertical da Montanha de Patrimônio -->
+          <!-- Gradiente da Montanha idêntico à aba Investir -->
           <linearGradient id="mountainAreaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#10B981" stop-opacity="0.45" />
-            <stop offset="45%" stop-color="#10B981" stop-opacity="0.18" />
-            <stop offset="90%" stop-color="#10B981" stop-opacity="0.03" />
-            <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
-          </linearGradient>
-
-          <!-- Gradiente alternativo para Rendimento -->
-          <linearGradient id="rendimentoAreaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.45" />
-            <stop offset="45%" stop-color="#38BDF8" stop-opacity="0.18" />
-            <stop offset="90%" stop-color="#38BDF8" stop-opacity="0.03" />
-            <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.0" />
+            <stop offset="0%" stop-color="#E4E4E7" stop-opacity="0.55" />
+            <stop offset="40%" stop-color="#A1A1AA" stop-opacity="0.25" />
+            <stop offset="85%" stop-color="#52525B" stop-opacity="0.08" />
+            <stop offset="100%" stop-color="#18181B" stop-opacity="0.0" />
           </linearGradient>
 
           <filter id="mountainGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" :flood-color="displayMode === 'rendimento' ? '#38BDF8' : '#10B981'" flood-opacity="0.4" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#FFFFFF" flood-opacity="0.3" />
           </filter>
         </defs>
 
-        <!-- Linhas de Grade Horizontais -->
+        <!-- Grade Horizontal Sutil -->
         <line
-          v-for="(pct, idx) in [0, 0.5, 1]"
+          v-for="(pct, idx) in [0.2, 0.5, 0.8]"
           :key="idx"
           :x1="paddingLeft"
           :y1="paddingTop + plotHeight * pct"
           :x2="width - paddingRight"
           :y2="paddingTop + plotHeight * pct"
           stroke="#27272A"
-          stroke-dasharray="4 4"
-          stroke-width="1"
+          stroke-dasharray="3 3"
+          stroke-width="0.8"
         />
 
-        <!-- Área Sombreada da Montanha -->
+        <!-- Área de Montanha (Patrimônio / Rendimento) -->
         <path
           v-if="nwMountainAreaPath"
           :d="nwMountainAreaPath"
-          :fill="displayMode === 'rendimento' ? 'url(#rendimentoAreaGradient)' : 'url(#mountainAreaGradient)'"
+          fill="url(#mountainAreaGradient)"
         />
 
-        <!-- Linha do Benchmark Escolhido (Linha Tracejada) -->
+        <!-- Linha Pontilhada do Benchmark Escolhido -->
         <path
           v-if="benchmarkPath"
           :d="benchmarkPath"
           fill="none"
           :stroke="currentBenchmark.color"
-          stroke-width="2.2"
-          :stroke-dasharray="currentBenchmark.lineDash"
+          stroke-width="2"
+          stroke-dasharray="5 4"
           stroke-linecap="round"
-          opacity="0.9"
+          opacity="0.95"
         />
 
-        <!-- Linha da Crista da Montanha (Patrimônio / Rendimento) -->
+        <!-- Linha da Crista da Montanha (Sólida Branca Nítida) -->
         <path
           v-if="nwPath"
           :d="nwPath"
           fill="none"
-          :stroke="displayMode === 'rendimento' ? '#38BDF8' : '#10B981'"
-          stroke-width="3"
+          stroke="#FFFFFF"
+          stroke-width="2.4"
           stroke-linecap="round"
           stroke-linejoin="round"
           filter="url(#mountainGlow)"
         />
 
-        <!-- Pontos Interativos e Linhas Guias no Hover -->
+        <!-- Pontos Interativos e Linhas Guias no Hover/Toque -->
         <g v-for="(pt, idx) in coords" :key="idx">
-          <!-- Linha vertical indicadora -->
+          <!-- Linha vertical indicadora no ponto ativo -->
           <line
             v-if="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1)"
             :x1="pt.x"
@@ -378,35 +376,37 @@ const activePt = computed(() => {
             stroke-width="1.2"
           />
 
-          <!-- Ponto Benchmark -->
+          <!-- Ponto do Benchmark -->
           <circle
+            v-if="hoveredIdx === idx || idx === coords.length - 1"
             :cx="pt.x"
             :cy="pt.yBm"
-            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 4.5 : 3"
+            :r="hoveredIdx === idx ? 4.5 : 4"
             :fill="currentBenchmark.color"
-            stroke="#18181B"
+            stroke="#09090B"
             stroke-width="1.5"
           />
 
           <!-- Ponto da Crista da Montanha -->
           <circle
+            v-if="hoveredIdx === idx || idx === coords.length - 1"
             :cx="pt.x"
             :cy="pt.yNw"
-            :r="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 6 : 4"
-            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : (displayMode === 'rendimento' ? '#38BDF8' : '#10B981')"
-            :stroke="displayMode === 'rendimento' ? '#38BDF8' : '#10B981'"
-            :stroke-width="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 2.5 : 1.5"
-            style="transition: r 150ms ease"
+            :r="hoveredIdx === idx ? 5.5 : 4.5"
+            fill="#FFFFFF"
+            stroke="#09090B"
+            stroke-width="1.5"
           />
 
-          <!-- Rótulo de Mês no Eixo X -->
+          <!-- Rótulos do Eixo X -->
           <text
+            v-if="idx % 2 === 0 || idx === coords.length - 1"
             :x="pt.x"
-            :y="height - 8"
+            :y="height - 6"
             text-anchor="middle"
-            :fill="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? '#FFFFFF' : '#A1A1AA'"
-            font-size="11"
-            :font-weight="hoveredIdx === idx || (hoveredIdx === null && idx === coords.length - 1) ? 700 : 500"
+            :fill="hoveredIdx === idx ? '#FFFFFF' : '#71717A'"
+            font-size="10"
+            :font-weight="hoveredIdx === idx ? 700 : 500"
             class="select-none"
           >
             {{ pt.dateLabel }}
@@ -439,7 +439,7 @@ const activePt = computed(() => {
       <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
         <span class="whitespace-nowrap">
           {{ displayMode === 'patrimonio' ? 'Patrimônio:' : 'Rendimento:' }}
-          <strong :class="displayMode === 'rendimento' ? 'text-finance-invest' : 'text-finance-pos'">
+          <strong class="text-white">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePt.currentVal) }}
           </strong>
         </span>
