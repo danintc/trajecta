@@ -95,10 +95,23 @@ export async function fetchLiveUsdExchangeRate(options?: {
     return activeFetchPromise;
   }
 
-  const fetcher = options?.fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
-  if (!fetcher) {
+  const rawFetcher = options?.fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
+  if (!rawFetcher) {
     return usdExchangeRate.value;
   }
+
+  const fetchWithTimeout = async (url: string, timeoutMs = 3500): Promise<Response> => {
+    if (options?.fetchImpl || typeof AbortController === 'undefined') {
+      return rawFetcher(url);
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await rawFetcher(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   // Hidrata do cache local imediatamente se ainda estivermos no fallback estático
   const cached = loadQuoteFromCache();
@@ -112,7 +125,7 @@ export async function fetchLiveUsdExchangeRate(options?: {
     try {
       // Fonte 1: AwesomeAPI (Dólar Comercial em Tempo Real - B3/Forex)
       try {
-        const res = await fetcher('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+        const res = await fetchWithTimeout('https://economia.awesomeapi.com.br/json/last/USD-BRL');
         if (res.ok) {
           const data = await res.json();
           const quote = data?.USDBRL;
@@ -138,7 +151,7 @@ export async function fetchLiveUsdExchangeRate(options?: {
 
       // Fonte 2: Banco Central do Brasil (Série 1 SGS - Dólar PTAX Oficial)
       try {
-        const res = await fetcher(
+        const res = await fetchWithTimeout(
           'https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/1?formato=json'
         );
         if (res.ok) {
@@ -164,7 +177,7 @@ export async function fetchLiveUsdExchangeRate(options?: {
 
       // Fonte 3: Open Exchange Rates (ExchangeRate-API)
       try {
-        const res = await fetcher('https://open.er-api.com/v6/latest/USD');
+        const res = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD');
         if (res.ok) {
           const data = await res.json();
           const rate = Number(data?.rates?.BRL);
@@ -187,7 +200,7 @@ export async function fetchLiveUsdExchangeRate(options?: {
 
       // Fonte 4: Frankfurter (Banco Central Europeu - BCE)
       try {
-        const res = await fetcher('https://api.frankfurter.app/latest?from=USD&to=BRL');
+        const res = await fetchWithTimeout('https://api.frankfurter.app/latest?from=USD&to=BRL');
         if (res.ok) {
           const data = await res.json();
           const rate = Number(data?.rates?.BRL);

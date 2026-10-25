@@ -267,11 +267,11 @@ async function handleLogout() {
           </span>
         </button>
 
-        <!-- Toggle Moeda Global (BRL / USD) com Cotação em Tempo Real -->
+        <!-- Toggle Moeda Global (BRL / USD) — Apenas Bandeira + Código (Tamanho Fixo) -->
         <button
           data-testid="currency-toggle"
           type="button"
-          class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer hover:border-[#3F3F46]"
+          class="h-9 px-2.5 sm:px-3 rounded-xl border border-border-subtle bg-background text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer hover:border-[#3F3F46] shrink-0"
           :class="globalCurrency === 'USD' ? 'border-accent-yellow/40 text-accent-yellow bg-accent-yellow/5' : 'text-white'"
           :title="
             globalCurrency === 'BRL'
@@ -281,13 +281,7 @@ async function handleLogout() {
           @click="toggleGlobalCurrency"
         >
           <span class="text-sm leading-none">{{ globalCurrency === 'BRL' ? '🇧🇷' : '🇺🇸' }}</span>
-          <span class="font-mono font-bold text-[11px] sm:text-xs">{{ globalCurrency }}</span>
-          <span
-            class="text-[10px] text-[#A1A1AA] font-mono"
-            :class="globalCurrency === 'USD' ? 'inline' : 'hidden sm:inline'"
-          >
-            (US$ 1 = R$ {{ usdExchangeRate.toFixed(2).replace('.', ',') }})
-          </span>
+          <span class="font-mono font-bold text-[11px] sm:text-xs leading-none">{{ globalCurrency }}</span>
         </button>
 
         <!-- Botão (+) — Visível no topo apenas quando na aba de Extrato -->
@@ -388,6 +382,23 @@ async function handleLogout() {
         <span>{{ item.label }}</span>
       </button>
     </nav>
+
+    <!-- FAIXA MINIMALISTA DE COTAÇÃO EMBAIXO DO TOPO (EXIBIDA QUANDO EM USD) -->
+    <div
+      v-if="globalCurrency === 'USD'"
+      data-testid="usd-exchange-subbar"
+      class="bg-[#121215]/70 border-b border-border-subtle/50 px-3.5 sm:px-6 lg:px-8 py-1"
+    >
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 text-[10px] font-mono text-[#71717A]">
+        <div class="flex items-center gap-1.5 truncate">
+          <span class="w-1.5 h-1.5 rounded-full bg-finance-pos shrink-0" />
+          <span class="text-[#A1A1AA]">US$ 1 = R$ {{ usdExchangeRate.toFixed(2).replace('.', ',') }}</span>
+          <span class="text-[#3F3F46]">•</span>
+          <span class="truncate">{{ usdRateSource }}</span>
+        </div>
+        <span class="text-[#52525B] hidden sm:inline shrink-0">Tempo real</span>
+      </div>
+    </div>
 
     <!-- CONTEÚDO DA ABA ATIVA (Com transição direcional suave e espaçamento inferior seguro no iOS Mobile) -->
     <main class="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 pb-safe-nav md:pb-8 max-w-7xl mx-auto w-full">
