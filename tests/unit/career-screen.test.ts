@@ -46,6 +46,7 @@ describe('CareerScreen Component', () => {
     expect(wrapper.find('[data-testid="kpi-total-cash"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="kpi-net-salary"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="kpi-cagr"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('Simular Aporte');
 
     // Padrão: gráfico de linha ativo
     expect(wrapper.find('[data-testid="career-line-chart"]').exists()).toBe(true);

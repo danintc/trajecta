@@ -283,7 +283,7 @@ describe('PhaseSimulatorScreen Component', () => {
     expect(wrapper.emitted('navigateToInvest')).toBeTruthy();
   });
 
-  it('deve exibir aviso de scroll horizontal na aba Evolução Mês a Mês e permitir alternar para visualização em Cards sem scroll', async () => {
+  it('não deve exibir o aviso "Arraste a tabela para o lado" na aba Evolução Mês a Mês e deve posicionar os botões Planilha e Cards logo abaixo dos dados', async () => {
     const wrapper = mount(PhaseSimulatorScreen, {
       props: {
         assets: mockAssets,
@@ -295,16 +295,17 @@ describe('PhaseSimulatorScreen Component', () => {
 
     await wrapper.find('button[data-testid="tab-monthly"]').trigger('click');
 
-    const scrollHint = wrapper.find('[data-testid="horizontal-scroll-indicator"]');
-    expect(scrollHint.exists()).toBe(true);
-    expect(scrollHint.text()).toContain('Arraste a tabela para o lado');
+    expect(wrapper.find('[data-testid="horizontal-scroll-indicator"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Arraste a tabela para o lado');
+
+    const toggleContainer = wrapper.find('[data-testid="monthly-display-mode-toggle"]');
+    expect(toggleContainer.exists()).toBe(true);
 
     // Alternar para modo Cards (Sem Scroll)
-    const cardsBtn = wrapper.findAll('button').find((b) => b.text().includes('Cards (Sem Scroll)'));
-    expect(cardsBtn).toBeDefined();
-    await cardsBtn!.trigger('click');
+    const cardsBtn = wrapper.find('[data-testid="btn-monthly-mode-cards"]');
+    expect(cardsBtn.exists()).toBe(true);
+    await cardsBtn.trigger('click');
 
-    expect(wrapper.find('[data-testid="horizontal-scroll-indicator"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('Mês 1');
   });
 });

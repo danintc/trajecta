@@ -136,15 +136,6 @@ const maxSalaryInCents = computed(() => {
       <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
-          class="px-3.5 py-2.5 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center justify-center gap-1.5 transition whitespace-nowrap cursor-pointer"
-          @click="emit('navigateToSimulator')"
-        >
-          <span>🎯</span>
-          <span>Simular Aporte</span>
-        </button>
-
-        <button
-          type="button"
           data-testid="btn-add-career"
           class="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-finance-career hover:bg-[#6366F1] text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-finance-career/30 ring-2 ring-finance-career/40 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
           @click="handleOpenNewRecord"

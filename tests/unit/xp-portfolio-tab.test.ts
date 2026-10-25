@@ -88,7 +88,7 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.text()).toContain('Independência Financeira (FIRE)');
   });
 
-  it('deve expandir o detalhamento de ativos ao clicar na classe', async () => {
+  it('deve expandir o detalhamento de ativos ao clicar na classe ou em determinado produto (ex: Fundos Imobiliários)', async () => {
     const wrapper = mount(XpPortfolioTab, {
       props: {
         assets: [],
@@ -105,6 +105,18 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
 
     expect(wrapper.text()).toContain('IVVB11');
     expect(wrapper.text()).toContain('54 cotas');
+
+    // Mudar para a aba Produto e clicar em Fundos Imobiliários (FIIs) para expandir seus ativos
+    const produtoBtn = wrapper.findAll('button').find((b) => b.text() === 'Produto');
+    await produtoBtn!.trigger('click');
+
+    expect(wrapper.text()).not.toContain('HGLG11');
+    const fiisProdRow = wrapper.find('[data-testid="portfolio-category-fiis_prod"]');
+    expect(fiisProdRow.exists()).toBe(true);
+    await fiisProdRow.trigger('click');
+
+    expect(wrapper.text()).toContain('HGLG11');
+    expect(wrapper.text()).toContain('10 cotas');
   });
 
   it('não deve exibir cabeçalho de nome/busca/bandeira nem card de assessoria desnecessários', () => {

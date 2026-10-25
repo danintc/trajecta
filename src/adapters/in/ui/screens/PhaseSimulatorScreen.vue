@@ -430,20 +430,20 @@ const paginatedMonthlyPoints = computed(() => {
     <div v-show="activeTab === 'parameters'" class="space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         <!-- PARÂMETROS DE ENTRADA (COLUNA ESQUERDA) -->
-        <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between gap-2 border-b border-border-subtle pb-3">
-            <h2 class="text-sm font-bold text-white flex items-center gap-1.5 whitespace-nowrap">
+        <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between min-w-0 overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-3">
+            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
               <span>Seus Parâmetros Financeiros</span>
             </h2>
             <!-- Checkbox para Usar Dados Reais do Trajecta -->
-            <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[#A1A1AA] hover:text-white transition whitespace-nowrap shrink-0">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[#A1A1AA] hover:text-white transition max-w-full">
               <input
                 v-model="isSyncWithTrajecta"
                 type="checkbox"
                 data-testid="sync-trajecta-checkbox"
                 class="w-3.5 h-3.5 rounded accent-accent-yellow cursor-pointer shrink-0"
               />
-              <span :class="isSyncWithTrajecta ? 'text-accent-yellow font-bold' : ''">
+              <span class="truncate" :class="isSyncWithTrajecta ? 'text-accent-yellow font-bold' : ''">
                 Usar dados reais do Trajecta
               </span>
             </label>
@@ -452,8 +452,8 @@ const paginatedMonthlyPoints = computed(() => {
           <div class="space-y-4">
             <!-- Renda Mensal (Com link clicável para aba Carreira) -->
             <div>
-              <div class="flex justify-between items-center gap-2 text-xs mb-1.5">
-                <label class="text-[#A1A1AA] font-semibold whitespace-nowrap">
+              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs mb-1.5">
+                <label class="text-[#A1A1AA] font-semibold">
                   Renda Líquida Mensal (R$)
                 </label>
                 <button
@@ -461,11 +461,11 @@ const paginatedMonthlyPoints = computed(() => {
                   type="button"
                   data-testid="btn-goto-career-salary"
                   title="Ir para aba Carreira & Remuneração"
-                  class="text-[11px] text-finance-career hover:text-white bg-finance-career/10 hover:bg-finance-career/20 border border-finance-career/30 px-2 py-0.5 rounded-lg font-mono font-semibold whitespace-nowrap shrink-0 transition flex items-center gap-1 cursor-pointer"
+                  class="text-[11px] text-finance-career hover:text-white bg-finance-career/10 hover:bg-finance-career/20 border border-finance-career/30 px-2 py-0.5 rounded-lg font-mono font-semibold max-w-full transition flex items-center gap-1 cursor-pointer"
                   @click="emit('navigateToCareer')"
                 >
-                  <span>Salário Base: {{ formatCentsToBrl(realSalaryInCents) }}</span>
-                  <span>↗</span>
+                  <span class="truncate">Salário Base: {{ formatCentsToBrl(realSalaryInCents) }}</span>
+                  <span class="shrink-0">↗</span>
                 </button>
               </div>
               <div class="relative">
@@ -493,11 +493,11 @@ const paginatedMonthlyPoints = computed(() => {
 
             <!-- Aporte Mensal & Slider de Poupança -->
             <div class="space-y-1.5">
-              <div class="flex justify-between items-center gap-2 text-xs">
-                <label class="text-[#A1A1AA] font-semibold whitespace-nowrap">
+              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs">
+                <label class="text-[#A1A1AA] font-semibold">
                   Aporte Mensal Pretendido (R$)
                 </label>
-                <span class="text-xs font-mono font-extrabold text-accent-yellow whitespace-nowrap shrink-0">
+                <span class="text-xs font-mono font-extrabold text-accent-yellow">
                   {{ savingsPercent }}% da renda
                 </span>
               </div>
@@ -532,8 +532,8 @@ const paginatedMonthlyPoints = computed(() => {
 
             <!-- Patrimônio Atual Investido (Com link clicável para aba Investir/Carteira) -->
             <div>
-              <div class="flex justify-between items-center gap-2 text-xs mb-1.5">
-                <label class="text-[#A1A1AA] font-semibold whitespace-nowrap">
+              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs mb-1.5">
+                <label class="text-[#A1A1AA] font-semibold">
                   Patrimônio Investido (R$)
                 </label>
                 <button
@@ -541,11 +541,11 @@ const paginatedMonthlyPoints = computed(() => {
                   type="button"
                   data-testid="btn-goto-invest-wallet"
                   title="Ir para aba Carteira de Investimentos"
-                  class="text-[11px] text-finance-invest hover:text-white bg-finance-invest/10 hover:bg-finance-invest/20 border border-finance-invest/30 px-2 py-0.5 rounded-lg font-mono font-semibold whitespace-nowrap shrink-0 transition flex items-center gap-1 cursor-pointer"
+                  class="text-[11px] text-finance-invest hover:text-white bg-finance-invest/10 hover:bg-finance-invest/20 border border-finance-invest/30 px-2 py-0.5 rounded-lg font-mono font-semibold max-w-full transition flex items-center gap-1 cursor-pointer"
                   @click="emit('navigateToInvest')"
                 >
-                  <span>Na Carteira: {{ formatCentsToBrl(realInvestedInCents) }}</span>
-                  <span>↗</span>
+                  <span class="truncate">Na Carteira: {{ formatCentsToBrl(realInvestedInCents) }}</span>
+                  <span class="shrink-0">↗</span>
                 </button>
               </div>
               <div class="relative">
@@ -1074,7 +1074,7 @@ const paginatedMonthlyPoints = computed(() => {
         </div>
       </div>
 
-      <!-- FILTROS DE ANO E SELETOR DE MODO DE VISUALIZAÇÃO -->
+      <!-- FILTROS DE ANO E PAGINAÇÃO -->
       <div class="flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex flex-wrap items-center gap-2">
           <label class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">Filtrar por Ano:</label>
@@ -1100,26 +1100,6 @@ const paginatedMonthlyPoints = computed(() => {
               <option :value="60">60m</option>
             </select>
           </div>
-        </div>
-
-        <!-- Alternador Planilha vs Cards Compactos (Sem Scroll Horizontal) -->
-        <div class="flex items-center gap-1 bg-background p-1 rounded-xl border border-border-subtle text-xs shrink-0">
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap"
-            :class="monthlyDisplayMode === 'table' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
-            @click="monthlyDisplayMode = 'table'"
-          >
-            📋 Planilha
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap"
-            :class="monthlyDisplayMode === 'cards' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
-            @click="monthlyDisplayMode = 'cards'"
-          >
-            📱 Cards (Sem Scroll)
-          </button>
         </div>
       </div>
 
@@ -1171,23 +1151,31 @@ const paginatedMonthlyPoints = computed(() => {
         </div>
       </div>
 
-      <!-- AVISO EXPLÍCITO DE SCROLL HORIZONTAL (PARA MODO PLANILHA EM TELAS MENORES) -->
-      <div
-        v-if="monthlyDisplayMode === 'table'"
-        data-testid="horizontal-scroll-indicator"
-        class="lg:hidden flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-accent-yellow/10 border border-accent-yellow/25 text-[11px] text-accent-yellow font-semibold"
-      >
-        <span class="flex items-center gap-1.5 whitespace-nowrap">
-          <span>↔️</span>
-          <span>Arraste a tabela para o lado para ver todas as colunas</span>
-        </span>
-        <button
-          type="button"
-          class="underline text-[10px] font-bold whitespace-nowrap shrink-0"
-          @click="monthlyDisplayMode = 'cards'"
+      <!-- ALTERNADOR PLANILHA VS CARDS LOGO ABAIXO DOS DADOS DO PERÍODO -->
+      <div class="flex items-center justify-end">
+        <div
+          data-testid="monthly-display-mode-toggle"
+          class="flex items-center gap-1 bg-background p-1 rounded-xl border border-border-subtle text-xs shrink-0"
         >
-          Ver em Cards
-        </button>
+          <button
+            type="button"
+            data-testid="btn-monthly-mode-table"
+            class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
+            :class="monthlyDisplayMode === 'table' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
+            @click="monthlyDisplayMode = 'table'"
+          >
+            📋 Planilha
+          </button>
+          <button
+            type="button"
+            data-testid="btn-monthly-mode-cards"
+            class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
+            :class="monthlyDisplayMode === 'cards' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
+            @click="monthlyDisplayMode = 'cards'"
+          >
+            📱 Cards (Sem Scroll)
+          </button>
+        </div>
       </div>
 
       <!-- MODO 1: TABELA MÊS A MÊS OTIMIZADA COM SCROLLBAR VISÍVEL -->

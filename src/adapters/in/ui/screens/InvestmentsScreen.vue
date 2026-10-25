@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
 import KpiCard from '../components/KpiCard.vue';
-import EmptyState from '../components/EmptyState.vue';
 import {
   formatCentsToBrl,
   parseBrlToCents,
@@ -36,8 +35,6 @@ const activeSubTab = ref<InvestSubTab>('custody');
 const aporteInput = ref('2.000,00');
 const isAddModalOpen = ref(false);
 const assetToEdit = ref<Asset | null>(null);
-const selectedClassFilter = ref<string>('ALL');
-const selectedInstitutionFilter = ref<string>('ALL');
 
 // Metas customizáveis e novas classes no Rebalanceador
 const customClassTargets = ref<Record<string, number>>({});
@@ -189,25 +186,6 @@ function handleAddExtraClass() {
   isAddingNewClass.value = false;
 }
 
-// Filtragem de Ativos (Por Classe e Por Instituição)
-const filteredAssets = computed(() => {
-  return props.assets.filter((a) => {
-    const matchClass = selectedClassFilter.value === 'ALL' || a.assetClass === selectedClassFilter.value;
-    const matchInst =
-      selectedInstitutionFilter.value === 'ALL' || a.institution === selectedInstitutionFilter.value;
-    return matchClass && matchInst;
-  });
-});
-
-function handleSelectInstitution(inst: string) {
-  if (selectedInstitutionFilter.value === inst) {
-    selectedInstitutionFilter.value = 'ALL';
-  } else {
-    selectedInstitutionFilter.value = inst;
-    activeSubTab.value = 'custody';
-  }
-}
-
 function handleOpenNewAsset() {
   assetToEdit.value = null;
   isAddModalOpen.value = true;
@@ -248,15 +226,6 @@ async function handleDeleteAsset(asset: Asset) {
       </div>
 
       <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-        <button
-          type="button"
-          class="px-3.5 py-2.5 rounded-xl border border-accent-yellow/30 bg-accent-yellow/10 hover:bg-accent-yellow/20 text-accent-yellow font-bold text-xs flex items-center justify-center gap-1.5 transition whitespace-nowrap cursor-pointer"
-          @click="emit('navigateToSimulator')"
-        >
-          <span>🎯</span>
-          <span>Simular Fases</span>
-        </button>
-
         <button
           type="button"
           data-testid="btn-add-asset"
@@ -364,227 +333,20 @@ async function handleDeleteAsset(asset: Asset) {
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 1 UNIFICADA: MINHA CARTEIRA + CUSTÓDIA POR CORRETORA & ATIVOS      -->
+    <!-- SUB-ABA 1 UNIFICADA: MINHA CARTEIRA & ATIVOS EM CUSTÓDIA NO MESMO CARD    -->
     <!-- ========================================================================= -->
     <div v-show="activeSubTab === 'custody'" class="space-y-5">
-      <!-- VISÃO CONSOLIDADA DA CARTEIRA (Donut Ring, Classes, Produto, Liquidez, Objetivos) -->
       <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6">
         <XpPortfolioTab
           :assets="assets"
           :is-privacy-active="isPrivacyActive"
           :total-invested-in-cents="totalInvestedInCents"
+          :available-classes="allAvailableClasses"
+          show-empty-state
           @open-add-asset="handleOpenNewAsset"
           @edit-asset="handleOpenEditAsset"
           @delete-asset="handleDeleteAsset"
         />
-      </div>
-      <!-- DIVISÃO POR CORRETORA / INSTITUIÇÃO (CLICÁVEL PARA FILTRAR) -->
-      <div
-        v-if="byInstitution.length > 0"
-        class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-3"
-      >
-        <div class="flex items-center justify-between border-b border-border-subtle pb-2.5 gap-2">
-          <h2 class="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-2 whitespace-nowrap">
-            <span>🏛️ Custódia por Instituição</span>
-          </h2>
-          <button
-            v-if="selectedInstitutionFilter !== 'ALL'"
-            type="button"
-            class="text-[11px] text-accent-yellow hover:underline whitespace-nowrap cursor-pointer"
-            @click="selectedInstitutionFilter = 'ALL'"
-          >
-            Limpar filtro ({{ selectedInstitutionFilter }}) ✕
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <button
-            v-for="(inst, idx) in byInstitution"
-            :key="idx"
-            type="button"
-            class="bg-background hover:bg-surface-hover border rounded-xl p-3.5 space-y-1.5 text-left transition cursor-pointer"
-            :class="
-              selectedInstitutionFilter === inst.institution
-                ? 'border-finance-invest ring-1 ring-finance-invest/40'
-                : 'border-border-subtle'
-            "
-            @click="handleSelectInstitution(inst.institution)"
-          >
-            <div class="flex justify-between items-center text-xs font-bold text-white gap-2">
-              <span class="truncate">{{ inst.institution }}</span>
-              <span class="text-accent-yellow font-mono whitespace-nowrap shrink-0">{{ inst.percent }}%</span>
-            </div>
-            <div class="text-sm sm:text-base font-extrabold font-mono text-white whitespace-nowrap">
-              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(inst.totalCents) }}
-            </div>
-            <div class="w-full bg-[#27272A] h-1.5 rounded-full overflow-hidden">
-              <div
-                class="bg-finance-invest h-full rounded-full transition-all"
-                :style="{ width: `${Math.min(100, inst.percent)}%` }"
-              />
-            </div>
-            <div class="text-[10px] text-[#71717A] flex items-center justify-between">
-              <span>{{ inst.count }} ativo(s)</span>
-              <span class="text-finance-invest font-semibold">Filtrar →</span>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- DETALHAMENTO COMPLETO DE ATIVOS EM CUSTÓDIA -->
-      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4">
-        <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3"
-        >
-          <div>
-            <h2 class="text-sm font-bold uppercase tracking-wider text-finance-neutral">
-              Ativos em Custódia
-            </h2>
-            <span class="text-xs text-[#71717A]">
-              {{ filteredAssets.length }} ativos listados
-            </span>
-          </div>
-
-          <!-- Filtro por Classe em Pills Horizontais -->
-          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <button
-              v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...allAvailableClasses]"
-              :key="cls.key"
-              type="button"
-              class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer"
-              :class="
-                selectedClassFilter === cls.key
-                  ? 'bg-finance-invest text-black font-bold border-finance-invest'
-                  : 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white'
-              "
-              @click="selectedClassFilter = cls.key"
-            >
-              {{ cls.label }}
-            </button>
-          </div>
-        </div>
-
-        <EmptyState
-          v-if="filteredAssets.length === 0"
-          module="invest"
-          title="Nenhum ativo na carteira"
-          description="Cadastre seus investimentos de Renda Fixa, Ações, FIIs ou Cripto para acompanhar seu preço médio e rentabilidade real."
-          primary-action-label="Cadastrar Primeiro Ativo"
-          @primary-action="handleOpenNewAsset"
-        />
-
-        <div v-else class="divide-y divide-border-subtle/60">
-          <div
-            v-for="asset in filteredAssets"
-            :key="asset.id"
-            class="py-3.5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/50 rounded-xl transition group"
-          >
-            <div class="space-y-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-extrabold text-white font-mono whitespace-nowrap">
-                  {{ asset.tickerOrName }}
-                </span>
-                <span
-                  class="text-[10px] uppercase font-bold bg-[#27272A] text-finance-invest px-2 py-0.5 rounded whitespace-nowrap"
-                >
-                  {{ formatClassLabel(asset.assetClass) }}
-                </span>
-                <span
-                  class="text-[10px] bg-background border border-border-subtle text-finance-neutral px-2 py-0.5 rounded whitespace-nowrap"
-                >
-                  {{ asset.institution }}
-                </span>
-              </div>
-              <div class="text-xs text-[#71717A]">
-                {{ asset.totalQuantity }} cotas • PM:
-                <strong class="text-[#A1A1AA] font-mono">{{ formatCentsToBrl(asset.averagePriceInCents) }}</strong> • Atual:
-                <strong class="text-white font-mono">{{ formatCentsToBrl(asset.currentPriceInCents) }}</strong>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-              <div class="text-right">
-                <div class="text-sm font-extrabold text-white font-mono whitespace-nowrap">
-                  {{
-                    isPrivacyActive
-                      ? 'R$ •••••'
-                      : formatCentsToBrl(asset.totalQuantity * asset.currentPriceInCents)
-                  }}
-                  <span class="text-[10px] text-finance-neutral font-normal ml-1">
-                    ({{
-                      totalInvestedInCents > 0
-                        ? Number(
-                            (
-                              ((asset.totalQuantity * asset.currentPriceInCents) /
-                                totalInvestedInCents) *
-                              100
-                            ).toFixed(1)
-                          )
-                        : 0
-                    }}%)
-                  </span>
-                </div>
-                <div
-                  class="text-xs font-mono font-bold whitespace-nowrap"
-                  :class="
-                    asset.totalQuantity * asset.currentPriceInCents -
-                      asset.totalQuantity * asset.averagePriceInCents >=
-                    0
-                      ? 'text-finance-pos'
-                      : 'text-finance-neg'
-                  "
-                >
-                  {{
-                    asset.totalQuantity * asset.currentPriceInCents -
-                      asset.totalQuantity * asset.averagePriceInCents >=
-                    0
-                      ? '+'
-                      : ''
-                  }}{{
-                    asset.totalQuantity * asset.averagePriceInCents > 0
-                      ? Number(
-                          (
-                            ((asset.totalQuantity * asset.currentPriceInCents -
-                              asset.totalQuantity * asset.averagePriceInCents) /
-                              (asset.totalQuantity * asset.averagePriceInCents)) *
-                            100
-                          ).toFixed(2)
-                        )
-                      : 0
-                  }}% ({{
-                    formatCentsToBrl(
-                      asset.totalQuantity * asset.currentPriceInCents -
-                        asset.totalQuantity * asset.averagePriceInCents,
-                      { showSign: true }
-                    )
-                  }})
-                </div>
-              </div>
-
-              <!-- Botões de Ação do Ativo: Editar e Excluir -->
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  :data-testid="`btn-edit-asset-${asset.id}`"
-                  title="Editar ativo"
-                  class="text-finance-neutral hover:text-finance-invest p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
-                  @click="handleOpenEditAsset(asset)"
-                >
-                  <AppIcon name="edit" size="15" />
-                </button>
-                <button
-                  type="button"
-                  :data-testid="`btn-delete-asset-${asset.id}`"
-                  title="Excluir ativo"
-                  class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover transition cursor-pointer"
-                  @click="handleDeleteAsset(asset)"
-                >
-                  <AppIcon name="trash" size="15" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 

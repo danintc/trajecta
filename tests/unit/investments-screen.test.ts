@@ -43,7 +43,7 @@ describe('InvestmentsScreen Component', () => {
     expect(wrapper.text()).toContain('Nenhum ativo na carteira');
   });
 
-  it('deve renderizar KPIs, custódia por corretora, simulador de rebalanceamento e filtrar por classe', async () => {
+  it('deve renderizar KPIs, custódia por corretora, simulador de rebalanceamento e filtrar por classe no container unificado', async () => {
     const wrapper = mount(InvestmentsScreen, {
       props: {
         assets: mockAssets,
@@ -51,13 +51,12 @@ describe('InvestmentsScreen Component', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('TESOURO IPCA+ 2035');
-    expect(wrapper.text()).toContain('HGLG11');
     expect(wrapper.text()).toContain('BTG Pactual');
     expect(wrapper.text()).toContain('XP Investimentos');
     expect(wrapper.text()).toContain('Simulador de Aporte Inteligente');
+    expect(wrapper.text()).not.toContain('Simular Fases');
 
-    // Filtrar apenas FIIs clicando na pill "FIIs"
+    // Expandir categoria na visão unificada ou filtrar apenas FIIs clicando na pill "FIIs"
     const fiisBtn = wrapper.findAll('button').find((b) => b.text() === 'FIIs');
     expect(fiisBtn).toBeDefined();
     await fiisBtn!.trigger('click');
@@ -125,7 +124,7 @@ describe('InvestmentsScreen Component', () => {
     expect(wrapper.text()).toContain('Previdência');
   });
 
-  it('deve exibir botões de editar e excluir para cada ativo em carteira', () => {
+  it('deve exibir botões de editar e excluir ao expandir uma categoria ou acessar a aba Ativos no container unificado', async () => {
     const wrapper = mount(InvestmentsScreen, {
       props: {
         assets: mockAssets,
@@ -133,6 +132,12 @@ describe('InvestmentsScreen Component', () => {
       },
     });
 
+    // Expandir a categoria de Renda Fixa clicando nela
+    const rfCategory = wrapper.find('[data-testid="portfolio-category-renda_fixa"]');
+    expect(rfCategory.exists()).toBe(true);
+    await rfCategory.trigger('click');
+
+    expect(wrapper.text()).toContain('TESOURO IPCA+ 2035');
     expect(wrapper.find('[data-testid="btn-edit-asset-asset-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="btn-delete-asset-asset-1"]').exists()).toBe(true);
   });
