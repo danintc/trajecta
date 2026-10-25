@@ -138,4 +138,83 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     expect(wrapper.text()).toContain('TWR (Time-Weighted Rate of Return)');
     expect(wrapper.text()).toContain('Neutralização de Fluxo de Caixa');
   });
+
+  it('deve mostrar o valor de cada coordenada ao passar o mouse/dedo ou clicar e atualizar todos os dados abaixo para o ponto selecionado', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    // Estado inicial (último ponto: De 01/01/2026 Até 09/10/2026, 9,35%)
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('9,35%');
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até 09/10/2026');
+    expect(wrapper.find('[data-testid="evolution-point-info"]').text()).toContain('Outubro/26');
+    expect(wrapper.find('[data-testid="btn-clear-evolution-point"]').exists()).toBe(false);
+
+    // Passar sobre a coordenada 0 (Jan/26 - Janeiro/26)
+    const point0 = wrapper.find('[data-testid="evolution-chart-point-0"]');
+    expect(point0.exists()).toBe(true);
+    await point0.trigger('mouseenter');
+
+    // Badge flutuante e barra de ponto selecionado devem aparecer com o valor daquele ponto (9.35 * 0.82 = 7.67%)
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('Janeiro/26');
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('7,67%');
+    expect(wrapper.find('[data-testid="evolution-active-guide-line"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="evolution-point-info"]').exists()).toBe(true);
+
+    // Todos os dados abaixo devem refletir o ponto 0 (Janeiro/26)
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('7,67%');
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até Janeiro/26');
+    expect(wrapper.find('[data-testid="details-profit-value"]').text()).toContain('1.579,65');
+    expect(wrapper.find('[data-testid="evolution-bar-info"]').text()).toContain('Janeiro/26');
+
+    // Passar para a coordenada 4 (Mai/26 - Maio/26, 9.35 * 0.96 = 8.98%)
+    const point4 = wrapper.find('[data-testid="evolution-chart-point-4"]');
+    await point4.trigger('mouseenter');
+
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('Maio/26');
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('8,98%');
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('8,98%');
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até Maio/26');
+    expect(wrapper.find('[data-testid="evolution-bar-info"]').text()).toContain('Maio/26');
+
+    // Clicar na coordenada 4 para fixar (pin) o ponto mesmo após tirar o mouse
+    await point4.trigger('click');
+    await point4.trigger('mouseleave');
+
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('8,98%');
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até Maio/26');
+
+    // Limpar seleção pelo botão "Limpar seleção"
+    const clearBtn = wrapper.find('[data-testid="btn-clear-evolution-point"]');
+    expect(clearBtn.exists()).toBe(true);
+    await clearBtn.trigger('click');
+
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até 09/10/2026');
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('9,35%');
+  });
+
+  it('deve atualizar a coordenada selecionada ao tocar (touchstart) nos pontos do gráfico e no modo Patrimônio', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    // Alternar para modo Patrimônio
+    const patBtn = wrapper.findAll('button').find((b) => b.text() === 'Patrimônio');
+    await patBtn!.trigger('click');
+
+    // Tocar na coordenada 2 (Mar/26 - Março/26, 2252959 * 0.81 = 1824897 -> R$ 18.248,97)
+    const point2 = wrapper.find('[data-testid="evolution-chart-point-2"]');
+    await point2.trigger('touchstart');
+
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe('De 01/01/2026 Até Março/26');
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('18.248,97');
+    expect(wrapper.find('[data-testid="evolution-header-primary-value"]').text()).toContain('18.248,97');
+  });
 });

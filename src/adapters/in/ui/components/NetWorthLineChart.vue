@@ -181,6 +181,18 @@ const activePt = computed(() => {
     ? coords.value[hoveredIdx.value]
     : coords.value[coords.value.length - 1];
 });
+
+function handleSvgTouch(e: TouchEvent) {
+  const svg = e.currentTarget as SVGSVGElement | null;
+  if (!svg || coords.value.length === 0) return;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width <= 0) return;
+  const touch = e.touches[0] || e.changedTouches[0];
+  if (!touch) return;
+  const relX = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+  const idx = Math.round(relX * (coords.value.length - 1));
+  hoveredIdx.value = idx;
+}
 </script>
 
 <template>
@@ -303,11 +315,13 @@ const activePt = computed(() => {
     </div>
 
     <!-- SVG do Gráfico idêntico ao da aba Investir (Montanha + Linha Pontilhada de Benchmark) -->
-    <div class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden">
+    <div class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y">
       <svg
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
         preserveAspectRatio="none"
+        @touchstart.passive="handleSvgTouch"
+        @touchmove.passive="handleSvgTouch"
       >
         <defs>
           <!-- Gradiente da Montanha idêntico à aba Investir -->
@@ -419,6 +433,7 @@ const activePt = computed(() => {
 
           <!-- Área de Captura de Evento Mouse/Toque -->
           <rect
+            :data-testid="`net-worth-point-${idx}`"
             :x="pt.x - plotWidth / (coords.length * 2)"
             :y="0"
             :width="plotWidth / coords.length"
@@ -426,8 +441,10 @@ const activePt = computed(() => {
             fill="transparent"
             class="cursor-pointer"
             @mouseenter="hoveredIdx = idx"
+            @mousemove="hoveredIdx = idx"
             @mouseleave="hoveredIdx = null"
             @click="hoveredIdx = idx"
+            @touchstart.passive="hoveredIdx = idx"
           />
         </g>
       </svg>
@@ -436,6 +453,7 @@ const activePt = computed(() => {
     <!-- Barra Informativa do Ponto em Foco (Alinhada à Esquerda) -->
     <div
       v-if="activePt"
+      data-testid="net-worth-point-info"
       class="flex flex-wrap items-center justify-start gap-3 text-xs bg-background/70 px-3.5 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA] w-fit max-w-full"
     >
       <span class="font-bold text-white whitespace-nowrap">

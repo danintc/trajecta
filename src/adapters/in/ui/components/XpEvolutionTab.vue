@@ -141,8 +141,23 @@ const periodConfig = computed(() => {
   }
 });
 
-// Métricas de Rendimento e Patrimônio reativas ao período e benchmark selecionados
-const portfolioValues = computed(() => {
+// Estado de seleção/hover das coordenadas do gráfico de montanha
+const hoveredIdx = ref<number | null>(null);
+const pinnedIdx = ref<number | null>(null);
+const selectedBarIdx = ref<number | null>(4); // Maio pré-selecionado para exibir valor imediatamente
+
+// Coordenadas para o Gráfico de Montanha
+const width = 640;
+const height = 240;
+const paddingLeft = 14;
+const paddingRight = 14;
+const paddingTop = 24;
+const paddingBottom = 30;
+
+const plotWidth = width - paddingLeft - paddingRight;
+const plotHeight = height - paddingTop - paddingBottom;
+
+const baseTotals = computed(() => {
   const cfg = periodConfig.value;
   const currentTotal =
     props.assets.length > 0
@@ -155,80 +170,69 @@ const portfolioValues = computed(() => {
       : Math.round(currentTotal / 1.0935);
 
   const baseProfit = currentTotal - costTotal > 0 ? currentTotal - costTotal : 117256;
-  const profitInCents = Math.round(baseProfit * cfg.profitMultiplier);
-  const profitPercent = cfg.profitPct;
-
-  const bmReturn = Number((currentBenchmark.value.defaultPeriodReturn * cfg.bmMultiplier).toFixed(2));
-  const pctOfBenchmark = calculatePercentOfBenchmark(profitPercent, bmReturn);
-
-  const activeMonths = cfg.months.filter((m) => m.hasData);
-  const posMonths = activeMonths.filter((m) => m.returnPct >= 0).length;
-  const negMonths = activeMonths.filter((m) => m.returnPct < 0).length;
-  const maxMonthReturn = activeMonths.length ? Math.max(...activeMonths.map((m) => m.returnPct)) : 0;
-  const minMonthReturn = activeMonths.length ? Math.min(...activeMonths.map((m) => m.returnPct)) : 0;
-  const avgMonthlyBm = bmReturn / Math.max(1, activeMonths.length);
-  const monthsAboveBm = activeMonths.filter((m) => m.returnPct >= avgMonthlyBm).length;
-  const monthsBelowBm = activeMonths.length - monthsAboveBm;
+  const fullProfitInCents = Math.round(baseProfit * cfg.profitMultiplier);
+  const fullBmReturn = Number(
+    (currentBenchmark.value.defaultPeriodReturn * cfg.bmMultiplier).toFixed(2)
+  );
 
   return {
     currentTotal,
-    profitInCents,
-    profitPercent,
-    benchmarkReturn: bmReturn,
-    pctOfBenchmark,
-    initialNetWorth: Math.round(currentTotal * cfg.initialFactor),
-    movementsInCents: cfg.movementsCents,
-    variationInCents: profitInCents,
-    irPaidInCents: cfg.irCents,
-    finalNetWorth: currentTotal,
-    liquidIrPercentOfBenchmark: Number((pctOfBenchmark * 0.997).toFixed(2)),
-    posMonths,
-    negMonths,
-    maxMonthReturn,
-    minMonthReturn: Math.abs(minMonthReturn),
-    monthsAboveBm,
-    monthsBelowBm,
-    volatility: cfg.volatility,
+    costTotal,
+    fullProfitInCents,
+    fullBmReturn,
   };
 });
 
-// Coordenadas para o Gráfico de Montanha
-const width = 640;
-const height = 240;
-const paddingLeft = 14;
-const paddingRight = 14;
-const paddingTop = 20;
-const paddingBottom = 30;
-
-const plotWidth = width - paddingLeft - paddingRight;
-const plotHeight = height - paddingTop - paddingBottom;
-
-// Pontos históricos com curva estilizada (Montanha) reativos ao período
+// Pontos históricos com curva estilizada (Montanha) reativos ao período e modo
 const timelinePoints = computed(() => {
-  const months = periodConfig.value.months.filter((m) => m.hasData);
-  const bmReturn = portfolioValues.value.benchmarkReturn;
+  const cfg = periodConfig.value;
+  const months = cfg.months.filter((m) => m.hasData);
+  const { currentTotal, fullProfitInCents, fullBmReturn } = baseTotals.value;
   const isRent = displayMode.value === 'rentabilidade';
 
   return months.map((m, idx) => {
-    const nwVal = isRent
-      ? (portfolioValues.value.profitPercent * m.factorNw)
-      : Math.round(portfolioValues.value.currentTotal * m.factorNw);
+    const isLast = idx === months.length - 1;
+    const netWorthInCents = isLast ? currentTotal : Math.round(currentTotal * m.factorNw);
+    const profitInCents = isLast
+      ? fullProfitInCents
+      : Math.round(fullProfitInCents * m.factorNw);
+    const profitPercent = isLast
+      ? cfg.profitPct
+      : Number((cfg.profitPct * m.factorNw).toFixed(2));
+    const benchmarkReturn = isLast
+      ? fullBmReturn
+      : Number((fullBmReturn * m.factorBm).toFixed(2));
+    const benchmarkInCents = Math.round(
+      currentTotal * 0.91 * (1 + (fullBmReturn / 100) * (idx / (months.length - 1 || 1)))
+    );
+    const pctOfBenchmark = calculatePercentOfBenchmark(profitPercent, benchmarkReturn);
 
-    const bmVal = isRent
-      ? (bmReturn * m.factorBm)
-      : Math.round(portfolioValues.value.currentTotal * 0.91 * (1 + (bmReturn / 100) * (idx / (months.length - 1 || 1))));
+    const nwVal = isRent ? profitPercent : netWorthInCents;
+    const bmVal = isRent ? benchmarkReturn : benchmarkInCents;
 
     return {
+      idx,
       date: m.label,
+      name: m.name,
+      short: m.short,
+      factorNw: m.factorNw,
+      factorBm: m.factorBm,
+      monthReturnPct: m.returnPct,
+      monthReturnCents: m.returnCents,
+      netWorthInCents,
+      profitInCents,
+      profitPercent,
+      benchmarkReturn,
+      benchmarkInCents,
+      pctOfBenchmark,
       nwVal,
       bmVal,
     };
   });
 });
 
-const hoveredIdx = ref<number | null>(null);
-
 const coords = computed(() => {
+  if (timelinePoints.value.length === 0) return [];
   const allNw = timelinePoints.value.map((p) => p.nwVal);
   const allBm = timelinePoints.value.map((p) => p.bmVal);
   const minVal = Math.min(...allNw, ...allBm) * 0.95;
@@ -247,6 +251,136 @@ const coords = computed(() => {
     };
   });
 });
+
+const isCustomPointActive = computed(() => {
+  return hoveredIdx.value !== null || pinnedIdx.value !== null;
+});
+
+const activePointIdx = computed(() => {
+  const len = coords.value.length;
+  if (len === 0) return 0;
+  if (hoveredIdx.value !== null && hoveredIdx.value >= 0 && hoveredIdx.value < len) {
+    return hoveredIdx.value;
+  }
+  if (pinnedIdx.value !== null && pinnedIdx.value >= 0 && pinnedIdx.value < len) {
+    return pinnedIdx.value;
+  }
+  return len - 1;
+});
+
+const activePoint = computed(() => {
+  return coords.value[activePointIdx.value] || null;
+});
+
+// Métricas de Rendimento, Patrimônio, Detalhes e Estatísticas 100% reativas ao ponto selecionado
+const portfolioValues = computed(() => {
+  const cfg = periodConfig.value;
+  const { currentTotal, fullProfitInCents, fullBmReturn } = baseTotals.value;
+  const allActiveMonths = cfg.months.filter((m) => m.hasData);
+  const ptIdx = activePointIdx.value;
+  const pt = timelinePoints.value[ptIdx];
+  const isLastPoint = ptIdx >= allActiveMonths.length - 1;
+
+  const selectedCurrentTotal = pt ? pt.netWorthInCents : currentTotal;
+  const profitInCents = pt ? pt.profitInCents : fullProfitInCents;
+  const profitPercent = pt ? pt.profitPercent : cfg.profitPct;
+  const bmReturn = pt ? pt.benchmarkReturn : fullBmReturn;
+  const pctOfBenchmark = pt
+    ? pt.pctOfBenchmark
+    : calculatePercentOfBenchmark(profitPercent, bmReturn);
+
+  const activeMonthsSlice = allActiveMonths.slice(0, ptIdx + 1);
+  const progressRatio =
+    allActiveMonths.length > 0 ? activeMonthsSlice.length / allActiveMonths.length : 1;
+
+  const posMonths = activeMonthsSlice.filter((m) => m.returnPct >= 0).length;
+  const negMonths = activeMonthsSlice.filter((m) => m.returnPct < 0).length;
+  const maxMonthReturn = activeMonthsSlice.length
+    ? Math.max(...activeMonthsSlice.map((m) => m.returnPct))
+    : 0;
+  const minMonthReturn = activeMonthsSlice.length
+    ? Math.min(...activeMonthsSlice.map((m) => m.returnPct))
+    : 0;
+  const avgMonthlyBm = bmReturn / Math.max(1, activeMonthsSlice.length);
+  const monthsAboveBm = activeMonthsSlice.filter((m) => m.returnPct >= avgMonthlyBm).length;
+  const monthsBelowBm = activeMonthsSlice.length - monthsAboveBm;
+
+  const baseVolNum = parseFloat(cfg.volatility.replace(',', '.')) || 20;
+  const dynamicVolatility = isLastPoint
+    ? cfg.volatility
+    : `${(baseVolNum * (pt ? pt.factorNw : 1)).toFixed(2).replace('.', ',')}%`;
+
+  const datePrefix = cfg.dateRangeLabel.includes(' Até ')
+    ? cfg.dateRangeLabel.split(' Até ')[0]
+    : cfg.dateRangeLabel;
+  const activeDateRangeLabel =
+    !isCustomPointActive.value && isLastPoint
+      ? cfg.dateRangeLabel
+      : `${datePrefix} Até ${pt ? pt.name : ''}`;
+
+  return {
+    dateRangeLabel: activeDateRangeLabel,
+    currentTotal: selectedCurrentTotal,
+    profitInCents,
+    profitPercent,
+    benchmarkReturn: bmReturn,
+    pctOfBenchmark,
+    initialNetWorth: Math.round(currentTotal * cfg.initialFactor),
+    movementsInCents: isLastPoint
+      ? cfg.movementsCents
+      : Math.round(cfg.movementsCents * progressRatio),
+    variationInCents: profitInCents,
+    irPaidInCents: isLastPoint ? cfg.irCents : Math.round(cfg.irCents * progressRatio),
+    finalNetWorth: selectedCurrentTotal,
+    liquidIrPercentOfBenchmark: Number((pctOfBenchmark * 0.997).toFixed(2)),
+    posMonths,
+    negMonths,
+    maxMonthReturn,
+    minMonthReturn: Math.abs(minMonthReturn),
+    monthsAboveBm,
+    monthsBelowBm,
+    volatility: dynamicVolatility,
+  };
+});
+
+function handlePointHover(idx: number) {
+  hoveredIdx.value = idx;
+  selectedBarIdx.value = idx;
+}
+
+function handlePointClick(idx: number) {
+  if (pinnedIdx.value === idx) {
+    pinnedIdx.value = null;
+  } else {
+    pinnedIdx.value = idx;
+  }
+  hoveredIdx.value = idx;
+  selectedBarIdx.value = idx;
+}
+
+function handleSvgPointerMove(e: TouchEvent | MouseEvent) {
+  const svg = e.currentTarget as SVGSVGElement | null;
+  if (!svg || coords.value.length === 0) return;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width <= 0) return;
+
+  let clientX: number | undefined;
+  if ('touches' in e) {
+    const touch = e.touches[0] || e.changedTouches[0];
+    clientX = touch?.clientX;
+  } else {
+    clientX = e.clientX;
+  }
+  if (clientX === undefined) return;
+
+  const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const idx = Math.round(relX * (coords.value.length - 1));
+  hoveredIdx.value = idx;
+  if ('touches' in e) {
+    pinnedIdx.value = idx;
+  }
+  selectedBarIdx.value = idx;
+}
 
 // Caminho da linha de montanha (Crista)
 const mountainCrestPath = computed(() => {
@@ -284,8 +418,6 @@ const monthlyBars = computed(() => {
     hasData: m.hasData,
   }));
 });
-
-const selectedBarIdx = ref<number | null>(4); // Maio pré-selecionado para exibir valor imediatamente
 
 const activeBar = computed(() => {
   if (selectedBarIdx.value !== null && monthlyBars.value[selectedBarIdx.value]) {
@@ -339,12 +471,29 @@ const activeBar = computed(() => {
 
     <!-- BLOCO RESUMO PRINCIPAL (VALOR + VARIAÇÃO + % DO BENCHMARK) -->
     <div class="space-y-3">
-      <div class="text-xs text-[#71717A]">
-        {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ periodConfig.dateRangeLabel }}
+      <div class="text-xs text-[#71717A] flex items-center gap-2">
+        <span>
+          {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.dateRangeLabel }}
+        </span>
+        <button
+          v-if="pinnedIdx !== null"
+          type="button"
+          data-testid="btn-clear-evolution-point"
+          class="text-[11px] font-bold text-accent-yellow hover:underline cursor-pointer"
+          @click="
+            pinnedIdx = null;
+            hoveredIdx = null;
+          "
+        >
+          (Limpar seleção ✕)
+        </button>
       </div>
 
       <div class="flex flex-wrap items-baseline gap-2.5">
-        <span class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white">
+        <span
+          data-testid="evolution-header-primary-value"
+          class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white"
+        >
           {{
             isPrivacyActive
               ? 'R$ •••••'
@@ -354,7 +503,10 @@ const activeBar = computed(() => {
           }}
         </span>
 
-        <span class="inline-flex items-center text-xs sm:text-sm font-bold text-finance-pos font-mono">
+        <span
+          data-testid="evolution-header-profit-pct"
+          class="inline-flex items-center text-xs sm:text-sm font-bold text-finance-pos font-mono"
+        >
           ↑ {{ portfolioValues.profitPercent.toFixed(2).replace('.', ',') }}%
         </span>
 
@@ -374,6 +526,10 @@ const activeBar = computed(() => {
           <select
             v-model="selectedYear"
             class="bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition"
+            @change="
+              hoveredIdx = null;
+              pinnedIdx = null;
+            "
           >
             <option value="2026">2026</option>
             <option value="2025">2025</option>
@@ -413,11 +569,40 @@ const activeBar = computed(() => {
     </div>
 
     <!-- GRÁFICO DE MONTANHA DO PATRIMÔNIO / RENDIMENTO + LINHA DE BENCHMARK -->
-    <div class="relative w-full h-52 sm:h-60 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden">
+    <div class="relative w-full h-52 sm:h-60 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y">
+      <!-- Badge Flutuante no Topo do Gráfico mostrando o Valor da Coordenada Selecionada -->
+      <div
+        v-if="activePoint"
+        data-testid="evolution-chart-floating-value"
+        class="pointer-events-none absolute top-2.5 left-3 right-3 z-10 flex items-center justify-between text-[11px] font-mono bg-[#18181B]/90 backdrop-blur-sm border border-border-subtle/80 rounded-xl px-3 py-1.5 shadow-md"
+      >
+        <span class="font-bold text-accent-yellow font-sans">
+          📍 {{ activePoint.name }}
+        </span>
+        <div class="flex items-center gap-2.5">
+          <span class="text-white font-extrabold">
+            {{
+              isPrivacyActive
+                ? 'R$ •••••'
+                : displayMode === 'rentabilidade'
+                ? `${formatCentsToBrl(activePoint.profitInCents)} (+${activePoint.profitPercent.toFixed(2).replace('.', ',')}%)`
+                : formatCentsToBrl(activePoint.netWorthInCents)
+            }}
+          </span>
+          <span class="text-[#52525B]">|</span>
+          <span :style="{ color: currentBenchmark.color }" class="font-bold">
+            {{ currentBenchmark.shortName }}: +{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%
+          </span>
+        </div>
+      </div>
+
       <svg
+        data-testid="xp-evolution-svg"
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
         preserveAspectRatio="none"
+        @touchstart.passive="handleSvgPointerMove"
+        @touchmove.passive="handleSvgPointerMove"
       >
         <defs>
           <!-- Gradiente da Montanha XP: Branca / Esmeralda desvanecendo para transparente -->
@@ -476,67 +661,114 @@ const activeBar = computed(() => {
           filter="url(#xpMountainGlow)"
         />
 
-        <!-- Ponto terminal da linha do Benchmark -->
-        <circle
-          v-if="coords.length > 0"
-          :cx="coords[coords.length - 1].x"
-          :cy="coords[coords.length - 1].yBm"
-          r="4"
-          :fill="currentBenchmark.color"
-          stroke="#09090B"
-          stroke-width="1.5"
-        />
-
-        <!-- Ponto terminal da crista da montanha -->
-        <circle
-          v-if="coords.length > 0"
-          :cx="coords[coords.length - 1].x"
-          :cy="coords[coords.length - 1].yNw"
-          r="4.5"
-          fill="#FFFFFF"
-          stroke="#09090B"
-          stroke-width="1.5"
-        />
-
-        <!-- Rótulos do Eixo X (Jan/26, Mar/26, Mai/26, Jul/26, Out/26) -->
+        <!-- Pontos Interativos, Linha Guia Vertical e Eixo X -->
         <g v-for="(pt, idx) in coords" :key="idx">
+          <!-- Linha vertical indicadora no ponto ativo -->
+          <line
+            v-if="activePointIdx === idx"
+            data-testid="evolution-active-guide-line"
+            :x1="pt.x"
+            :y1="paddingTop"
+            :x2="pt.x"
+            :y2="paddingTop + plotHeight"
+            stroke="#71717A"
+            stroke-dasharray="3 3"
+            stroke-width="1.2"
+          />
+
+          <!-- Ponto do Benchmark na coordenada ativa -->
+          <circle
+            v-if="activePointIdx === idx || idx === coords.length - 1"
+            :cx="pt.x"
+            :cy="pt.yBm"
+            :r="activePointIdx === idx ? 5 : 3.5"
+            :fill="currentBenchmark.color"
+            stroke="#09090B"
+            stroke-width="1.5"
+          />
+
+          <!-- Ponto da Crista da Montanha na coordenada ativa -->
+          <circle
+            v-if="activePointIdx === idx || idx === coords.length - 1"
+            :cx="pt.x"
+            :cy="pt.yNw"
+            :r="activePointIdx === idx ? 6 : 4"
+            fill="#FFFFFF"
+            stroke="#09090B"
+            stroke-width="1.5"
+          />
+
+          <!-- Rótulos do Eixo X -->
           <text
-            v-if="idx % 2 === 0 || idx === coords.length - 1"
+            v-if="idx % 2 === 0 || idx === coords.length - 1 || activePointIdx === idx"
             :x="pt.x"
             :y="height - 6"
             text-anchor="middle"
-            fill="#71717A"
+            :fill="activePointIdx === idx ? '#FFFFFF' : '#71717A'"
             font-size="10"
-            font-weight="500"
+            :font-weight="activePointIdx === idx ? 700 : 500"
+            class="select-none"
           >
             {{ pt.date }}
           </text>
 
-          <!-- Zona interativa de clique e hover -->
+          <!-- Zona interativa de clique, toque e hover -->
           <rect
+            :data-testid="`evolution-chart-point-${idx}`"
             :x="pt.x - plotWidth / (coords.length * 2)"
             :y="0"
             :width="plotWidth / coords.length"
             :height="height"
             fill="transparent"
             class="cursor-pointer"
-            @mouseenter="hoveredIdx = idx"
+            @mouseenter="handlePointHover(idx)"
+            @mousemove="handlePointHover(idx)"
             @mouseleave="hoveredIdx = null"
+            @click="handlePointClick(idx)"
+            @touchstart.passive="handlePointClick(idx)"
           />
         </g>
       </svg>
     </div>
 
-    <!-- Indicador do Benchmark Logo Abaixo do Gráfico (Ex: ● CDI ↑ 10,90%) -->
-    <div class="flex items-center gap-2 text-xs">
-      <span
-        class="w-2.5 h-2.5 rounded-full shrink-0"
-        :style="{ backgroundColor: currentBenchmark.color }"
-      />
-      <span class="font-bold text-white">{{ currentBenchmark.shortName }}</span>
-      <span class="font-bold text-finance-pos font-mono">
-        ↑ {{ portfolioValues.benchmarkReturn.toFixed(2).replace('.', ',') }}%
-      </span>
+    <!-- Barra Informativa do Ponto Selecionado (Idêntica à aba Início + Indicador do Benchmark) -->
+    <div
+      v-if="activePoint"
+      data-testid="evolution-point-info"
+      class="flex flex-wrap items-center justify-between gap-3 text-xs bg-background/70 px-3.5 py-2.5 rounded-xl border border-border-subtle/60 text-[#A1A1AA]"
+    >
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="font-bold text-white whitespace-nowrap">
+          📅 {{ activePoint.date }} ({{ activePoint.name }})
+        </span>
+        <div class="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:text-xs">
+          <span class="whitespace-nowrap">
+            Patrimônio:
+            <strong class="text-white">
+              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.netWorthInCents) }}
+            </strong>
+          </span>
+          <span class="text-border-subtle">|</span>
+          <span class="whitespace-nowrap">
+            Rendimento:
+            <strong class="text-finance-pos">
+              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.profitInCents) }}
+              (+{{ activePoint.profitPercent.toFixed(2).replace('.', ',') }}%)
+            </strong>
+          </span>
+          <span class="text-border-subtle">|</span>
+          <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <span
+              class="w-2.5 h-2.5 rounded-full shrink-0"
+              :style="{ backgroundColor: currentBenchmark.color }"
+            />
+            <span class="font-bold text-white font-sans">{{ currentBenchmark.shortName }}</span>
+            <strong class="font-bold text-finance-pos" :style="{ color: currentBenchmark.color }">
+              ↑ {{ portfolioValues.benchmarkReturn.toFixed(2).replace('.', ',') }}%
+            </strong>
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- SEÇÃO: DETALHES DA RENTABILIDADE -->
@@ -546,14 +778,14 @@ const activeBar = computed(() => {
       <div class="space-y-2.5 text-xs">
         <div class="flex items-center justify-between py-1 border-b border-border-subtle/50">
           <span class="text-[#A1A1AA]">Rendimento</span>
-          <span class="font-mono font-bold text-finance-pos">
+          <span data-testid="details-profit-value" class="font-mono font-bold text-finance-pos">
             ↑ {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(portfolioValues.profitInCents) }}
           </span>
         </div>
 
         <div class="flex items-center justify-between py-1 border-b border-border-subtle/50">
           <span class="text-[#A1A1AA]">Data de referência</span>
-          <span class="font-medium text-white">{{ periodConfig.dateRangeLabel }}</span>
+          <span data-testid="details-reference-date" class="font-medium text-white">{{ portfolioValues.dateRangeLabel }}</span>
         </div>
       </div>
 

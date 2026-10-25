@@ -127,6 +127,7 @@ const periodTransactions = computed(() => {
 
 // Navegação do seletor de período (< e >)
 function handlePeriodPrev() {
+  selectedCalendarDay.value = null;
   if (periodMode.value === 'month') {
     anchorDate.value = subMonths(anchorDate.value, 1);
   } else if (periodMode.value === 'week') {
@@ -137,6 +138,7 @@ function handlePeriodPrev() {
 }
 
 function handlePeriodNext() {
+  selectedCalendarDay.value = null;
   if (periodMode.value === 'month') {
     anchorDate.value = addMonths(anchorDate.value, 1);
   } else if (periodMode.value === 'week') {
@@ -147,6 +149,7 @@ function handlePeriodNext() {
 }
 
 function handlePeriodToday() {
+  selectedCalendarDay.value = null;
   anchorDate.value = new Date();
 }
 
@@ -362,7 +365,10 @@ function handleDelete(id: string, description: string) {
                 ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
                 : 'bg-background text-finance-neutral border-border-subtle hover:text-white hover:border-white/20'
             "
-            @click="periodMode = p.key as PeriodMode"
+            @click="
+              periodMode = p.key as PeriodMode;
+              selectedCalendarDay = null;
+            "
           >
             {{ p.label }}
           </button>
@@ -475,6 +481,7 @@ function handleDelete(id: string, description: string) {
           @click="
             selectedType = 'ALL';
             selectedCategory = 'ALL';
+            selectedCalendarDay = null;
             activeSubTab = 'lancamentos';
           "
         >
@@ -620,13 +627,15 @@ function handleDelete(id: string, description: string) {
             </span>
           </div>
 
-          <div v-if="selectedCategory !== 'ALL' || selectedType !== 'ALL'" class="text-xs">
+          <div v-if="selectedCategory !== 'ALL' || selectedType !== 'ALL' || selectedCalendarDay !== null || searchTerm.trim() !== ''" class="text-xs">
             <button
+              data-testid="btn-clear-timeline-filters"
               type="button"
               class="text-accent-yellow hover:underline cursor-pointer"
               @click="
                 selectedCategory = 'ALL';
                 selectedType = 'ALL';
+                selectedCalendarDay = null;
                 searchTerm = '';
               "
             >

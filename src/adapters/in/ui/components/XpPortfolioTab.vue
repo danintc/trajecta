@@ -82,13 +82,26 @@ const emit = defineEmits<{
 }>();
 
 const activePill = ref<XpPortfolioSubPill>('classe');
-const expandedKeys = ref<string[]>([]);
+const selectedCategoryKey = ref<string | null>(null);
 const selectedClassFilter = ref<string>('ALL');
 const selectedInstitutionFilter = ref<string>('ALL');
 const hoveredCategoryKey = ref<string | null>(null);
+const isObjectivesHintOpen = ref(false);
 
 // Sempre que o usuário trocar para uma visão agrupada (Classe, Produto, Liquidez, Instituição, Objetivos),
-// reseta o filtro de classe individual para evitar exibir "0 ativos listados" de um filtro anterior
+// reseta o filtro de classe individual e a seleção de categoria para evitar múltiplos highlights
+function handleSelectPill(newPill: XpPortfolioSubPill) {
+  activePill.value = newPill;
+  hoveredCategoryKey.value = null;
+  selectedCategoryKey.value = null;
+  if (newPill !== 'ativos') {
+    selectedClassFilter.value = 'ALL';
+  }
+  if (newPill === 'instituicao') {
+    selectedInstitutionFilter.value = 'ALL';
+  }
+}
+
 watch(activePill, (newPill) => {
   hoveredCategoryKey.value = null;
   if (newPill !== 'ativos') {
@@ -267,11 +280,19 @@ function handleSaveObjective() {
 }
 
 function handleDeleteObjective(objKey: string) {
+  if (selectedCategoryKey.value === objKey) {
+    selectedCategoryKey.value = null;
+  }
+  if (hoveredCategoryKey.value === objKey) {
+    hoveredCategoryKey.value = null;
+  }
   objectives.value = objectives.value.filter((o) => o.key !== objKey);
   saveObjectivesToStorage();
 }
 
 function handleResetObjectives() {
+  selectedCategoryKey.value = null;
+  hoveredCategoryKey.value = null;
   objectives.value = DEFAULT_OBJECTIVES.map((o) => ({ ...o, linkedClasses: [...o.linkedClasses] }));
   saveObjectivesToStorage();
 }
@@ -346,7 +367,9 @@ const byInstitution = computed(() => {
 });
 
 function handleSelectInstitution(inst: string) {
-  if (selectedInstitutionFilter.value === inst) {
+  hoveredCategoryKey.value = null;
+  selectedCategoryKey.value = null;
+  if (inst === 'ALL' || selectedInstitutionFilter.value === inst) {
     selectedInstitutionFilter.value = 'ALL';
   } else {
     selectedInstitutionFilter.value = inst;
@@ -832,7 +855,7 @@ const institutionCategories = computed<PortfolioCategoryGroup[]>(() => {
   }
 
   const instColorMap = new Map<string, string>();
-  return buildCategoryGroups(props.assets, (a) => {
+  return buildCategoryGroups(institutionFilteredAssets.value, (a) => {
     const instName = a.institution || 'Outras Corretoras';
     const key =
       'inst_' +
@@ -861,15 +884,28 @@ const activeCategoryList = computed<PortfolioCategoryGroup[]>(() => {
   return classCategories.value;
 });
 
-// Categoria em foco no Donut quando o usuário passa o mouse sobre uma fatia ou categoria
+// Chave única ativa no Donut (prioriza hover momentâneo ou a categoria clicada/selecionada)
+const activeDonutCategoryKey = computed<string | null>(() => {
+  if (hoveredCategoryKey.value) return hoveredCategoryKey.value;
+  if (activePill.value === 'ativos' && props.assets.length > 0) {
+    return selectedClassFilter.value !== 'ALL' ? selectedClassFilter.value : null;
+  }
+  return selectedCategoryKey.value;
+});
+
+// Categoria em foco no Donut quando o usuário passa o mouse ou seleciona uma categoria
 const focusedDonutCategory = computed<PortfolioCategoryGroup | null>(() => {
-  if (!hoveredCategoryKey.value) return null;
-  return activeCategoryList.value.find((c) => c.key === hoveredCategoryKey.value) || null;
+  if (!activeDonutCategoryKey.value) return null;
+  return activeCategoryList.value.find((c) => c.key === activeDonutCategoryKey.value) || null;
 });
 
 // Lista completa de ativos filtrados (para aba 'ativos' ou filtro direto por classe)
 const allPortfolioAssets = computed<PortfolioAssetItem[]>(() => {
   if (props.assets.length === 0) {
+    if (selectedCategoryKey.value) {
+      const cat = classCategories.value.find((c) => c.key === selectedCategoryKey.value);
+      return cat ? cat.assets : [];
+    }
     return classCategories.value.flatMap((c) => c.assets);
   }
   const total = totalInvestedInCents.value || 1;
@@ -913,20 +949,46 @@ const donutSegments = computed(() => {
 });
 
 function isCategoryExpanded(key: string): boolean {
-  return expandedKeys.value.includes(key);
+  if (activePill.value === 'ativos') {
+    if (props.assets.length > 0) {
+      return selectedClassFilter.value === key;
+    }
+    return selectedCategoryKey.value === key;
+  }
+  return selectedCategoryKey.value === key;
 }
 
 function toggleCategoryExpansion(key: string) {
-  if (expandedKeys.value.includes(key)) {
-    expandedKeys.value = expandedKeys.value.filter((k) => k !== key);
+  hoveredCategoryKey.value = null;
+  if (activePill.value === 'ativos') {
+    if (props.assets.length > 0) {
+      const nextFilter = selectedClassFilter.value === key ? 'ALL' : key;
+      selectedClassFilter.value = nextFilter;
+      selectedCategoryKey.value = nextFilter === 'ALL' ? null : key;
+    } else {
+      selectedCategoryKey.value = selectedCategoryKey.value === key ? null : key;
+    }
+    return;
+  }
+
+  if (selectedCategoryKey.value === key) {
+    selectedCategoryKey.value = null;
   } else {
-    expandedKeys.value = [...expandedKeys.value, key];
+    selectedCategoryKey.value = key;
   }
 }
 
 function handleSelectClassFilter(clsKey: string) {
-  selectedClassFilter.value = clsKey;
-  activePill.value = 'ativos';
+  hoveredCategoryKey.value = null;
+  if (clsKey === 'ALL' || (activePill.value === 'ativos' && selectedClassFilter.value === clsKey)) {
+    selectedClassFilter.value = 'ALL';
+    selectedCategoryKey.value = null;
+    activePill.value = 'ativos';
+  } else {
+    selectedClassFilter.value = clsKey;
+    selectedCategoryKey.value = clsKey;
+    activePill.value = 'ativos';
+  }
 }
 </script>
 
@@ -963,6 +1025,7 @@ function handleSelectClassFilter(clsKey: string) {
             { id: 'objetivos', label: 'Objetivos' },
           ]"
           :key="pill.id"
+          :data-testid="`portfolio-pill-${pill.id}`"
           type="button"
           class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0"
           :class="
@@ -970,7 +1033,7 @@ function handleSelectClassFilter(clsKey: string) {
               ? 'bg-white text-black font-extrabold shadow-sm'
               : 'bg-[#18181B] text-[#A1A1AA] hover:text-white border border-[#27272A]'
           "
-          @click="activePill = pill.id as XpPortfolioSubPill"
+          @click="handleSelectPill(pill.id as XpPortfolioSubPill)"
         >
           {{ pill.label }}
         </button>
@@ -997,18 +1060,19 @@ function handleSelectClassFilter(clsKey: string) {
             <circle
               v-for="seg in donutSegments"
               :key="seg.key"
+              :data-testid="`donut-segment-${seg.key}`"
               cx="40"
               cy="40"
               r="32"
               fill="none"
               :stroke="seg.color"
-              :stroke-width="hoveredCategoryKey === seg.key ? 9 : 7"
+              :stroke-width="activeDonutCategoryKey === seg.key ? 9 : 7"
               :stroke-dasharray="seg.strokeDasharray"
               :stroke-dashoffset="seg.strokeDashoffset"
               stroke-linecap="round"
               class="transition-all duration-300 cursor-pointer"
               :class="
-                hoveredCategoryKey && hoveredCategoryKey !== seg.key
+                activeDonutCategoryKey && activeDonutCategoryKey !== seg.key
                   ? 'opacity-35'
                   : 'opacity-100'
               "
@@ -1021,13 +1085,13 @@ function handleSelectClassFilter(clsKey: string) {
 
         <!-- Informações Textuais ao lado da Rosquinha (Mostra Total ou Patrimônio da Categoria em Foco) -->
         <div class="space-y-1 min-w-0">
-          <div class="text-xs text-[#A1A1AA] font-medium flex items-center gap-1.5">
+          <div class="text-xs text-[#A1A1AA] font-medium flex items-center gap-1.5 flex-wrap">
             <template v-if="focusedDonutCategory">
               <span
                 class="w-2 h-2 rounded-full shrink-0"
                 :style="{ backgroundColor: focusedDonutCategory.color }"
               />
-              <span class="text-white font-bold truncate">{{ focusedDonutCategory.name }}</span>
+              <span class="text-white font-bold break-words">{{ focusedDonutCategory.name }}</span>
               <span class="text-accent-yellow font-mono">({{ focusedDonutCategory.percentLabel }})</span>
             </template>
             <template v-else>
@@ -1049,38 +1113,43 @@ function handleSelectClassFilter(clsKey: string) {
         </div>
       </div>
 
-      <!-- Resumo de Patrimônio por Categoria do Donut (Substitui o antigo card destacado de instituição) -->
+      <!-- Resumo de Patrimônio por Categoria do Donut (Apenas 1 selecionado por vez) -->
       <div
         v-if="activeCategoryList.length > 0"
         data-testid="donut-category-breakdown"
-        class="flex-1 lg:max-w-xl grid grid-cols-2 sm:grid-cols-3 gap-2"
+        class="flex-1 lg:max-w-xl grid gap-2"
+        :class="activePill === 'objetivos' ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'"
       >
         <button
           v-for="cat in activeCategoryList"
           :key="`donut-chip-${cat.key}`"
+          :data-testid="`donut-chip-${cat.key}`"
+          :data-selected="isCategoryExpanded(cat.key) ? 'true' : 'false'"
           type="button"
-          class="bg-background/70 hover:bg-surface-hover border rounded-xl px-3 py-2 text-left transition cursor-pointer"
+          class="border rounded-xl px-3 py-2 text-left transition cursor-pointer flex flex-col justify-between gap-1"
           :class="
-            hoveredCategoryKey === cat.key || isCategoryExpanded(cat.key)
-              ? 'border-white/30 bg-surface-hover/60'
-              : 'border-border-subtle/70'
+            isCategoryExpanded(cat.key)
+              ? 'border-finance-invest bg-finance-invest/15 ring-1 ring-finance-invest/40 shadow-sm'
+              : 'bg-background/70 border-border-subtle/70 hover:bg-surface-hover/60 hover:border-white/20'
           "
           @mouseenter="hoveredCategoryKey = cat.key"
           @mouseleave="hoveredCategoryKey = null"
           @click="toggleCategoryExpansion(cat.key)"
         >
-          <div class="flex items-center justify-between gap-1.5 text-[11px]">
-            <div class="flex items-center gap-1.5 min-w-0">
-              <span
-                class="w-2 h-2 rounded-full shrink-0"
-                :style="{ backgroundColor: cat.color }"
-              />
-              <span class="font-bold text-[#D4D4D8] truncate">{{ cat.name }}</span>
-            </div>
-            <span class="font-mono font-bold text-[#A1A1AA] shrink-0">{{ cat.percentLabel }}</span>
+          <div class="flex items-start gap-1.5 text-xs">
+            <span
+              class="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
+              :style="{ backgroundColor: cat.color }"
+            />
+            <span class="font-bold text-white leading-snug break-words">{{ cat.name }}</span>
           </div>
-          <div class="text-xs font-extrabold font-mono text-white truncate mt-0.5 pl-3.5">
-            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
+          <div class="flex items-center justify-between gap-1.5 pl-4 pt-0.5">
+            <span class="text-xs font-extrabold font-mono text-white whitespace-nowrap">
+              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
+            </span>
+            <span class="font-mono font-bold text-[11px] text-[#A1A1AA] shrink-0">
+              {{ cat.percentLabel }}
+            </span>
           </div>
         </button>
       </div>
@@ -1096,6 +1165,8 @@ function handleSelectClassFilter(clsKey: string) {
         <button
           v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...props.availableClasses]"
           :key="cls.key"
+          :data-testid="`class-filter-btn-${cls.key}`"
+          :data-selected="selectedClassFilter === cls.key && activePill === 'ativos' ? 'true' : 'false'"
           type="button"
           class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer flex items-center gap-1"
           :class="
@@ -1121,19 +1192,23 @@ function handleSelectClassFilter(clsKey: string) {
         </span>
         <button
           type="button"
+          data-testid="inst-filter-btn-ALL"
+          :data-selected="selectedInstitutionFilter === 'ALL' ? 'true' : 'false'"
           class="px-2 py-0.5 rounded-md border text-[10px] font-semibold transition cursor-pointer whitespace-nowrap"
           :class="
             selectedInstitutionFilter === 'ALL'
               ? 'bg-surface text-white border-border-subtle'
               : 'bg-transparent text-[#71717A] border-transparent hover:text-white'
           "
-          @click="selectedInstitutionFilter = 'ALL'"
+          @click="handleSelectInstitution('ALL')"
         >
           Todas
         </button>
         <button
           v-for="(inst, idx) in byInstitution"
           :key="idx"
+          :data-testid="`inst-filter-btn-${idx}`"
+          :data-selected="selectedInstitutionFilter === inst.institution ? 'true' : 'false'"
           type="button"
           class="px-2 py-0.5 rounded-md border text-[10px] font-semibold transition cursor-pointer whitespace-nowrap"
           :class="
@@ -1159,30 +1234,32 @@ function handleSelectClassFilter(clsKey: string) {
     />
 
     <!-- ========================================================================= -->
-    <!-- PAINEL EXPLICATIVO E GESTÃO DE OBJETIVOS (QUANDO A PILL 'OBJETIVOS' ATIVA)-->
+    <!-- PAINEL COMPACTO COM HINT E GESTÃO DE OBJETIVOS (QUANDO A PILL 'OBJETIVOS')-->
     <!-- ========================================================================= -->
     <div
       v-if="activePill === 'objetivos' && (!props.showEmptyState || props.assets.length > 0)"
       data-testid="objectives-explainer-panel"
-      class="bg-background/90 border border-border-subtle rounded-2xl p-3.5 sm:p-4 space-y-3"
+      class="bg-background/90 border border-border-subtle rounded-2xl px-3.5 py-2.5 space-y-2.5"
     >
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div class="space-y-0.5">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-extrabold uppercase tracking-wider text-accent-yellow">
-              🎯 Como funcionam seus Objetivos?
-            </span>
-          </div>
-          <p class="text-[11px] text-[#A1A1AA] leading-relaxed">
-            Cada objetivo agrupa automaticamente os ativos das <strong>classes vinculadas</strong> a ele e compara o saldo acumulado com a sua <strong>Meta (%)</strong>. Você pode criar novos objetivos, editar metas/vínculos ou excluir qualquer objetivo abaixo.
-          </p>
-        </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <!-- Botão de Hint que abre/fecha ao clicar (sem ocupar espaço fixo na página) -->
+        <button
+          type="button"
+          data-testid="btn-toggle-objectives-hint"
+          class="inline-flex items-center gap-2 text-left text-xs font-bold text-accent-yellow hover:text-white transition cursor-pointer py-1"
+          @click="isObjectivesHintOpen = !isObjectivesHintOpen"
+        >
+          <span>🎯 Como funcionam seus Objetivos?</span>
+          <span class="text-[10px] font-semibold bg-surface border border-border-subtle text-[#A1A1AA] px-2 py-0.5 rounded-full">
+            {{ isObjectivesHintOpen ? 'Ocultar dica ▴' : 'ⓘ Ver dica' }}
+          </span>
+        </button>
 
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2 shrink-0 ml-auto">
           <button
             type="button"
             data-testid="btn-add-objective"
-            class="px-3 py-2 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
+            class="px-3 py-1.5 rounded-xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-xs transition cursor-pointer whitespace-nowrap flex items-center gap-1.5"
             @click="openCreateObjectiveForm"
           >
             <span>+</span>
@@ -1192,12 +1269,21 @@ function handleSelectClassFilter(clsKey: string) {
             type="button"
             data-testid="btn-reset-objectives"
             title="Restaurar objetivos padrão"
-            class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-semibold text-[#A1A1AA] hover:text-white transition cursor-pointer whitespace-nowrap"
+            class="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-semibold text-[#A1A1AA] hover:text-white transition cursor-pointer whitespace-nowrap"
             @click="handleResetObjectives"
           >
             Padrão
           </button>
         </div>
+      </div>
+
+      <!-- Hint Expansível (Abre apenas ao clicar) -->
+      <div
+        v-if="isObjectivesHintOpen"
+        data-testid="objectives-hint-content"
+        class="p-3 rounded-xl bg-surface border border-border-subtle text-[11px] text-[#A1A1AA] leading-relaxed"
+      >
+        Cada objetivo agrupa automaticamente os ativos das <strong>classes vinculadas</strong> a ele e compara o saldo acumulado com a sua <strong>Meta (%)</strong>. Você pode criar novos objetivos, editar metas/vínculos ou excluir qualquer objetivo abaixo.
       </div>
 
       <!-- FORMULÁRIO INLINE DE CRIAÇÃO / EDIÇÃO DE OBJETIVO -->
@@ -1323,7 +1409,7 @@ function handleSelectClassFilter(clsKey: string) {
 
     <!-- ========================================================================= -->
     <!-- MODOS CATEGORIZADOS EXPANSÍVEIS: CLASSE | PRODUTO | LIQUIDEZ | OBJETIVOS  -->
-    <!-- Clicar em qualquer categoria expande todos os ativos daquela categoria    -->
+    <!-- Clicar em qualquer categoria seleciona/expande apenas aquela categoria    -->
     <!-- ========================================================================= -->
     <div
       v-if="activePill !== 'ativos' && (!props.showEmptyState || props.assets.length > 0)"
@@ -1333,34 +1419,35 @@ function handleSelectClassFilter(clsKey: string) {
         v-for="cat in activeCategoryList"
         :key="cat.key"
         :data-testid="`portfolio-category-${cat.key}`"
-        class="py-3.5 transition cursor-pointer group"
+        :data-selected="isCategoryExpanded(cat.key) ? 'true' : 'false'"
+        class="py-3.5 transition cursor-pointer group rounded-xl px-2.5 -mx-2.5"
+        :class="
+          isCategoryExpanded(cat.key)
+            ? 'bg-surface-hover/40 ring-1 ring-finance-invest/30'
+            : 'hover:bg-white/[0.02]'
+        "
         @click="toggleCategoryExpansion(cat.key)"
       >
-        <div class="flex items-center justify-between gap-2">
-          <!-- Lado Esquerdo: Ponto Colorido + Nome + Quantidade de Ativos -->
-          <div class="flex items-center gap-2.5 min-w-0">
+        <!-- PRIMEIRA LINHA: Título Inteiro na Primeira Linha + Botões Editar/Excluir e Chevron à Direita -->
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <span
-              class="w-2.5 h-2.5 rounded-full shrink-0"
+              class="w-3 h-3 rounded-full shrink-0"
               :style="{ backgroundColor: cat.color }"
             />
-            <span class="text-xs sm:text-sm font-bold text-white group-hover:text-finance-invest transition truncate">
+            <span
+              :data-testid="`category-title-${cat.key}`"
+              class="text-sm sm:text-base font-extrabold text-white group-hover:text-finance-invest transition leading-snug break-words"
+            >
               {{ cat.name }}
-            </span>
-            <span class="text-[10px] text-[#71717A] font-mono shrink-0">
-              ({{ cat.assets.length }})
             </span>
           </div>
 
-          <!-- Lado Direito: Valor Total + Ações de Objetivo (se na aba Objetivos) + Chevron > -->
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-xs sm:text-sm font-mono font-bold text-white">
-              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
-            </span>
-
-            <!-- Botões Editar / Excluir Objetivo (Visíveis na aba Objetivos) -->
+          <!-- Lado Direito da Primeira Linha: Botões de Editar e Excluir permanecem aqui + Chevron -->
+          <div class="flex items-center gap-1.5 shrink-0">
             <div
               v-if="activePill === 'objetivos'"
-              class="flex items-center gap-1 ml-1"
+              class="flex items-center gap-1"
               @click.stop
             >
               <button
@@ -1395,40 +1482,52 @@ function handleSelectClassFilter(clsKey: string) {
           </div>
         </div>
 
-        <!-- Detalhes extras quando na aba Objetivos (Descrição + Classes Vinculadas + Meta) -->
-        <div v-if="activePill === 'objetivos'" class="pl-5 pt-1.5 space-y-1.5">
-          <p v-if="cat.description" class="text-[11px] text-[#A1A1AA]">
-            {{ cat.description }}
-          </p>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[10px] text-[#71717A] font-semibold">Classes vinculadas:</span>
+        <!-- SEGUNDA LINHA: Valor Total + Quantidade de Ativos na Esquerda | % da Carteira e Rentabilidade na Direita -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pl-5 pt-1.5 text-xs font-mono">
+          <div class="flex flex-wrap items-center gap-2">
             <span
-              v-for="clsKey in cat.linkedClasses || []"
-              :key="clsKey"
-              class="text-[10px] bg-background border border-border-subtle text-[#D4D4D8] px-2 py-0.5 rounded-md font-medium"
+              :data-testid="`category-total-${cat.key}`"
+              class="text-sm sm:text-base font-extrabold text-white"
             >
-              {{ formatClassLabel(clsKey) }}
+              {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(cat.totalCents) }}
+            </span>
+            <span
+              :data-testid="`category-count-${cat.key}`"
+              class="text-[11px] text-[#A1A1AA] bg-background/80 border border-border-subtle/80 px-2 py-0.5 rounded-md font-sans font-semibold"
+            >
+              {{ cat.assets.length }} {{ cat.assets.length === 1 ? 'ativo' : 'ativos' }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2.5">
+            <span class="text-[#A1A1AA] text-[11px]">
+              <template v-if="activePill === 'objetivos'">
+                Atual: <strong class="text-white">{{ cat.percentLabel }}</strong> • Meta:
+                <strong class="text-accent-yellow">{{ cat.targetPercent ?? 0 }}%</strong>
+              </template>
+              <template v-else>
+                {{ cat.percentLabel }}
+              </template>
+            </span>
+            <span
+              class="font-bold text-[11px] flex items-center gap-0.5"
+              :class="cat.profitPercent >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+            >
+              <span>{{ cat.profitPercent >= 0 ? '▲' : '▼' }}</span>
+              <span>{{ Math.abs(cat.profitPercent).toFixed(2).replace('.', ',') }}%</span>
             </span>
           </div>
         </div>
 
-        <!-- Linha Inferior com % da Carteira e Rentabilidade ▲ -->
-        <div class="flex items-center justify-between pl-5 pt-1 text-xs font-mono">
-          <span class="text-[#A1A1AA] text-[11px]">
-            <template v-if="activePill === 'objetivos'">
-              Atual: <strong class="text-white">{{ cat.percentLabel }}</strong> • Meta definida:
-              <strong class="text-accent-yellow">{{ cat.targetPercent ?? 0 }}%</strong>
-            </template>
-            <template v-else>
-              {{ cat.percentLabel }}
-            </template>
-          </span>
+        <!-- Badges de Classes Vinculadas quando na aba Objetivos -->
+        <div v-if="activePill === 'objetivos'" class="pl-5 pt-1.5 flex flex-wrap items-center gap-1.5">
+          <span class="text-[10px] text-[#71717A] font-semibold">Classes vinculadas:</span>
           <span
-            class="font-bold text-[11px] flex items-center gap-0.5"
-            :class="cat.profitPercent >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+            v-for="clsKey in cat.linkedClasses || []"
+            :key="clsKey"
+            class="text-[10px] bg-background border border-border-subtle text-[#D4D4D8] px-2 py-0.5 rounded-md font-medium"
           >
-            <span>{{ cat.profitPercent >= 0 ? '▲' : '▼' }}</span>
-            <span>{{ Math.abs(cat.profitPercent).toFixed(2).replace('.', ',') }}%</span>
+            {{ formatClassLabel(clsKey) }}
           </span>
         </div>
 
@@ -1542,7 +1641,7 @@ function handleSelectClassFilter(clsKey: string) {
           <button
             type="button"
             class="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-xs font-bold text-white transition cursor-pointer"
-            @click="selectedClassFilter = 'ALL'"
+            @click="handleSelectClassFilter('ALL')"
           >
             Mostrar todos os ativos ({{ institutionFilteredAssets.length }})
           </button>
