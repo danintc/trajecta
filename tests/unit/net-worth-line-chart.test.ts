@@ -99,4 +99,32 @@ describe('NetWorthLineChart Component', () => {
     expect(wrapper.text()).toContain('Dólar');
     expect(wrapper.text()).toContain('DÓLAR');
   });
+
+  it('deve atualizar os valores de cima ao selecionar um ponto diferente do ponto final', async () => {
+    const wrapper = mount(NetWorthLineChart, {
+      props: {
+        currentNetWorthInCents: 15975516,
+        isPrivacyActive: false,
+      },
+    });
+
+    // Ponto final (Out/26) padrão: +22%
+    expect(wrapper.text()).toContain('+22%');
+    expect(wrapper.text()).toContain('+10.9%');
+
+    // Clicar no ponto 1 (Fev/26 - nwFactor 0.78 vs 0.82)
+    const point1 = wrapper.find('[data-testid="net-worth-point-1"]');
+    expect(point1.exists()).toBe(true);
+    await point1.trigger('click');
+
+    // Os valores de cima devem ser atualizados de acordo com o ponto escolhido (negativo para Fev)
+    expect(wrapper.text()).toContain('-4.9%');
+    expect(wrapper.find('[data-testid="btn-clear-home-point"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="net-worth-point-info"]').text()).toContain('Fev/26');
+
+    // Limpar seleção
+    await wrapper.find('[data-testid="btn-clear-home-point"]').trigger('click');
+    expect(wrapper.text()).toContain('+22%');
+    expect(wrapper.find('[data-testid="net-worth-point-info"]').text()).toContain('Out/26');
+  });
 });

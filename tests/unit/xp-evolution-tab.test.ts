@@ -217,4 +217,60 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('18.248,97');
     expect(wrapper.find('[data-testid="evolution-header-primary-value"]').text()).toContain('18.248,97');
   });
+
+  it('deve atualizar Detalhes da Evolução e Patrimônio Final ao selecionar qualquer mês no gráfico de barras', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    // Inicialmente Maio está pré-selecionado (index 4: +12,07%, +R$ 2.710,00)
+    expect(wrapper.text()).toContain('Detalhes da evolução');
+    expect(wrapper.text()).toContain('Maio/26');
+    expect(wrapper.text()).toContain('2.710,00');
+    expect(wrapper.text()).toContain('12,07%');
+
+    // Clicar na barra do mês de Janeiro (index 0: -4.1%, -R$ 920,00)
+    const bar0 = wrapper.find('[data-testid="evolution-bar-0"]');
+    expect(bar0.exists()).toBe(true);
+    await bar0.trigger('click');
+
+    // Deve atualizar os detalhes da evolução e patrimônio final para Janeiro/26
+    expect(wrapper.text()).toContain('Janeiro/26');
+    expect(wrapper.text()).toContain('920,00');
+    expect(wrapper.text()).toContain('4,10%');
+
+    // Clicar na barra do mês de Outubro (index 9: -1.9%, -R$ 420,00)
+    const bar9 = wrapper.find('[data-testid="evolution-bar-9"]');
+    expect(bar9.exists()).toBe(true);
+    await bar9.trigger('click');
+
+    expect(wrapper.text()).toContain('Outubro/26');
+    expect(wrapper.text()).toContain('420,00');
+    expect(wrapper.text()).toContain('1,90%');
+  });
+
+  it('deve possuir transparência e evitar quebra de strings na informação flutuante do gráfico', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    // Passar o mouse no ponto 4
+    const point4 = wrapper.find('[data-testid="evolution-chart-point-4"]');
+    await point4.trigger('mouseenter');
+
+    const floatingBox = wrapper.find('[data-testid="evolution-chart-floating-value"]');
+    expect(floatingBox.exists()).toBe(true);
+
+    // Deve possuir classes de transparência (bg com opacidade reduzida e backdrop-blur)
+    expect(floatingBox.classes()).toContain('backdrop-blur-md');
+    // Deve conter classes para evitar quebras inadequadas de strings
+    const pinSpan = floatingBox.find('span');
+    expect(pinSpan.classes()).toContain('whitespace-nowrap');
+  });
 });
