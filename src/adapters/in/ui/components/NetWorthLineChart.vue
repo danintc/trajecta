@@ -285,12 +285,12 @@ function handleSvgTouch(e: TouchEvent) {
       </div>
 
       <!-- Linha 2: Legendas + Badge Comparativo - BEM DISTRIBUÍDOS EM UMA LINHA SÓ -->
-      <div class="flex items-center justify-between gap-1 sm:gap-2 w-full text-[10px] sm:text-xs">
+      <div class="flex items-center justify-between gap-1 sm:gap-2 w-full text-[10px] sm:text-xs min-w-0">
         <!-- Legenda Patrimônio / Rendimento -->
         <div class="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0">
           <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white shadow-sm shrink-0" />
           <span class="text-white font-semibold">
-            {{ displayMode === 'patrimonio' ? 'Patrimônio Líquido' : 'Rendimento Acumulado' }}
+            {{ displayMode === 'patrimonio' ? 'Patrimônio' : 'Rendimento' }}<span class="hidden md:inline">{{ displayMode === 'patrimonio' ? ' Líquido' : ' Acumulado' }}</span>
           </span>
           <span
             class="font-mono font-bold text-[10px] sm:text-[11px] px-1 sm:px-1.5 py-0.5 rounded"
@@ -300,7 +300,7 @@ function handleSvgTouch(e: TouchEvent) {
           </span>
         </div>
 
-        <span class="text-[#3F3F46]">•</span>
+        <span class="text-[#3F3F46] shrink-0">•</span>
 
         <!-- Legenda do Benchmark Selecionado -->
         <div class="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0">
@@ -309,7 +309,8 @@ function handleSvgTouch(e: TouchEvent) {
             :style="{ borderColor: currentBenchmark.color }"
           />
           <span class="text-[#A1A1AA]">
-            {{ currentBenchmark.name }}
+            <span class="hidden sm:inline">{{ currentBenchmark.name }}</span>
+            <span class="sm:hidden">{{ currentBenchmark.shortName }}</span>
           </span>
           <span
             class="font-mono font-semibold text-[10px] sm:text-[11px]"
@@ -319,7 +320,7 @@ function handleSvgTouch(e: TouchEvent) {
           </span>
         </div>
 
-        <!-- Badge Comparativo de Desempenho -->
+        <!-- Badge Comparativo de Desempenho (Compacto no mobile para não cortar) -->
         <div
           v-if="currentNetWorthInCents > 0"
           class="text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 flex items-center gap-1 bg-[#27272A]/80 border-[#3F3F46] text-white"
@@ -329,11 +330,9 @@ function handleSvgTouch(e: TouchEvent) {
             :style="{ backgroundColor: currentBenchmark.color }"
           />
           <span>
-            {{
-              metrics.isBeatingBenchmark
-                ? `Superando ${currentBenchmark.shortName} em +${(metrics.growthPercent - metrics.benchmarkGrowthPercent).toFixed(1)} p.p.`
-                : `Abaixo do ${currentBenchmark.shortName} em ${(metrics.benchmarkGrowthPercent - metrics.growthPercent).toFixed(1)} p.p.`
-            }}
+            <span class="hidden sm:inline">{{ metrics.isBeatingBenchmark ? `Superando ${currentBenchmark.shortName} em ` : `Abaixo do ${currentBenchmark.shortName} em ` }}</span>
+            <span class="sm:hidden">{{ metrics.isBeatingBenchmark ? 'Superando ' : 'Abaixo ' }}</span>
+            {{ metrics.isBeatingBenchmark ? `+${(metrics.growthPercent - metrics.benchmarkGrowthPercent).toFixed(1)}` : `${(metrics.growthPercent - metrics.benchmarkGrowthPercent).toFixed(1)}` }} p.p.
           </span>
           <span class="opacity-85 font-mono hidden md:inline">({{ metrics.percentOfBenchmark }}% do {{ currentBenchmark.shortName }})</span>
         </div>
@@ -490,13 +489,15 @@ function handleSvgTouch(e: TouchEvent) {
           v-if="pinnedIdx !== null"
           type="button"
           data-testid="btn-clear-home-point"
-          class="text-[10px] font-bold text-accent-yellow hover:underline cursor-pointer"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-hover/90 hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-border-subtle transition cursor-pointer"
+          title="Voltar ao período atual"
           @click="
             pinnedIdx = null;
             hoveredIdx = null;
           "
         >
-          (Limpar seleção ✕)
+          <span class="text-accent-yellow font-bold text-[9px]">✕</span>
+          <span>Desmarcar</span>
         </button>
       </div>
       <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">

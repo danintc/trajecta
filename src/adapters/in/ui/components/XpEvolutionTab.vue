@@ -318,8 +318,14 @@ const portfolioValues = computed(() => {
       ? cfg.dateRangeLabel
       : `${datePrefix} Até ${pt ? pt.name : ''}`;
 
+  const headerDateLabel =
+    !isCustomPointActive.value && isLastPoint
+      ? cfg.dateRangeLabel
+      : `${datePrefix} a ${pt ? pt.date : ''}`;
+
   return {
     dateRangeLabel: activeDateRangeLabel,
+    headerDateLabel,
     currentTotal: selectedCurrentTotal,
     profitInCents,
     profitPercent,
@@ -554,22 +560,24 @@ function handleBarHover(idx: number) {
 
     <!-- BLOCO RESUMO PRINCIPAL (VALOR + VARIAÇÃO + % DO BENCHMARK) -->
     <div class="space-y-3">
-      <div class="text-xs text-[#71717A] flex items-center justify-between gap-2 w-full min-w-0">
+      <div class="text-[11px] sm:text-xs text-[#71717A] flex items-center justify-between gap-2 w-full min-w-0">
         <span class="truncate">
-          {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.dateRangeLabel }}
+          {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.headerDateLabel }}
         </span>
         <button
           v-if="pinnedIdx !== null"
           type="button"
           data-testid="btn-clear-evolution-point"
-          class="text-[11px] font-bold text-accent-yellow hover:underline cursor-pointer whitespace-nowrap shrink-0 ml-auto"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-hover/90 hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0 ml-auto"
+          title="Voltar ao período atual"
           @click="
             pinnedIdx = null;
             hoveredIdx = null;
             selectedBarIdx = null;
           "
         >
-          (Limpar seleção ✕)
+          <span class="text-accent-yellow font-bold text-[9px]">✕</span>
+          <span>Desmarcar</span>
         </button>
       </div>
 
@@ -823,7 +831,7 @@ function handleBarHover(idx: number) {
     >
       <div class="flex flex-wrap items-center gap-3">
         <span class="font-bold text-white whitespace-nowrap">
-          📅 {{ activePoint.date }} ({{ activePoint.name }})
+          📅 {{ activePoint.name }}
         </span>
         <div class="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:text-xs">
           <span class="whitespace-nowrap">

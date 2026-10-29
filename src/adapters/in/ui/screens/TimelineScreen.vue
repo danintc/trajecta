@@ -375,35 +375,40 @@ function handleDelete(id: string, description: string) {
         </div>
 
         <!-- Navegação Temporal (< [ Data ] > Hoje) -->
-        <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
-          <button
-            data-testid="btn-period-prev"
-            type="button"
-            title="Período anterior"
-            class="p-1.5 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
-            @click="handlePeriodPrev"
-          >
-            <AppIcon name="chevron-left" size="14" />
-          </button>
-          <span
-            data-testid="period-active-label"
-            class="text-xs font-bold text-white uppercase tracking-wider px-3 py-1.5 bg-background rounded-xl border border-border-subtle min-w-[130px] text-center whitespace-nowrap"
-          >
-            {{ activeDateRange.label }}
-          </span>
-          <button
-            data-testid="btn-period-next"
-            type="button"
-            title="Próximo período"
-            class="p-1.5 rounded-xl bg-background hover:bg-surface-hover text-finance-neutral hover:text-white border border-border-subtle transition cursor-pointer shrink-0"
-            @click="handlePeriodNext"
-          >
-            <AppIcon name="chevron-right" size="14" />
-          </button>
+        <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <!-- Bloco Integrado (< [ Data ] >) agrupado sem espaçamento excessivo -->
+          <div class="inline-flex items-center bg-background border border-border-subtle rounded-xl p-0.5 shadow-sm">
+            <button
+              data-testid="btn-period-prev"
+              type="button"
+              title="Período anterior"
+              class="p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
+              @click="handlePeriodPrev"
+            >
+              <AppIcon name="chevron-left" size="14" />
+            </button>
+            <span
+              data-testid="period-active-label"
+              class="text-xs font-bold text-white uppercase tracking-wider px-2 sm:px-3 py-1 text-center whitespace-nowrap min-w-[110px]"
+            >
+              {{ activeDateRange.label }}
+            </span>
+            <button
+              data-testid="btn-period-next"
+              type="button"
+              title="Próximo período"
+              class="p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
+              @click="handlePeriodNext"
+            >
+              <AppIcon name="chevron-right" size="14" />
+            </button>
+          </div>
+
+          <!-- Botão Hoje -->
           <button
             type="button"
             title="Ir para hoje"
-            class="px-2.5 py-1.5 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
+            class="px-3 py-1.5 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
             @click="handlePeriodToday"
           >
             Hoje
@@ -555,14 +560,14 @@ function handleDelete(id: string, description: string) {
     <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta) -->
     <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3 subview-transition-panel">
       <!-- Barra Minimalista de Busca & Filtros -->
-      <div class="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-        <!-- Campo de Busca Minimalista -->
-        <div class="relative flex items-center shrink-0">
+      <div class="flex items-center gap-1.5 w-full py-0.5">
+        <!-- Campo de Busca Estável (sem saltos de largura ao focar) -->
+        <div class="relative flex-1 min-w-0 flex items-center">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="h-7 bg-surface/80 border border-border-subtle/70 focus:border-accent-yellow rounded-lg pl-6 pr-5 text-[11px] text-white placeholder-[#71717A] outline-none transition-all duration-200 w-32 sm:w-44 focus:w-48 sm:focus:w-60"
+            class="h-7 w-full bg-surface/80 border border-border-subtle/70 focus:border-accent-yellow rounded-lg pl-6 pr-5 text-[11px] text-white placeholder-[#71717A] outline-none transition-colors"
           />
           <AppIcon name="search" size="11" class="absolute left-2 text-[#71717A] pointer-events-none" />
           <button
