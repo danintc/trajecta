@@ -64,9 +64,9 @@ const phaseTheme = computed(() => {
 </script>
 
 <template>
-  <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-5 h-full flex flex-col justify-between">
+  <div class="bg-surface border border-border-subtle rounded-2xl p-3.5 sm:p-5 space-y-4 h-full flex flex-col justify-between">
     <!-- TOPO: DIAGNÓSTICO & BADGE SEM QUEBRA DE LINHA -->
-    <div class="space-y-3 border-b border-border-subtle pb-4">
+    <div class="space-y-2.5 border-b border-border-subtle pb-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-[11px] font-bold text-finance-neutral uppercase tracking-wider whitespace-nowrap">
           Diagnóstico de Alavanca
@@ -266,19 +266,6 @@ const phaseTheme = computed(() => {
         <span class="text-[10px] text-finance-pos font-semibold group-hover:underline flex items-center gap-1">
           Simular Curvas →
         </span>
-      </div>
-    </div>
-
-    <!-- REFLEXÃO CENTRAL -->
-    <div class="bg-background/80 border border-border-subtle rounded-xl p-3.5 flex items-start gap-3">
-      <div class="text-xl select-none shrink-0">💧</div>
-      <div class="space-y-1 min-w-0">
-        <h4 class="text-[11px] font-bold text-accent-yellow uppercase tracking-wider">
-          A Analogia do Copo d'Água & Utilidade Marginal
-        </h4>
-        <p class="text-xs text-white/90 leading-relaxed">
-          {{ guidelines.waterGlassAnalogy }}
-        </p>
       </div>
     </div>
   </div>

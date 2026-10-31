@@ -226,12 +226,12 @@ function handleSvgTouch(e: TouchEvent) {
     <!-- Cabeçalho Distribuído: Controles (Rendimento / Patrimônio à esquerda + Benchmark à direita) + Métricas em linha única -->
     <div class="flex flex-col gap-2.5 w-full">
       <!-- Linha 1: Segmented Control à esquerda e Benchmark à direita -->
-      <div class="flex items-center justify-between gap-2 w-full">
+      <div class="flex items-center justify-between gap-1.5 sm:gap-2 w-full min-w-0">
         <!-- Segmented Control: Rendimento | Patrimônio -->
         <div class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
           <button
             type="button"
-            class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
+            class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
             :class="
               displayMode === 'rendimento'
                 ? 'bg-white text-black shadow-md font-extrabold'
@@ -243,7 +243,7 @@ function handleSvgTouch(e: TouchEvent) {
           </button>
           <button
             type="button"
-            class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-xs font-bold rounded-xl transition cursor-pointer"
+            class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
             :class="
               displayMode === 'patrimonio'
                 ? 'bg-white text-black shadow-md font-extrabold'
@@ -255,16 +255,13 @@ function handleSvgTouch(e: TouchEvent) {
           </button>
         </div>
 
-        <!-- Seletor de Benchmark alinhado à direita -->
-        <div class="inline-flex items-center gap-1.5 bg-[#18181B] border border-[#27272A] rounded-2xl px-2.5 sm:px-3 py-1 shrink-0">
-          <label for="benchmark-select" class="text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-            vs
-          </label>
-          <div class="relative flex items-center">
+        <!-- Seletor de Benchmark alinhado à direita (sem 'vs' e responsivo para não cortar) -->
+        <div class="inline-flex items-center bg-[#18181B] border border-[#27272A] rounded-2xl px-2 sm:px-3 py-1 min-w-0 max-w-[48%] sm:max-w-none">
+          <div class="relative flex items-center min-w-0 w-full">
             <select
               id="benchmark-select"
               v-model="selectedBenchmark"
-              class="bg-transparent text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-5 py-0.5 appearance-none"
+              class="w-full bg-transparent text-[11px] sm:text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-4 sm:pr-5 py-0.5 appearance-none truncate"
             >
               <option
                 v-for="b in BENCHMARK_LIST"
@@ -276,7 +273,7 @@ function handleSvgTouch(e: TouchEvent) {
               </option>
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#A1A1AA]">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3 sm:w-3.5 h-3 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -475,14 +472,14 @@ function handleSvgTouch(e: TouchEvent) {
       </svg>
     </div>
 
-    <!-- Barra Informativa do Ponto em Foco -->
+    <!-- Barra Informativa do Ponto em Foco (Responsivo sem cortar no mobile) -->
     <div
       v-if="activePt"
       data-testid="net-worth-point-info"
-      class="flex flex-wrap items-center justify-between gap-3 text-xs bg-background/70 px-3.5 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA] w-full"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs bg-background/70 px-3 sm:px-3.5 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA] w-full min-w-0"
     >
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-white whitespace-nowrap">
+      <div class="flex items-center justify-between sm:justify-start gap-2">
+        <span class="font-bold text-white whitespace-nowrap text-xs">
           📅 {{ activePt.dateLabel }}
         </span>
         <button
@@ -500,14 +497,14 @@ function handleSvgTouch(e: TouchEvent) {
           <span>Desmarcar</span>
         </button>
       </div>
-      <div class="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
+      <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 font-mono text-[10.5px] sm:text-xs min-w-0">
         <span class="whitespace-nowrap">
           {{ displayMode === 'patrimonio' ? 'Patrimônio:' : 'Rendimento:' }}
           <strong class="text-white">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePt.currentVal) }}
           </strong>
         </span>
-        <span class="text-border-subtle">|</span>
+        <span class="text-border-subtle shrink-0">|</span>
         <span class="whitespace-nowrap">
           {{ currentBenchmark.shortName }}:
           <strong :style="{ color: currentBenchmark.color }">

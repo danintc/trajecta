@@ -15,7 +15,7 @@ import WealthPhaseGauge from '../components/WealthPhaseGauge.vue';
 import WealthComparisonChart from '../components/WealthComparisonChart.vue';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
-export type SimulatorSubTab = 'parameters' | 'overview' | 'monthly' | 'principles';
+export type SimulatorSubTab = 'parameters' | 'overview' | 'simulator' | 'monthly' | 'principles';
 
 export interface PhaseSimulatorScreenProps {
   assets: Asset[];
@@ -164,6 +164,12 @@ const effectiveSafeWithdrawalRate = computed(() => {
   return Number.isFinite(val) && val >= 0 ? val : 0;
 });
 
+// Prazo customizado em anos (Item 3)
+const effectiveHorizonYears = computed(() => {
+  const val = Number(horizonYearsInput.value);
+  return Number.isFinite(val) && val >= 1 ? Math.min(60, Math.floor(val)) : 30;
+});
+
 // Execução reativa da simulação
 const simulation = computed(() => {
   const currentNetWorth = parseBrlToCents(netWorthInput.value);
@@ -175,7 +181,7 @@ const simulation = computed(() => {
     monthlyIncomeInCents: monthlyIncome,
     monthlyAporteInCents: monthlyAporte,
     annualReturnRatePercent: effectiveReturnRate.value,
-    simulationHorizonYears: Number(horizonYearsInput.value) || 30,
+    simulationHorizonYears: effectiveHorizonYears.value,
     safeWithdrawalRatePercent: effectiveSafeWithdrawalRate.value,
   });
 });
@@ -204,10 +210,12 @@ function applyPresetCase(example: 'construcao' | 'transicao' | 'manutencao') {
   }
 }
 
-// Navegação entre Sub-Abas Internas
+// Navegação entre Sub-Abas Internas (Unificação de Parâmetros e Visão Geral - Item 5)
 const activeTab = ref<SimulatorSubTab>('parameters');
+const isSimulatorTab = computed(
+  () => activeTab.value === 'parameters' || activeTab.value === 'overview' || activeTab.value === 'simulator'
+);
 const comparisonTableMode = ref<'essential' | 'detailed'>('essential');
-const monthlyDisplayMode = ref<'table' | 'cards'>('table');
 
 // Estado da Aba Mês a Mês
 const selectedScenarioId = ref<'continuous' | 'stop_10_years' | 'stop_5_years' | 'stop_now'>('continuous');
@@ -245,9 +253,9 @@ const filteredMonthlyPoints = computed(() => {
 });
 
 // Quando o filtro de ano, cenário ou horizonte muda, reseta a página
-watch([selectedYearFilter, selectedScenarioId, horizonYearsInput], () => {
+watch([selectedYearFilter, selectedScenarioId, effectiveHorizonYears], () => {
   monthlyPage.value = 1;
-  if (typeof selectedYearFilter.value === 'number' && selectedYearFilter.value > horizonYearsInput.value) {
+  if (typeof selectedYearFilter.value === 'number' && selectedYearFilter.value > effectiveHorizonYears.value) {
     selectedYearFilter.value = 'all';
   }
 });
@@ -295,9 +303,9 @@ const paginatedMonthlyPoints = computed(() => {
 </script>
 
 <template>
-  <div data-testid="screen-phase-simulator" class="space-y-5">
+  <div data-testid="screen-phase-simulator" class="space-y-4 sm:space-y-5">
     <!-- HEADER COMPACTO E SEM QUEBRAS DE LINHA FEIAS -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-3.5">
       <div class="space-y-1">
         <div class="flex items-center gap-2">
           <span class="text-[10px] bg-accent-yellow/10 text-accent-yellow font-mono font-bold px-2.5 py-0.5 rounded-full border border-accent-yellow/25 whitespace-nowrap shrink-0">
@@ -319,7 +327,7 @@ const paginatedMonthlyPoints = computed(() => {
         </p>
       </div>
 
-      <!-- Presets de Exemplos em Botões Flutuantes com Espaçamento (Item 8) -->
+      <!-- Presets de Exemplos em Botões Flutuantes com Espaçamento -->
       <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs shrink-0 w-full lg:w-auto">
         <button
           type="button"
@@ -351,38 +359,23 @@ const paginatedMonthlyPoints = computed(() => {
       </div>
     </div>
 
-    <!-- BARRA DE SUB-ABAS INTERNAS (Item 8: Botões Flutuantes com Espaçamento) -->
+    <!-- BARRA DE SUB-ABAS INTERNAS (UNIFICADO: Simulador, Mês a Mês, Princípios - Item 5) -->
     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
       <button
         type="button"
-        data-testid="tab-parameters"
+        data-testid="tab-overview"
+        data-testid-alias="tab-parameters"
         class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
         :class="
-          activeTab === 'parameters'
+          isSimulatorTab
             ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
             : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
         "
         @click="activeTab = 'parameters'"
       >
-        <AppIcon name="layers" size="14" />
-        <span class="sm:hidden">Parâmetros</span>
-        <span class="hidden sm:inline">Parâmetros & Diagnóstico</span>
-      </button>
-
-      <button
-        type="button"
-        data-testid="tab-overview"
-        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition shrink-0 cursor-pointer"
-        :class="
-          activeTab === 'overview'
-            ? 'bg-accent-yellow text-black border-accent-yellow shadow-sm font-bold'
-            : 'bg-surface text-[#A1A1AA] border-border-subtle hover:text-white hover:border-white/20'
-        "
-        @click="activeTab = 'overview'"
-      >
         <AppIcon name="line-chart" size="14" />
-        <span class="sm:hidden">Visão Geral</span>
-        <span class="hidden sm:inline">Visão Geral & Trajetórias</span>
+        <span class="sm:hidden">Simulador</span>
+        <span class="hidden sm:inline">Simulador & Trajetórias</span>
       </button>
 
       <button
@@ -403,7 +396,7 @@ const paginatedMonthlyPoints = computed(() => {
           class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-extrabold whitespace-nowrap shrink-0"
           :class="activeTab === 'monthly' ? 'bg-black/20 text-black' : 'bg-accent-yellow/15 text-accent-yellow'"
         >
-          {{ horizonYearsInput * 12 }}m
+          {{ effectiveHorizonYears * 12 }}m
         </span>
       </button>
 
@@ -425,18 +418,19 @@ const paginatedMonthlyPoints = computed(() => {
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 1: PARÂMETROS FINANCEIROS & DIAGNÓSTICO DE FASE                   -->
+    <!-- SUB-ABA UNIFICADA: PARÂMETROS, DIAGNÓSTICO & TRAJETÓRIAS (Item 5)          -->
     <!-- ========================================================================= -->
-    <div v-show="activeTab === 'parameters'" class="space-y-5 subview-transition-panel">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+    <div v-show="isSimulatorTab" class="space-y-4 sm:space-y-5 subview-transition-panel">
+      <!-- LINHA SUPERIOR: PARÂMETROS MINIMALISTAS (ESQ) & DIAGNÓSTICO / GAUGE (DIR) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         <!-- PARÂMETROS DE ENTRADA (COLUNA ESQUERDA) -->
-        <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between min-w-0 overflow-hidden">
-          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-3">
-            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>Seus Parâmetros Financeiros</span>
+        <div class="lg:col-span-5 bg-surface border border-border-subtle rounded-2xl p-3.5 sm:p-4 space-y-3.5 flex flex-col justify-between min-w-0 overflow-hidden shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-2.5">
+            <h2 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+              <span>Parâmetros da Simulação</span>
             </h2>
             <!-- Checkbox para Usar Dados Reais do Trajecta -->
-            <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[#A1A1AA] hover:text-white transition max-w-full">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none text-[10.5px] text-[#A1A1AA] hover:text-white transition max-w-full">
               <input
                 v-model="isSyncWithTrajecta"
                 type="checkbox"
@@ -449,10 +443,10 @@ const paginatedMonthlyPoints = computed(() => {
             </label>
           </div>
 
-          <div class="space-y-4">
+          <div class="space-y-3">
             <!-- Renda Mensal (Com link clicável para aba Carreira) -->
             <div>
-              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs mb-1.5">
+              <div class="flex flex-wrap justify-between items-center gap-1 text-[11px] mb-1">
                 <label class="text-[#A1A1AA] font-semibold">
                   Renda Líquida Mensal (R$)
                 </label>
@@ -461,10 +455,10 @@ const paginatedMonthlyPoints = computed(() => {
                   type="button"
                   data-testid="btn-goto-career-salary"
                   title="Ir para aba Carreira & Remuneração"
-                  class="text-[11px] text-finance-career hover:text-white bg-finance-career/10 hover:bg-finance-career/20 border border-finance-career/30 px-2 py-0.5 rounded-lg font-mono font-semibold max-w-full transition flex items-center gap-1 cursor-pointer"
+                  class="text-[10px] text-finance-career hover:text-white bg-finance-career/10 hover:bg-finance-career/20 border border-finance-career/30 px-1.5 py-0.5 rounded font-mono font-semibold max-w-full transition flex items-center gap-0.5 cursor-pointer"
                   @click="emit('navigateToCareer')"
                 >
-                  <span class="truncate">Salário Base: {{ formatCentsToBrl(realSalaryInCents) }}</span>
+                  <span class="truncate">Salário: {{ formatCentsToBrl(realSalaryInCents) }}</span>
                   <span class="shrink-0">↗</span>
                 </button>
               </div>
@@ -474,7 +468,7 @@ const paginatedMonthlyPoints = computed(() => {
                   :disabled="isSyncWithTrajecta"
                   type="text"
                   inputmode="numeric"
-                  class="w-full bg-background border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-surface-hover/50"
+                  class="w-full bg-background border border-border-subtle rounded-xl px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-surface-hover/50"
                   placeholder="Ex: 10.000,00"
                   @focus="moveCursorToEnd"
                   @click="moveCursorToEnd"
@@ -484,7 +478,7 @@ const paginatedMonthlyPoints = computed(() => {
                 />
                 <span
                   v-if="isSyncWithTrajecta"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-accent-yellow bg-accent-yellow/10 px-2 py-0.5 rounded border border-accent-yellow/20 flex items-center gap-1 font-sans whitespace-nowrap"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded border border-accent-yellow/20 flex items-center gap-1 font-sans whitespace-nowrap"
                 >
                   🔒 Sincronizado
                 </span>
@@ -492,12 +486,12 @@ const paginatedMonthlyPoints = computed(() => {
             </div>
 
             <!-- Aporte Mensal & Slider de Poupança -->
-            <div class="space-y-1.5">
-              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs">
+            <div class="space-y-1">
+              <div class="flex flex-wrap justify-between items-center gap-1 text-[11px]">
                 <label class="text-[#A1A1AA] font-semibold">
                   Aporte Mensal Pretendido (R$)
                 </label>
-                <span class="text-xs font-mono font-extrabold text-accent-yellow">
+                <span class="text-[11px] font-mono font-extrabold text-accent-yellow">
                   {{ savingsPercent }}% da renda
                 </span>
               </div>
@@ -505,7 +499,7 @@ const paginatedMonthlyPoints = computed(() => {
                 :value="aporteInput"
                 type="text"
                 inputmode="numeric"
-                class="w-full bg-background border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition"
+                class="w-full bg-background border border-border-subtle rounded-xl px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition"
                 placeholder="Ex: 3.000,00"
                 @focus="moveCursorToEnd"
                 @click="moveCursorToEnd"
@@ -519,9 +513,9 @@ const paginatedMonthlyPoints = computed(() => {
                 min="0"
                 max="100"
                 step="1"
-                class="w-full accent-accent-yellow cursor-pointer"
+                class="w-full accent-accent-yellow cursor-pointer h-1.5 mt-0.5"
               />
-              <div class="flex justify-between text-[10px] text-[#71717A] font-mono">
+              <div class="flex justify-between text-[9px] text-[#71717A] font-mono">
                 <span>0%</span>
                 <span>25%</span>
                 <span>50%</span>
@@ -532,7 +526,7 @@ const paginatedMonthlyPoints = computed(() => {
 
             <!-- Patrimônio Atual Investido (Com link clicável para aba Investir/Carteira) -->
             <div>
-              <div class="flex flex-wrap justify-between items-center gap-1.5 text-xs mb-1.5">
+              <div class="flex flex-wrap justify-between items-center gap-1 text-[11px] mb-1">
                 <label class="text-[#A1A1AA] font-semibold">
                   Patrimônio Investido (R$)
                 </label>
@@ -541,10 +535,10 @@ const paginatedMonthlyPoints = computed(() => {
                   type="button"
                   data-testid="btn-goto-invest-wallet"
                   title="Ir para aba Carteira de Investimentos"
-                  class="text-[11px] text-finance-invest hover:text-white bg-finance-invest/10 hover:bg-finance-invest/20 border border-finance-invest/30 px-2 py-0.5 rounded-lg font-mono font-semibold max-w-full transition flex items-center gap-1 cursor-pointer"
+                  class="text-[10px] text-finance-invest hover:text-white bg-finance-invest/10 hover:bg-finance-invest/20 border border-finance-invest/30 px-1.5 py-0.5 rounded font-mono font-semibold max-w-full transition flex items-center gap-0.5 cursor-pointer"
                   @click="emit('navigateToInvest')"
                 >
-                  <span class="truncate">Na Carteira: {{ formatCentsToBrl(realInvestedInCents) }}</span>
+                  <span class="truncate">Carteira: {{ formatCentsToBrl(realInvestedInCents) }}</span>
                   <span class="shrink-0">↗</span>
                 </button>
               </div>
@@ -554,7 +548,7 @@ const paginatedMonthlyPoints = computed(() => {
                   :disabled="isSyncWithTrajecta"
                   type="text"
                   inputmode="numeric"
-                  class="w-full bg-background border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-surface-hover/50"
+                  class="w-full bg-background border border-border-subtle rounded-xl px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-white font-mono font-bold focus:border-accent-yellow outline-none transition disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-surface-hover/50"
                   placeholder="Ex: 100.000,00"
                   @focus="moveCursorToEnd"
                   @click="moveCursorToEnd"
@@ -564,49 +558,68 @@ const paginatedMonthlyPoints = computed(() => {
                 />
                 <span
                   v-if="isSyncWithTrajecta"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-accent-yellow bg-accent-yellow/10 px-2 py-0.5 rounded border border-accent-yellow/20 flex items-center gap-1 font-sans whitespace-nowrap"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded border border-accent-yellow/20 flex items-center gap-1 font-sans whitespace-nowrap"
                 >
                   🔒 Sincronizado
                 </span>
               </div>
             </div>
 
-            <!-- Linha com Retorno, Prazo e Renda Passiva -->
-            <div class="grid grid-cols-3 gap-2 sm:gap-2.5 pt-1">
+            <!-- Linha com Retorno, Prazo (CUSTOM! - Item 3) e Renda Passiva -->
+            <div class="grid grid-cols-3 gap-2 pt-0.5">
               <div class="flex flex-col">
                 <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1 whitespace-nowrap">
                   Retorno (a.a.)
                 </label>
                 <input
                   v-model.number="returnRateInput"
+                  data-testid="input-return-rate"
                   type="number"
                   step="0.5"
                   min="0"
                   max="50"
-                  class="w-full h-10 bg-background border border-border-subtle rounded-xl px-2.5 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
-                  title="Taxa de rentabilidade anual que multiplica o patrimônio mês a mês"
+                  class="w-full h-9 bg-background border border-border-subtle rounded-xl px-2 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
+                  title="Taxa de rentabilidade anual"
                 />
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
+                <span class="text-[8.5px] text-[#71717A] block mt-0.5 leading-tight">
                   Juros compostos
                 </span>
               </div>
 
+              <!-- Prazo Customizado (Item 3) -->
               <div class="flex flex-col">
                 <label class="text-[10px] text-[#A1A1AA] font-semibold block mb-1 whitespace-nowrap">
                   Prazo (anos)
                 </label>
-                <select
-                  v-model.number="horizonYearsInput"
-                  class="w-full h-10 bg-background border border-border-subtle rounded-xl px-2 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
-                >
-                  <option :value="10">10 anos</option>
-                  <option :value="20">20 anos</option>
-                  <option :value="30">30 anos</option>
-                  <option :value="40">40 anos</option>
-                </select>
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
-                  Prazo: {{ horizonYearsInput * 12 }}m
-                </span>
+                <div class="relative flex items-center">
+                  <input
+                    v-model.number="horizonYearsInput"
+                    data-testid="input-horizon-years"
+                    type="number"
+                    min="1"
+                    max="60"
+                    step="1"
+                    class="w-full h-9 bg-background border border-border-subtle rounded-xl pl-2 pr-7 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
+                    placeholder="30"
+                    title="Prazo customizado em anos"
+                  />
+                  <span class="absolute right-2 text-[10px] text-[#71717A] font-semibold pointer-events-none">a</span>
+                </div>
+                <div class="flex items-center justify-between text-[8.5px] text-[#71717A] mt-0.5 leading-tight">
+                  <span>{{ effectiveHorizonYears * 12 }}m</span>
+                  <div class="flex items-center gap-1 font-mono">
+                    <button
+                      v-for="py in [10, 20, 30, 40]"
+                      :key="py"
+                      type="button"
+                      class="hover:text-accent-yellow transition cursor-pointer"
+                      :class="horizonYearsInput === py ? 'text-accent-yellow font-bold' : ''"
+                      @click="horizonYearsInput = py"
+                    >
+                      {{ py }}a
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div class="flex flex-col">
@@ -615,38 +628,62 @@ const paginatedMonthlyPoints = computed(() => {
                 </label>
                 <input
                   v-model.number="safeWithdrawalInput"
+                  data-testid="input-safe-withdrawal"
                   type="number"
                   step="0.5"
                   min="0"
                   max="24"
-                  class="w-full h-10 bg-background border border-border-subtle rounded-xl px-2.5 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
-                  title="Apenas projeta quanto o patrimônio acumulado geraria de renda mensal (ex: 6% a.a. = 0,5% a.m.)"
+                  class="w-full h-9 bg-background border border-border-subtle rounded-xl px-2 text-xs text-white font-mono font-bold focus:border-accent-yellow outline-none"
+                  title="Taxa de retirada / renda segura projetada (% a.a.)"
                 />
-                <span class="text-[9px] text-[#71717A] block mt-1 leading-tight">
-                  Projeta {{ (effectiveSafeWithdrawalRate / 12).toFixed(2).replace('.', ',') }}% a.m.
+                <span class="text-[8.5px] text-[#71717A] block mt-0.5 leading-tight">
+                  {{ (effectiveSafeWithdrawalRate / 12).toFixed(2).replace('.', ',') }}% a.m.
                 </span>
               </div>
             </div>
           </div>
 
-          <!-- Botões de Atalho Rápido para Ver Gráficos e Mês a Mês -->
-          <div class="grid grid-cols-2 gap-2 pt-3 border-t border-border-subtle">
-            <button
-              type="button"
-              class="py-2 px-3 rounded-xl bg-accent-yellow/10 hover:bg-accent-yellow/20 border border-accent-yellow/30 text-accent-yellow text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap"
-              @click="activeTab = 'overview'"
-            >
-              <span>📊 Ver Gráficos</span>
-              <span>→</span>
-            </button>
-            <button
-              type="button"
-              class="py-2 px-3 rounded-xl bg-background hover:bg-surface-hover border border-border-subtle text-white text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap"
-              @click="activeTab = 'monthly'"
-            >
-              <span>📅 Mês a Mês</span>
-              <span>→</span>
-            </button>
+          <!-- RESUMO DOS RESULTADOS SIMULADOS (Item 5: Total Patrimônio e Renda Mensal) -->
+          <div class="pt-2.5 border-t border-border-subtle/70 space-y-1.5">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#71717A] flex items-center justify-between">
+              <span>Resultado Simulado ({{ effectiveHorizonYears }} Anos)</span>
+              <button
+                type="button"
+                class="text-accent-yellow hover:underline cursor-pointer flex items-center gap-1 text-[10px]"
+                @click="openScenarioMonthly('continuous')"
+              >
+                <span>Ver Mês a Mês</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Total Patrimônio Simulado -->
+              <div class="bg-background/80 border border-border-subtle/70 rounded-xl p-2 sm:p-2.5 flex flex-col justify-between">
+                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide truncate">
+                  Patrimônio Total Simulado
+                </span>
+                <div class="text-sm sm:text-base font-extrabold font-mono text-accent-yellow mt-0.5 truncate">
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.continuous.finalNetWorthInCents) }}
+                </div>
+                <span class="text-[9px] text-[#71717A] font-mono mt-0.5 truncate">
+                  Aportado: {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalContributedInCents) }}
+                </span>
+              </div>
+
+              <!-- Renda Mensal Simulada -->
+              <div class="bg-background/80 border border-border-subtle/70 rounded-xl p-2 sm:p-2.5 flex flex-col justify-between">
+                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide truncate">
+                  Renda Mensal Simulada
+                </span>
+                <div class="text-sm sm:text-base font-extrabold font-mono text-finance-invest mt-0.5 truncate">
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.continuous.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[9px] sm:text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+                </div>
+                <span class="text-[9px] text-finance-pos font-mono mt-0.5 truncate">
+                  Juros: +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalReturnsInCents) }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -659,49 +696,11 @@ const paginatedMonthlyPoints = computed(() => {
             :savings-rate-percent="simulation.savingsRatePercent"
             @navigate-to-invest="emit('navigateToInvest')"
             @navigate-to-career="emit('navigateToCareer')"
-            @navigate-to-trajectories="activeTab = 'overview'"
+            @navigate-to-trajectories="activeTab = 'parameters'"
           />
         </div>
       </div>
 
-      <!-- BANNER DE PERGUNTA CHAVE & RECOMENDAÇÃO DE CARREIRA CLICÁVEL -->
-      <div class="bg-gradient-to-r from-surface to-surface-hover border border-border-subtle rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div class="space-y-1">
-          <span class="text-[11px] font-bold text-accent-yellow uppercase tracking-wider">
-            Pergunta Crucial para sua Fase:
-          </span>
-          <h3 class="text-sm sm:text-base font-bold text-white">
-            "{{ simulation.guidelines.keyQuestion }}"
-          </h3>
-          <p class="text-xs text-[#A1A1AA] max-w-2xl leading-relaxed">
-            {{ simulation.guidelines.suggestedAction }}
-          </p>
-        </div>
-
-        <div
-          role="button"
-          tabindex="0"
-          data-testid="btn-goto-career-rec"
-          class="bg-background/90 hover:bg-background border border-border-subtle hover:border-finance-career/60 rounded-xl p-3.5 shrink-0 w-full md:max-w-xs space-y-1 transition cursor-pointer group"
-          @click="emit('navigateToCareer')"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] text-finance-career font-bold uppercase tracking-wide">
-              💼 Recomendação de Carreira:
-            </span>
-            <span class="text-[10px] text-finance-career group-hover:underline">Abrir Carreira ↗</span>
-          </div>
-          <p class="text-xs text-white leading-relaxed">
-            {{ simulation.impactAnalysis.careerRecommendation }}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================================================= -->
-    <!-- SUB-ABA 2: VISÃO GERAL, GRÁFICO DE TRAJETÓRIAS & TABELA DE CENÁRIOS       -->
-    <!-- ========================================================================= -->
-    <div v-show="activeTab === 'overview'" class="space-y-5 subview-transition-panel">
       <!-- GRÁFICO DE TRAJETÓRIAS COMPARATIVAS AMPLO -->
       <WealthComparisonChart
         :scenarios="simulation.scenarios"
@@ -726,7 +725,7 @@ const paginatedMonthlyPoints = computed(() => {
             {{ simulation.impactAnalysis.fiveYearContributionPercentageOfFinal }}%
           </div>
           <p class="text-[11px] text-[#71717A] leading-relaxed">
-            Aportar apenas nos próximos 5 anos já constrói {{ simulation.impactAnalysis.fiveYearContributionPercentageOfFinal }}% do patrimônio final de {{ horizonYearsInput }} anos.
+            Aportar apenas nos próximos 5 anos já constrói {{ simulation.impactAnalysis.fiveYearContributionPercentageOfFinal }}% do patrimônio final de {{ effectiveHorizonYears }} anos.
           </p>
         </div>
 
@@ -764,7 +763,7 @@ const paginatedMonthlyPoints = computed(() => {
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.stop5Years.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-xs text-[#71717A]">/mês</span>
           </div>
           <p class="text-[11px] text-[#71717A] leading-relaxed">
-            Projeção de rendimentos mensais aos {{ horizonYearsInput }} anos mesmo parando de aportar no 5º ano.
+            Projeção de rendimentos mensais aos {{ effectiveHorizonYears }} anos mesmo parando de aportar no 5º ano.
           </p>
         </div>
       </div>
@@ -774,20 +773,20 @@ const paginatedMonthlyPoints = computed(() => {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-3">
           <div>
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>📊 Comparativo dos Cenários de Aporte ({{ horizonYearsInput }} Anos)</span>
+              <span>📊 Comparativo dos Cenários de Aporte ({{ effectiveHorizonYears }} Anos)</span>
             </h3>
             <p class="text-xs text-[#71717A]">
               Patrimônio Inicial ({{ isPrivacyActive ? '••••' : formatCentsToBrl(parseBrlToCents(netWorthInput)) }}) + Aportes ({{ isPrivacyActive ? '••••' : formatCentsToBrl(parseBrlToCents(aporteInput)) }}/mês) + Juros Compostos ({{ effectiveReturnRate }}% a.a.)
             </p>
           </div>
 
-          <!-- Aba interna: Resumo vs Mais Detalhes -->
+          <!-- Alternador: Resumo vs Mais Detalhes -->
           <div class="flex items-center gap-1 bg-background p-1 rounded-xl border border-border-subtle text-xs shrink-0 self-start sm:self-auto">
             <button
               type="button"
               data-testid="comparison-mode-essential"
-              class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap"
-              :class="comparisonTableMode === 'essential' ? 'bg-surface-hover text-white shadow-sm' : 'text-[#71717A] hover:text-white'"
+              class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
+              :class="comparisonTableMode === 'essential' ? 'bg-surface-hover text-white shadow-sm font-bold' : 'text-[#71717A] hover:text-white'"
               @click="comparisonTableMode = 'essential'"
             >
               Resumo
@@ -795,8 +794,8 @@ const paginatedMonthlyPoints = computed(() => {
             <button
               type="button"
               data-testid="comparison-mode-detailed"
-              class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap"
-              :class="comparisonTableMode === 'detailed' ? 'bg-surface-hover text-accent-yellow shadow-sm' : 'text-[#71717A] hover:text-white'"
+              class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
+              :class="comparisonTableMode === 'detailed' ? 'bg-surface-hover text-accent-yellow shadow-sm font-bold' : 'text-[#71717A] hover:text-white'"
               @click="comparisonTableMode = 'detailed'"
             >
               Mais Detalhes
@@ -819,7 +818,7 @@ const paginatedMonthlyPoints = computed(() => {
                 <th v-if="comparisonTableMode === 'detailed'" class="py-2.5 px-3 font-semibold text-right">
                   Aportes Economizados
                 </th>
-                <th class="py-2.5 px-3 font-semibold text-right">Patrimônio Final ({{ horizonYearsInput }}a)</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Patrimônio Final ({{ effectiveHorizonYears }}a)</th>
                 <th class="py-2.5 pl-3 font-semibold text-right">Renda Passiva Mensal</th>
               </tr>
             </thead>
@@ -986,11 +985,222 @@ const paginatedMonthlyPoints = computed(() => {
     </div>
 
     <!-- ========================================================================= -->
-    <!-- SUB-ABA 3: PRINCÍPIOS ESTRATÉGICOS & UTILIDADE MARGINAL                   -->
+    <!-- SUB-ABA 2: EVOLUÇÃO MÊS A MÊS (APENAS CARDS + POR PÁGINA NO RODAPÉ)       -->
+    <!-- ========================================================================= -->
+    <Transition name="trajecta-subview">
+      <div v-if="activeTab === 'monthly'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4">
+        <!-- CABEÇALHO DA ABA MÊS A MÊS & SELETORES -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border-b border-border-subtle pb-4">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <span>📅 Evolução Patrimonial e Renda Passiva Mês a Mês</span>
+            </h3>
+            <p class="text-xs text-[#71717A]">
+              Acompanhe a formação da bola de neve: aportes mensais, rendimentos dos juros compostos, saldo acumulado e renda passiva projetada.
+            </p>
+          </div>
+
+          <!-- Seletor de Cenário em Grid 2x2 no Mobile e Linha no Desktop -->
+          <div class="grid grid-cols-2 sm:flex items-center gap-1.5 bg-background p-1.5 rounded-xl border border-border-subtle text-xs shrink-0">
+            <button
+              type="button"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate cursor-pointer"
+              :class="selectedScenarioId === 'continuous' ? 'bg-finance-invest text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
+              @click="selectedScenarioId = 'continuous'"
+            >
+              Aporte Contínuo
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate cursor-pointer"
+              :class="selectedScenarioId === 'stop_10_years' ? 'bg-accent-yellow text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
+              @click="selectedScenarioId = 'stop_10_years'"
+            >
+              Parar em 10a
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate cursor-pointer"
+              :class="selectedScenarioId === 'stop_5_years' ? 'bg-finance-pos text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
+              @click="selectedScenarioId = 'stop_5_years'"
+            >
+              Parar em 5a
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate cursor-pointer"
+              :class="selectedScenarioId === 'stop_now' ? 'bg-finance-career text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
+              @click="selectedScenarioId = 'stop_now'"
+            >
+              Parar Agora (Coast)
+            </button>
+          </div>
+        </div>
+
+        <!-- FILTRO DE ANO NO TOPO (Item 6: 'Por página' movido para o rodapé) -->
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">Filtrar por Ano:</label>
+            <select
+              v-model="selectedYearFilter"
+              class="bg-background border border-border-subtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-accent-yellow outline-none cursor-pointer"
+            >
+              <option value="all">Todos os Anos (1 a {{ effectiveHorizonYears }}a)</option>
+              <option v-for="y in effectiveHorizonYears" :key="y" :value="y">
+                Ano {{ y }} (Meses {{ (y - 1) * 12 + 1 }} a {{ y * 12 }})
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CARDS DE RESUMO DO PERÍODO FILTRADO -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
+            <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
+              Saldo Inicial
+            </span>
+            <div class="text-xs sm:text-sm font-extrabold font-mono text-[#A1A1AA] whitespace-nowrap truncate">
+              {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.startNetWorth) }}
+            </div>
+          </div>
+
+          <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
+            <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
+              Aportes no Período
+            </span>
+            <div class="text-xs sm:text-sm font-extrabold font-mono text-white whitespace-nowrap truncate">
+              {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.totalContributions) }}
+            </div>
+          </div>
+
+          <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
+            <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
+              Juros / Rendimentos
+            </span>
+            <div class="text-xs sm:text-sm font-extrabold font-mono text-finance-pos whitespace-nowrap truncate">
+              {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.totalInterest) }}
+            </div>
+          </div>
+
+          <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
+            <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
+              Patrimônio Final
+            </span>
+            <div class="text-xs sm:text-sm font-extrabold font-mono text-accent-yellow whitespace-nowrap truncate">
+              {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.endNetWorth) }}
+            </div>
+          </div>
+
+          <div class="col-span-2 sm:col-span-1 bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
+            <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
+              Renda Passiva Estimada
+            </span>
+            <div class="text-xs sm:text-sm font-extrabold font-mono text-finance-invest whitespace-nowrap truncate">
+              {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.endPassiveIncome) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LISTA POR CARDS (Item 7: Visualização direta por cards, removida planilha) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div
+            v-for="point in paginatedMonthlyPoints"
+            :key="`card-${point.globalMonth}`"
+            class="bg-background border border-border-subtle rounded-xl p-3 space-y-2 hover:border-white/20 transition"
+          >
+            <div class="flex items-center justify-between border-b border-border-subtle/70 pb-1.5">
+              <div class="flex items-center gap-1.5">
+                <span
+                  class="w-2 h-2 rounded-full shrink-0"
+                  :class="point.monthlyAporteInCents > 0 ? 'bg-accent-yellow' : 'bg-[#71717A]'"
+                />
+                <span class="text-xs font-bold text-white">Mês {{ point.globalMonth }}</span>
+                <span class="text-[11px] text-[#71717A]">• Ano {{ point.year }} ({{ String(point.monthInYear).padStart(2, '0') }}/12)</span>
+              </div>
+              <span class="text-xs font-mono font-extrabold text-white">
+                {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.netWorthInCents) }}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5 text-[11px] font-mono">
+              <div>
+                <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aporte</span>
+                <span class="text-accent-yellow font-semibold">
+                  {{ point.monthlyAporteInCents > 0 ? (isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyAporteInCents)) : '—' }}
+                </span>
+              </div>
+              <div>
+                <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros</span>
+                <span class="text-finance-pos font-semibold">
+                  +{{ isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyInterestInCents) }}
+                </span>
+              </div>
+              <div class="text-right">
+                <span class="text-[9px] text-[#71717A] font-sans block uppercase">Renda Passiva</span>
+                <span class="text-finance-invest font-bold">
+                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.estimatedMonthlyPassiveIncomeInCents) }}/mês
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RODAPÉ DA LISTA: PAGINAÇÃO + SELETOR POR PÁGINA (Item 6) -->
+        <div
+          v-if="selectedYearFilter === 'all'"
+          class="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3.5 text-xs"
+        >
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="text-[#A1A1AA] whitespace-nowrap">
+              Página <span class="text-white font-mono font-bold">{{ monthlyPage }}</span> de
+              <span class="text-white font-mono font-bold">{{ totalMonthlyPages }}</span>
+              <span class="text-[#71717A] ml-1">({{ filteredMonthlyPoints.length }} meses)</span>
+            </div>
+
+            <!-- Seletor 'Por página' no Rodapé da Lista (Item 6) -->
+            <div class="flex items-center gap-1.5 text-xs text-[#71717A]">
+              <span class="whitespace-nowrap">Por página:</span>
+              <select
+                v-model.number="monthlyPageSize"
+                data-testid="select-monthly-page-size"
+                class="bg-background border border-border-subtle rounded-xl px-2 py-1 text-xs text-white font-mono outline-none cursor-pointer focus:border-accent-yellow"
+              >
+                <option :value="12">12</option>
+                <option :value="24">24</option>
+                <option :value="36">36</option>
+                <option :value="60">60</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              :disabled="monthlyPage <= 1"
+              class="px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-hover transition whitespace-nowrap cursor-pointer"
+              @click="monthlyPage--"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              :disabled="monthlyPage >= totalMonthlyPages"
+              class="px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-hover transition whitespace-nowrap cursor-pointer"
+              @click="monthlyPage++"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ========================================================================= -->
+    <!-- SUB-ABA 3: PRINCÍPIOS ESTRATÉGICOS & GUIA METODOLÓGICO                    -->
     <!-- ========================================================================= -->
     <div v-show="activeTab === 'principles'" class="grid grid-cols-1 md:grid-cols-2 gap-4 subview-transition-panel">
       <!-- Princípio 1: O Dilema do Início de Carreira -->
-      <div class="bg-surface border border-border-subtle rounded-2xl p-5 space-y-3">
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
         <div class="flex items-center gap-2 text-xs font-bold text-accent-yellow">
           <span>⚠️ O Dilema do Início de Carreira (Fase de Construção)</span>
         </div>
@@ -1006,7 +1216,7 @@ const paginatedMonthlyPoints = computed(() => {
       </div>
 
       <!-- Princípio 2: A Armadilha da Máxima Exaustão -->
-      <div class="bg-surface border border-border-subtle rounded-2xl p-5 space-y-3">
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
         <div class="flex items-center gap-2 text-xs font-bold text-finance-invest">
           <span>🏛️ A Armadilha da Máxima Exaustão (Fase de Manutenção)</span>
         </div>
@@ -1020,309 +1230,51 @@ const paginatedMonthlyPoints = computed(() => {
           </p>
         </div>
       </div>
-    </div>
 
-    <!-- ========================================================================= -->
-    <!-- SUB-ABA 4: EVOLUÇÃO MÊS A MÊS (OTIMIZADA + INDICADOR DE SCROLL VISÍVEL)   -->
-    <!-- ========================================================================= -->
-    <Transition name="trajecta-subview">
-      <div v-if="activeTab === 'monthly'" class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-4">
-      <!-- CABEÇALHO DA ABA MÊS A MÊS & SELETORES -->
-      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border-b border-border-subtle pb-4">
-        <div>
-          <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-            <span>📅 Evolução Patrimonial e Renda Passiva Mês a Mês</span>
-          </h3>
-          <p class="text-xs text-[#71717A]">
-            Acompanhe a formação da bola de neve: aportes mensais, rendimentos dos juros compostos, saldo acumulado e renda passiva projetada.
+      <!-- Princípio 3: A Analogia do Copo d'Água & Utilidade Marginal -->
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold text-finance-pos">
+          <span>💧 A Analogia do Copo d'Água & Utilidade Marginal da Riqueza</span>
+        </div>
+        <p class="text-xs text-[#A1A1AA] leading-relaxed">
+          O valor de cada real poupado varia drasticamente conforme a fase em que você está. No início, cada gota mata a sede aguda da escassez; consolidado, acumular água a mais não adiciona satisfação real.
+        </p>
+        <div class="bg-background border border-border-subtle rounded-xl p-3.5 text-xs text-white space-y-2">
+          <p class="text-[#71717A] leading-relaxed">
+            <strong class="text-white">Construção:</strong> Você está no deserto com a garganta seca: o primeiro copo d'água tem valor inestimável. Cada real poupado agora formará a fundação da sua liberdade.
+          </p>
+          <p class="text-[#71717A] leading-relaxed">
+            <strong class="text-white">Transição:</strong> A sede aguda passou. O próximo copo ainda é bom, mas seu tempo livre, saúde e família começam a ter utilidade marginal superior a mais algumas moedas.
+          </p>
+          <p class="text-[#71717A] leading-relaxed">
+            <strong class="text-white">Manutenção:</strong> Sua sede está 100% saciada. Mais um copo d'água não traz satisfação. Usufrua da renda presente para viver o agora com quem você ama.
           </p>
         </div>
-
-        <!-- Seletor de Cenário em Grid 2x2 no Mobile e Linha no Desktop -->
-        <div class="grid grid-cols-2 sm:flex items-center gap-1.5 bg-background p-1.5 rounded-xl border border-border-subtle text-xs shrink-0">
-          <button
-            type="button"
-            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate"
-            :class="selectedScenarioId === 'continuous' ? 'bg-finance-invest text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
-            @click="selectedScenarioId = 'continuous'"
-          >
-            Aporte Contínuo
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate"
-            :class="selectedScenarioId === 'stop_10_years' ? 'bg-accent-yellow text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
-            @click="selectedScenarioId = 'stop_10_years'"
-          >
-            Parar em 10a
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate"
-            :class="selectedScenarioId === 'stop_5_years' ? 'bg-finance-pos text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
-            @click="selectedScenarioId = 'stop_5_years'"
-          >
-            Parar em 5a
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap truncate"
-            :class="selectedScenarioId === 'stop_now' ? 'bg-finance-career text-black font-extrabold' : 'text-[#A1A1AA] hover:text-white'"
-            @click="selectedScenarioId = 'stop_now'"
-          >
-            Parar Agora (Coast)
-          </button>
-        </div>
       </div>
 
-      <!-- FILTROS DE ANO E PAGINAÇÃO -->
-      <div class="flex flex-wrap items-center justify-between gap-2.5">
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">Filtrar por Ano:</label>
-          <select
-            v-model="selectedYearFilter"
-            class="bg-background border border-border-subtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-accent-yellow outline-none"
-          >
-            <option value="all">Todos os Anos (1 a {{ horizonYearsInput }}a)</option>
-            <option v-for="y in horizonYearsInput" :key="y" :value="y">
-              Ano {{ y }} (Meses {{ (y - 1) * 12 + 1 }} a {{ y * 12 }})
-            </option>
-          </select>
-
-          <div v-if="selectedYearFilter === 'all'" class="flex items-center gap-1.5 text-xs text-[#71717A]">
-            <span class="whitespace-nowrap">Por página:</span>
-            <select
-              v-model.number="monthlyPageSize"
-              class="bg-background border border-border-subtle rounded-xl px-2 py-1.5 text-xs text-white font-mono outline-none"
-            >
-              <option :value="12">12m</option>
-              <option :value="24">24m</option>
-              <option :value="36">36m</option>
-              <option :value="60">60m</option>
-            </select>
+      <!-- Princípio 4: Perguntas Cruciais de Cada Fase & Carreira -->
+      <div class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold text-finance-career">
+          <span>💼 Perguntas Cruciais & Alavancas por Fase</span>
+        </div>
+        <div class="space-y-2.5 text-xs">
+          <div class="p-2.5 rounded-xl bg-background border border-border-subtle">
+            <span class="text-finance-invest font-bold block mb-0.5">1. Fase de Construção</span>
+            <p class="text-white/90">"Eu consigo ganhar mais e aportar mais nos próximos anos?"</p>
+            <span class="text-[11px] text-[#71717A]">Foco total em acelerar a renda profissional e construir massa crítica.</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-background border border-border-subtle">
+            <span class="text-accent-yellow font-bold block mb-0.5">2. Fase de Transição</span>
+            <p class="text-white/90">"Quanto de sacrifício de tempo e saúde vale a pena para aumentar esse aporte?"</p>
+            <span class="text-[11px] text-[#71717A]">Equilíbrio entre aportes consistentes e qualidade de vida presente.</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-background border border-border-subtle">
+            <span class="text-finance-pos font-bold block mb-0.5">3. Fase de Manutenção</span>
+            <p class="text-white/90">"Faz sentido me desgastar se novos aportes praticamente não alteram meu futuro?"</p>
+            <span class="text-[11px] text-[#71717A]">Piloto automático: viva sem culpa e preserve o capital contra inflação.</span>
           </div>
         </div>
       </div>
-
-      <!-- CARDS DE RESUMO DO PERÍODO FILTRADO (2 COLUNAS NO MOBILE, 5 NO DESKTOP) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
-          <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
-            Saldo Inicial
-          </span>
-          <div class="text-xs sm:text-sm font-extrabold font-mono text-[#A1A1AA] whitespace-nowrap truncate">
-            {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.startNetWorth) }}
-          </div>
-        </div>
-
-        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
-          <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
-            Aportes no Período
-          </span>
-          <div class="text-xs sm:text-sm font-extrabold font-mono text-white whitespace-nowrap truncate">
-            {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.totalContributions) }}
-          </div>
-        </div>
-
-        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
-          <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
-            Juros / Rendimentos
-          </span>
-          <div class="text-xs sm:text-sm font-extrabold font-mono text-finance-pos whitespace-nowrap truncate">
-            {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.totalInterest) }}
-          </div>
-        </div>
-
-        <div class="bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
-          <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
-            Patrimônio Final
-          </span>
-          <div class="text-xs sm:text-sm font-extrabold font-mono text-accent-yellow whitespace-nowrap truncate">
-            {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.endNetWorth) }}
-          </div>
-        </div>
-
-        <div class="col-span-2 sm:col-span-1 bg-background border border-border-subtle rounded-xl p-3 flex flex-col justify-between gap-1 min-w-0">
-          <span class="text-[10px] text-[#71717A] uppercase font-bold whitespace-nowrap truncate">
-            Renda Passiva Estimada
-          </span>
-          <div class="text-xs sm:text-sm font-extrabold font-mono text-finance-invest whitespace-nowrap truncate">
-            {{ isPrivacyActive ? '••••' : formatCentsToBrl(monthlyPeriodSummary.endPassiveIncome) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ALTERNADOR PLANILHA VS CARDS LOGO ABAIXO DOS DADOS DO PERÍODO -->
-      <div class="flex items-center justify-end">
-        <div
-          data-testid="monthly-display-mode-toggle"
-          class="flex items-center gap-1 bg-background p-1 rounded-xl border border-border-subtle text-xs shrink-0"
-        >
-          <button
-            type="button"
-            data-testid="btn-monthly-mode-table"
-            class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
-            :class="monthlyDisplayMode === 'table' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
-            @click="monthlyDisplayMode = 'table'"
-          >
-            📋 Planilha
-          </button>
-          <button
-            type="button"
-            data-testid="btn-monthly-mode-cards"
-            class="px-3 py-1 rounded-lg text-[11px] font-semibold transition whitespace-nowrap cursor-pointer"
-            :class="monthlyDisplayMode === 'cards' ? 'bg-surface-hover text-accent-yellow font-bold' : 'text-[#71717A] hover:text-white'"
-            @click="monthlyDisplayMode = 'cards'"
-          >
-            📱 Cards
-          </button>
-        </div>
-      </div>
-
-      <!-- MODO 1: TABELA MÊS A MÊS OTIMIZADA COM SCROLLBAR VISÍVEL -->
-      <div v-if="monthlyDisplayMode === 'table'" class="overflow-x-auto custom-scrollbar pb-2">
-        <table class="w-full text-left text-xs">
-          <thead>
-            <tr class="text-[11px] text-[#71717A] border-b border-border-subtle whitespace-nowrap">
-              <th class="py-2.5 pr-2 font-semibold">Período</th>
-              <th class="py-2.5 px-2 font-semibold text-right">Aporte do Mês</th>
-              <th class="py-2.5 px-2 font-semibold text-right">Juros / Rendimento</th>
-              <th class="py-2.5 px-2 font-semibold text-right">Patrimônio Acumulado</th>
-              <th class="py-2.5 px-2 font-semibold text-right">Renda Passiva Mensal</th>
-              <th class="py-2.5 pl-2 font-semibold text-right">Aportado Acumulado</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border-subtle font-mono whitespace-nowrap">
-            <tr
-              v-for="point in paginatedMonthlyPoints"
-              :key="point.globalMonth"
-              class="hover:bg-surface-hover/40 transition"
-              :class="point.monthInYear === 12 ? 'border-b border-border-subtle/80 bg-surface/30' : ''"
-            >
-              <!-- Período Compacto (Mês + Ano na mesma coluna para aproveitar espaço!) -->
-              <td class="py-2.5 pr-2 font-sans">
-                <div class="flex items-center gap-1.5">
-                  <span
-                    class="w-1.5 h-1.5 rounded-full shrink-0"
-                    :class="point.monthlyAporteInCents > 0 ? 'bg-accent-yellow' : 'bg-[#71717A]'"
-                  />
-                  <span class="font-bold text-white">Mês {{ point.globalMonth }}</span>
-                  <span class="text-[11px] text-[#71717A]">
-                    • Ano {{ point.year }} ({{ String(point.monthInYear).padStart(2, '0') }}/12)
-                  </span>
-                </div>
-              </td>
-
-              <!-- Aporte do Mês -->
-              <td class="py-2.5 px-2 text-right">
-                <span
-                  v-if="point.monthlyAporteInCents > 0"
-                  class="text-accent-yellow font-semibold"
-                >
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyAporteInCents) }}
-                </span>
-                <span v-else class="text-[#71717A]">—</span>
-              </td>
-
-              <!-- Rendimento do Mês -->
-              <td class="py-2.5 px-2 text-right text-finance-pos font-semibold">
-                + {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyInterestInCents) }}
-              </td>
-
-              <!-- Patrimônio Acumulado -->
-              <td class="py-2.5 px-2 text-right text-white font-bold">
-                {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.netWorthInCents) }}
-              </td>
-
-              <!-- Renda Passiva Mensal -->
-              <td class="py-2.5 px-2 text-right text-finance-invest font-bold">
-                {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-              </td>
-
-              <!-- Total Aportado -->
-              <td class="py-2.5 pl-2 text-right text-[#A1A1AA]">
-                {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.accumulatedContributionsInCents) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- MODO 2: CARDS COMPACTOS (100% DAS INFORMAÇÕES VISÍVEIS NA TELA SEM SCROLL HORIZONTAL) -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        <div
-          v-for="point in paginatedMonthlyPoints"
-          :key="`card-${point.globalMonth}`"
-          class="bg-background border border-border-subtle rounded-xl p-3 space-y-2"
-        >
-          <div class="flex items-center justify-between border-b border-border-subtle/70 pb-1.5">
-            <div class="flex items-center gap-1.5">
-              <span
-                class="w-2 h-2 rounded-full shrink-0"
-                :class="point.monthlyAporteInCents > 0 ? 'bg-accent-yellow' : 'bg-[#71717A]'"
-              />
-              <span class="text-xs font-bold text-white">Mês {{ point.globalMonth }}</span>
-              <span class="text-[11px] text-[#71717A]">• Ano {{ point.year }} ({{ String(point.monthInYear).padStart(2, '0') }}/12)</span>
-            </div>
-            <span class="text-xs font-mono font-extrabold text-white">
-              {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.netWorthInCents) }}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-1.5 text-[11px] font-mono">
-            <div>
-              <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aporte</span>
-              <span class="text-accent-yellow font-semibold">
-                {{ point.monthlyAporteInCents > 0 ? (isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyAporteInCents)) : '—' }}
-              </span>
-            </div>
-            <div>
-              <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros</span>
-              <span class="text-finance-pos font-semibold">
-                +{{ isPrivacyActive ? '••••' : formatCentsToBrl(point.monthlyInterestInCents) }}
-              </span>
-            </div>
-            <div class="text-right">
-              <span class="text-[9px] text-[#71717A] font-sans block uppercase">Renda Passiva</span>
-              <span class="text-finance-invest font-bold">
-                {{ isPrivacyActive ? '••••' : formatCentsToBrl(point.estimatedMonthlyPassiveIncomeInCents) }}/mês
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGINAÇÃO COMPACTA SEM QUEBRA DE LINHA -->
-      <div
-        v-if="selectedYearFilter === 'all' && totalMonthlyPages > 1"
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3 text-xs"
-      >
-        <div class="text-[#A1A1AA] whitespace-nowrap">
-          Página <span class="text-white font-mono font-bold">{{ monthlyPage }}</span> de
-          <span class="text-white font-mono font-bold">{{ totalMonthlyPages }}</span>
-          <span class="text-[#71717A] ml-1">({{ filteredMonthlyPoints.length }} meses)</span>
-        </div>
-
-        <div class="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            :disabled="monthlyPage <= 1"
-            class="px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-hover transition whitespace-nowrap"
-            @click="monthlyPage--"
-          >
-            Anterior
-          </button>
-          <button
-            type="button"
-            :disabled="monthlyPage >= totalMonthlyPages"
-            class="px-3 py-1.5 rounded-xl border border-border-subtle bg-background text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-hover transition whitespace-nowrap"
-            @click="monthlyPage++"
-          >
-            Próxima
-          </button>
-        </div>
-        </div>
-      </div>
-    </Transition>
+    </div>
   </div>
 </template>

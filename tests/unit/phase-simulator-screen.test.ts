@@ -219,9 +219,8 @@ describe('PhaseSimulatorScreen Component', () => {
       },
     });
 
-    const numberInputs = wrapper.findAll('input[type="number"]');
-    const returnInput = numberInputs[0];
-    const passiveInput = numberInputs[1];
+    const returnInput = wrapper.find('[data-testid="input-return-rate"]');
+    const passiveInput = wrapper.find('[data-testid="input-safe-withdrawal"]');
 
     // Quando Retorno = 0% e Renda Passiva = 0%, Patrimônio Inicial (R$ 100k) + 360 aportes de R$ 3k (R$ 1.080.000) = R$ 1.180.000,00 (sem juros)
     await returnInput.setValue(0);
@@ -283,7 +282,7 @@ describe('PhaseSimulatorScreen Component', () => {
     expect(wrapper.emitted('navigateToInvest')).toBeTruthy();
   });
 
-  it('não deve exibir o aviso "Arraste a tabela para o lado" na aba Evolução Mês a Mês e deve posicionar os botões Planilha e Cards logo abaixo dos dados', async () => {
+  it('não deve exibir o aviso "Arraste a tabela para o lado" e deve renderizar diretamente no modo Cards com seletor por página no rodapé', async () => {
     const wrapper = mount(PhaseSimulatorScreen, {
       props: {
         assets: mockAssets,
@@ -297,16 +296,32 @@ describe('PhaseSimulatorScreen Component', () => {
 
     expect(wrapper.find('[data-testid="horizontal-scroll-indicator"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Arraste a tabela para o lado');
+    expect(wrapper.find('[data-testid="monthly-display-mode-toggle"]').exists()).toBe(false);
 
-    const toggleContainer = wrapper.find('[data-testid="monthly-display-mode-toggle"]');
-    expect(toggleContainer.exists()).toBe(true);
-
-    // Alternar para modo Cards (Sem Scroll)
-    const cardsBtn = wrapper.find('[data-testid="btn-monthly-mode-cards"]');
-    expect(cardsBtn.exists()).toBe(true);
-    await cardsBtn.trigger('click');
-
+    // Renderiza diretamente em Cards
     expect(wrapper.text()).toContain('Mês 1');
+    expect(wrapper.find('[data-testid="select-monthly-page-size"]').exists()).toBe(true);
+  });
+
+  it('deve permitir configurar prazo customizado e exibir o resumo simulado com patrimônio total e renda passiva', async () => {
+    const wrapper = mount(PhaseSimulatorScreen, {
+      props: {
+        assets: mockAssets,
+        careerRecords: mockCareerRecords,
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const horizonInput = wrapper.find('[data-testid="input-horizon-years"]');
+    expect(horizonInput.exists()).toBe(true);
+
+    // Ajusta prazo customizado para 15 anos
+    await horizonInput.setValue(15);
+    expect(wrapper.text()).toContain('Resultado Simulado (15 Anos)');
+    expect(wrapper.text()).toContain('Patrimônio Total Simulado');
+    expect(wrapper.text()).toContain('Renda Mensal Simulada');
+    expect(wrapper.text()).toContain('Comparativo dos Cenários de Aporte (15 Anos)');
   });
 });
 

@@ -244,7 +244,7 @@ async function handleSubmit() {
                   v-model="tickerOrName"
                   type="text"
                   data-testid="input-asset-ticker"
-                  placeholder="Ex: PETR4, HGLG11"
+                  placeholder="Ex: PETR4"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white uppercase font-mono outline-none transition"
                 />
               </div>
@@ -275,7 +275,7 @@ async function handleSubmit() {
                 <input
                   v-model="institution"
                   type="text"
-                  placeholder="Ex: BTG, XP, Nubank"
+                  placeholder="Ex: BTG Pactual"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 py-2 text-xs text-white outline-none transition"
                 />
               </div>

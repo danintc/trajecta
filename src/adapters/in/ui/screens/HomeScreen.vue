@@ -395,7 +395,7 @@ const periodLabel = computed(() => {
     <div v-show="activeSubTab === 'overview'" class="space-y-4 subview-transition-panel">
       <div
         data-testid="hero-net-worth"
-        class="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl overflow-hidden"
+        class="bg-surface border border-border-subtle rounded-2xl p-3.5 sm:p-6 space-y-4 shadow-xl overflow-hidden"
       >
         <div
           class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border-subtle pb-3.5"

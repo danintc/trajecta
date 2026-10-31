@@ -374,22 +374,22 @@ function handleDelete(id: string, description: string) {
           </button>
         </div>
 
-        <!-- Navegação Temporal (< [ Data ] > Hoje) -->
-        <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-          <!-- Bloco Integrado (< [ Data ] >) agrupado sem espaçamento excessivo -->
-          <div class="inline-flex items-center bg-background border border-border-subtle rounded-xl p-0.5 shadow-sm">
+        <!-- Navegação Temporal (< [ Data ] > Hoje) ocupando e aproveitando toda a linha -->
+        <div v-if="periodMode !== 'custom' && periodMode !== 'all'" class="flex items-center gap-2 w-full sm:w-auto">
+          <!-- Bloco Integrado (< [ Data ] >) que expande e centraliza a data -->
+          <div class="flex items-center justify-between bg-background border border-border-subtle rounded-xl p-1 shadow-sm flex-1 sm:w-auto sm:min-w-[210px] min-w-0">
             <button
               data-testid="btn-period-prev"
               type="button"
               title="Período anterior"
-              class="p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
+              class="p-2 sm:p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
               @click="handlePeriodPrev"
             >
               <AppIcon name="chevron-left" size="14" />
             </button>
             <span
               data-testid="period-active-label"
-              class="text-xs font-bold text-white uppercase tracking-wider px-2 sm:px-3 py-1 text-center whitespace-nowrap min-w-[110px]"
+              class="text-xs font-bold text-white uppercase tracking-wider px-2 py-1 text-center truncate flex-1"
             >
               {{ activeDateRange.label }}
             </span>
@@ -397,18 +397,18 @@ function handleDelete(id: string, description: string) {
               data-testid="btn-period-next"
               type="button"
               title="Próximo período"
-              class="p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
+              class="p-2 sm:p-1.5 rounded-lg hover:bg-surface-hover text-finance-neutral hover:text-white transition cursor-pointer shrink-0"
               @click="handlePeriodNext"
             >
               <AppIcon name="chevron-right" size="14" />
             </button>
           </div>
 
-          <!-- Botão Hoje -->
+          <!-- Botão Hoje integrado ao lado -->
           <button
             type="button"
             title="Ir para hoje"
-            class="px-3 py-1.5 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0"
+            class="px-4 py-2 sm:py-1.5 text-xs font-bold bg-background hover:bg-surface-hover text-accent-yellow rounded-xl border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
             @click="handlePeriodToday"
           >
             Hoje
@@ -559,33 +559,33 @@ function handleDelete(id: string, description: string) {
 
     <!-- 4. SEÇÃO DE LANÇAMENTOS (Imediata e Direta) -->
     <div v-if="activeSubTab === 'lancamentos' || (activeSubTab !== 'categorias' && selectedCalendarDay !== null) || activeSubTab === 'consolidado'" class="space-y-3 subview-transition-panel">
-      <!-- Barra Minimalista de Busca & Filtros -->
-      <div class="flex items-center gap-1.5 w-full py-0.5">
-        <!-- Campo de Busca Estável (sem saltos de largura ao focar) -->
+      <!-- Barra de Busca & Filtros (Responsiva: Busca 100% no mobile + Filtros com espaço amplo) -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-0.5">
+        <!-- Campo de Busca Estável -->
         <div class="relative flex-1 min-w-0 flex items-center">
           <input
             v-model="searchTerm"
             type="text"
             placeholder="Buscar por descrição ou conta..."
-            class="h-7 w-full bg-surface/80 border border-border-subtle/70 focus:border-accent-yellow rounded-lg pl-6 pr-5 text-[11px] text-white placeholder-[#71717A] outline-none transition-colors"
+            class="h-8 sm:h-7 w-full bg-surface/80 border border-border-subtle/70 focus:border-accent-yellow rounded-xl sm:rounded-lg pl-7 pr-6 text-xs sm:text-[11px] text-white placeholder-[#71717A] outline-none transition-colors"
           />
-          <AppIcon name="search" size="11" class="absolute left-2 text-[#71717A] pointer-events-none" />
+          <AppIcon name="search" size="13" class="absolute left-2.5 text-[#71717A] pointer-events-none" />
           <button
             v-if="searchTerm"
             type="button"
-            class="absolute right-1.5 text-[#71717A] hover:text-white text-[10px] cursor-pointer"
+            class="absolute right-2 text-[#71717A] hover:text-white text-xs cursor-pointer"
             @click="searchTerm = ''"
           >
             ✕
           </button>
         </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
           <!-- Chip de Dia Selecionado se houver filtro do Calendário -->
           <div
             v-if="selectedCalendarDay"
             data-testid="badge-active-day-filter"
-            class="h-7 bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-[10px] px-2 rounded-lg flex items-center gap-1 whitespace-nowrap shrink-0"
+            class="h-8 sm:h-7 bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-xs sm:text-[10px] px-2.5 rounded-xl sm:rounded-lg flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <span>Dia: {{ selectedCalendarDay }}</span>
             <button
@@ -598,10 +598,10 @@ function handleDelete(id: string, description: string) {
             </button>
           </div>
 
-          <!-- Filtro de Tipo Minimalista -->
+          <!-- Filtro de Tipo -->
           <select
             v-model="selectedType"
-            class="h-7 bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-lg px-2 text-[11px] outline-none shrink-0 cursor-pointer"
+            class="h-8 sm:h-7 flex-1 sm:flex-none bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-xl sm:rounded-lg px-2.5 sm:px-2 text-xs sm:text-[11px] outline-none cursor-pointer"
           >
             <option value="ALL">Tipos</option>
             <option value="expense">Despesas</option>
@@ -609,10 +609,10 @@ function handleDelete(id: string, description: string) {
             <option value="investment_deposit">Aportes</option>
           </select>
 
-          <!-- Filtro de Categoria Minimalista -->
+          <!-- Filtro de Categoria (Espaço amplo sem cortar texto) -->
           <select
             v-model="selectedCategory"
-            class="h-7 bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-lg px-2 text-[11px] outline-none shrink-0 cursor-pointer max-w-[115px]"
+            class="h-8 sm:h-7 flex-1 sm:flex-none bg-surface/80 border border-border-subtle/70 text-[#D4D4D8] rounded-xl sm:rounded-lg px-2.5 sm:px-2 text-xs sm:text-[11px] outline-none cursor-pointer sm:min-w-[130px]"
           >
             <option value="ALL">Categorias</option>
             <option v-for="c in DEFAULT_CATEGORIES" :key="c.id" :value="c.id">
@@ -715,10 +715,10 @@ function handleDelete(id: string, description: string) {
                   >
                     <AppIcon :name="categoryMap.get(tx.categoryId)?.icon || 'more-horizontal'" size="16" />
                   </button>
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-1.5">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                       <span
-                        class="text-sm font-bold text-white group-hover:text-accent-yellow transition truncate"
+                        class="text-xs sm:text-sm font-bold text-white group-hover:text-accent-yellow transition truncate"
                       >
                         {{ tx.description }}
                       </span>
@@ -741,10 +741,10 @@ function handleDelete(id: string, description: string) {
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2.5 shrink-0">
+                <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
                   <div class="text-right">
                     <div
-                      class="text-sm font-bold font-mono whitespace-nowrap"
+                      class="text-xs sm:text-sm font-bold font-mono whitespace-nowrap"
                       :class="tx.type === 'expense' ? 'text-finance-neg' : 'text-finance-pos'"
                     >
                       {{
@@ -755,29 +755,29 @@ function handleDelete(id: string, description: string) {
                             })
                       }}
                     </div>
-                    <div class="text-[10px] text-[#71717A] whitespace-nowrap">
+                    <div class="text-[9.5px] sm:text-[10px] text-[#71717A] whitespace-nowrap">
                       {{ tx.isInstallment ? 'Parcela' : 'À vista' }}
                     </div>
                   </div>
 
                   <!-- Botões de Ação: Editar e Excluir com AppIcon -->
-                  <div class="flex items-center gap-1">
+                  <div class="flex items-center gap-0.5 sm:gap-1">
                     <button
                       type="button"
                       :data-testid="`btn-edit-transaction-${tx.id}`"
                       title="Editar lançamento"
-                      class="text-finance-neutral hover:text-accent-yellow p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
+                      class="text-finance-neutral hover:text-accent-yellow p-1 sm:p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
                       @click="emit('editTransaction', tx)"
                     >
-                      <AppIcon name="edit" size="14" />
+                      <AppIcon name="edit" size="13" />
                     </button>
                     <button
                       type="button"
                       title="Excluir lançamento"
-                      class="text-finance-neutral hover:text-finance-neg p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
+                      class="text-finance-neutral hover:text-finance-neg p-1 sm:p-1.5 rounded-lg hover:bg-surface-hover opacity-70 group-hover:opacity-100 transition cursor-pointer"
                       @click="handleDelete(tx.id, tx.description)"
                     >
-                      <AppIcon name="trash" size="14" />
+                      <AppIcon name="trash" size="13" />
                     </button>
                   </div>
                 </div>

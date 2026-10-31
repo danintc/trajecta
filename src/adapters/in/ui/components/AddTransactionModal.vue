@@ -355,7 +355,7 @@ async function handleSubmit() {
                   v-model="description"
                   type="text"
                   data-testid="input-description"
-                  placeholder="Ex: Supermercado, Aluguel, Restaurante..."
+                  placeholder="Ex: Supermercado"
                   class="w-full h-9 bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 text-xs text-white outline-none transition"
                 />
               </div>

@@ -1351,7 +1351,7 @@ function handleSelectClassFilter(clsKey: string) {
                   v-model="objFormName"
                   type="text"
                   data-testid="input-objective-name"
-                  placeholder="Ex: Compra de Imóvel, Aposentadoria..."
+                  placeholder="Ex: Aposentadoria"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
                 />
               </div>
@@ -1364,7 +1364,7 @@ function handleSelectClassFilter(clsKey: string) {
                   v-model="objFormDescription"
                   type="text"
                   data-testid="input-objective-desc"
-                  placeholder="Ex: Longo prazo e renda passiva"
+                  placeholder="Ex: Renda passiva"
                   class="w-full bg-background border border-border-subtle focus:border-accent-yellow rounded-xl px-3 py-2 text-xs text-white outline-none"
                 />
               </div>

@@ -226,7 +226,7 @@ async function handleSubmit() {
                   v-model="company"
                   type="text"
                   data-testid="input-career-company"
-                  placeholder="Ex: Nubank, Google, TechCorp"
+                  placeholder="Ex: Nubank"
                   class="w-full h-10 bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 text-xs text-white outline-none transition"
                 />
               </div>
@@ -238,7 +238,7 @@ async function handleSubmit() {
                   v-model="role"
                   type="text"
                   data-testid="input-career-role"
-                  placeholder="Ex: Engenheiro de Software Pleno"
+                  placeholder="Ex: Engenheiro"
                   class="w-full h-10 bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 text-xs text-white outline-none transition"
                 />
               </div>

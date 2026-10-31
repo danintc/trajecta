@@ -584,7 +584,7 @@ async function handleDeleteAsset(asset: Asset) {
                   v-model="newClassName"
                   type="text"
                   data-testid="input-new-class-name"
-                  placeholder="Ex: Previdência, Ouro, REITs..."
+                  placeholder="Ex: Previdência"
                   class="w-full bg-surface border border-border-subtle focus:border-finance-invest rounded-xl px-3 py-2 text-xs text-white outline-none"
                 />
               </div>
