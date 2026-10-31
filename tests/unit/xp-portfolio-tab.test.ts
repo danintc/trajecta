@@ -16,8 +16,8 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
 
     // Sub-nav pills
     expect(wrapper.text()).toContain('Classe');
-    expect(wrapper.text()).toContain('Produto');
     expect(wrapper.text()).toContain('Liquidez');
+    expect(wrapper.text()).toContain('Instituição');
     expect(wrapper.text()).toContain('Ativos');
     expect(wrapper.text()).toContain('Objetivos');
   });
@@ -59,7 +59,7 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.text()).toContain('< 1%');
   });
 
-  it('deve permitir alternar para as pills Produto, Liquidez, Ativos e Objetivos', async () => {
+  it('deve permitir alternar para as pills Liquidez, Instituição, Ativos e Objetivos', async () => {
     const wrapper = mount(XpPortfolioTab, {
       props: {
         assets: [],
@@ -67,12 +67,11 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
       },
     });
 
-    // Clicar em Produto
-    const produtoBtn = wrapper.findAll('button').find((b) => b.text() === 'Produto');
-    expect(produtoBtn).toBeDefined();
-    await produtoBtn!.trigger('click');
-    expect(wrapper.text()).toContain('ETFs & Fundos Internacionais');
-    expect(wrapper.text()).toContain('Ações Nacionais (B3)');
+    // Clicar em Instituição
+    const instBtn = wrapper.findAll('button').find((b) => b.text() === 'Instituição');
+    expect(instBtn).toBeDefined();
+    await instBtn!.trigger('click');
+    expect(wrapper.text()).toContain('XP Investimentos');
 
     // Clicar em Liquidez
     const liquidezBtn = wrapper.findAll('button').find((b) => b.text() === 'Liquidez');
@@ -88,7 +87,7 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.text()).toContain('Independência Financeira (FIRE)');
   });
 
-  it('deve expandir o detalhamento de ativos ao clicar na classe ou em determinado produto (ex: Fundos Imobiliários)', async () => {
+  it('deve expandir o detalhamento de ativos ao clicar na classe', async () => {
     const wrapper = mount(XpPortfolioTab, {
       props: {
         assets: [],
@@ -106,17 +105,13 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.text()).toContain('IVVB11');
     expect(wrapper.text()).toContain('54 cotas');
 
-    // Mudar para a aba Produto e clicar em Fundos Imobiliários (FIIs) para expandir seus ativos
-    const produtoBtn = wrapper.findAll('button').find((b) => b.text() === 'Produto');
-    await produtoBtn!.trigger('click');
-
-    expect(wrapper.text()).not.toContain('HGLG11');
-    const fiisProdRow = wrapper.find('[data-testid="portfolio-category-fiis_prod"]');
-    expect(fiisProdRow.exists()).toBe(true);
-    await fiisProdRow.trigger('click');
+    // Clicar em Renda Variável Brasil para expandir seus ativos
+    const brasilRow = wrapper.find('[data-testid="portfolio-category-brasil"]');
+    expect(brasilRow.exists()).toBe(true);
+    await brasilRow.trigger('click');
 
     expect(wrapper.text()).toContain('HGLG11');
-    expect(wrapper.text()).toContain('10 cotas');
+    expect(wrapper.text()).toContain('PETR4');
   });
 
   it('não deve exibir cabeçalho de nome/busca/bandeira nem card de assessoria desnecessários', () => {
@@ -306,12 +301,12 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     await wrapper.find('[data-testid="portfolio-category-internacional"]').trigger('click');
     expect(wrapper.find('[data-testid="portfolio-category-internacional"]').attributes('data-selected')).toBe('true');
 
-    // Trocar para a pill Produto deve limpar a seleção anterior
-    await wrapper.find('[data-testid="portfolio-pill-produto"]').trigger('click');
-    const selectedInProduto = wrapper
+    // Trocar para a pill Liquidez deve limpar a seleção anterior
+    await wrapper.find('[data-testid="portfolio-pill-liquidez"]').trigger('click');
+    const selectedInLiquidez = wrapper
       .findAll('[data-testid^="portfolio-category-"]')
       .filter((el) => el.attributes('data-selected') === 'true');
-    expect(selectedInProduto.length).toBe(0);
+    expect(selectedInLiquidez.length).toBe(0);
 
     // Ir para a pill Ativos e testar filtros de classe
     await wrapper.find('[data-testid="portfolio-pill-ativos"]').trigger('click');

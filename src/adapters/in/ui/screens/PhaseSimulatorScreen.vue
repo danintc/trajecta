@@ -803,183 +803,275 @@ const paginatedMonthlyPoints = computed(() => {
           </div>
         </div>
 
-        <div class="overflow-x-auto custom-scrollbar pb-1">
-          <table class="w-full text-left text-xs">
-            <thead>
-              <tr class="text-[11px] text-[#71717A] border-b border-border-subtle whitespace-nowrap">
-                <th class="py-2.5 pr-3 font-semibold">Cenário (Clique p/ Mês a Mês)</th>
-                <th class="py-2.5 px-3 font-semibold text-right">Total Aportado</th>
-                <th v-if="comparisonTableMode === 'detailed'" class="py-2.5 px-3 font-semibold text-right">
-                  Saldo ao Parar
-                </th>
-                <th v-if="comparisonTableMode === 'detailed'" class="py-2.5 px-3 font-semibold text-right">
-                  Juros Gerados
-                </th>
-                <th v-if="comparisonTableMode === 'detailed'" class="py-2.5 px-3 font-semibold text-right">
-                  Aportes Economizados
-                </th>
-                <th class="py-2.5 px-3 font-semibold text-right">Patrimônio Final ({{ effectiveHorizonYears }}a)</th>
-                <th class="py-2.5 pl-3 font-semibold text-right">Renda Passiva Mensal</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border-subtle font-mono whitespace-nowrap">
-              <!-- Cenário Contínuo -->
-              <tr
-                class="hover:bg-surface-hover/60 transition cursor-pointer"
-                @click="openScenarioMonthly('continuous')"
-              >
-                <td class="py-3 pr-3 font-sans">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-finance-invest shrink-0" />
-                    <span class="font-bold text-finance-invest">Aporte Contínuo</span>
-                    <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.continuous.yearsOfAporte }}a)</span>
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-right text-white font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalContributedInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-[#A1A1AA]">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.netWorthAtStopInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalReturnsInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-[#71717A]">
-                  —
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <div class="inline-flex items-center justify-end gap-2">
-                    <span class="text-white font-bold">
-                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.finalNetWorthInCents) }}
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-invest/10 text-finance-invest font-semibold w-12 text-center">
-                      100%
-                    </span>
-                  </div>
-                </td>
-                <td class="py-3 pl-3 text-right text-finance-pos font-bold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-                </td>
-              </tr>
+        <!-- CARDS COMPARATIVOS DOS CENÁRIOS (Item 4: Formato de cards responsivos substituindo planilha) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <!-- 1. Cenário Contínuo -->
+          <div
+            data-testid="scenario-card-continuous"
+            class="bg-background border border-border-subtle hover:border-finance-invest/50 rounded-xl p-3.5 flex flex-col justify-between gap-3 transition cursor-pointer group"
+            @click="openScenarioMonthly('continuous')"
+          >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between border-b border-border-subtle/70 pb-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-finance-invest shrink-0" />
+                  <span class="font-bold text-sm text-finance-invest group-hover:underline">Aporte Contínuo</span>
+                  <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.continuous.yearsOfAporte }}a)</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-invest/15 text-finance-invest font-bold font-mono">
+                  100%
+                </span>
+              </div>
 
-              <!-- Parar aos 10 Anos -->
-              <tr
-                class="hover:bg-surface-hover/60 transition cursor-pointer"
-                @click="openScenarioMonthly('stop_10_years')"
-              >
-                <td class="py-3 pr-3 font-sans">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-accent-yellow shrink-0" />
-                    <span class="font-bold text-accent-yellow">Parar aos 10 Anos</span>
-                    <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.stop10Years.yearsOfAporte }}a)</span>
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-right text-white font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalContributedInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-accent-yellow font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.netWorthAtStopInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalReturnsInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-accent-yellow font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalIncomeFreedForLivingInCents) }}
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <div class="inline-flex items-center justify-end gap-2">
-                    <span class="text-white font-bold">
-                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.finalNetWorthInCents) }}
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-yellow/10 text-accent-yellow font-semibold w-12 text-center">
-                      {{ simulation.scenarios.stop10Years.percentageOfContinuous }}%
-                    </span>
-                  </div>
-                </td>
-                <td class="py-3 pl-3 text-right text-finance-pos font-bold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-                </td>
-              </tr>
+              <!-- Patrimônio Final & Renda -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-[#71717A] uppercase font-bold block">Patrimônio Final ({{ effectiveHorizonYears }}a)</span>
+                <div class="text-base sm:text-lg font-extrabold font-mono text-white">
+                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.finalNetWorthInCents) }}
+                </div>
+                <div class="text-xs text-finance-pos font-mono font-bold flex items-center gap-1">
+                  <span>Renda Passiva:</span>
+                  <span>{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.estimatedMonthlyPassiveIncomeInCents) }}</span>
+                  <span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+                </div>
+              </div>
 
-              <!-- Parar aos 5 Anos -->
-              <tr
-                class="hover:bg-surface-hover/60 transition cursor-pointer"
-                @click="openScenarioMonthly('stop_5_years')"
-              >
-                <td class="py-3 pr-3 font-sans">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0" />
-                    <span class="font-bold text-finance-pos">Parar aos 5 Anos</span>
-                    <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.stop5Years.yearsOfAporte }}a)</span>
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-right text-white font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalContributedInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.netWorthAtStopInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalReturnsInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalIncomeFreedForLivingInCents) }}
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <div class="inline-flex items-center justify-end gap-2">
-                    <span class="text-white font-bold">
-                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.finalNetWorthInCents) }}
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-pos/10 text-finance-pos font-semibold w-12 text-center">
-                      {{ simulation.scenarios.stop5Years.percentageOfContinuous }}%
+              <!-- Métricas Secundárias -->
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle/50 text-[11px] font-mono">
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Total Aportado</span>
+                  <span class="text-white font-semibold">
+                    {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalContributedInCents) }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros Gerados</span>
+                  <span class="text-finance-pos font-semibold">
+                    +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalReturnsInCents) }}
+                  </span>
+                </div>
+                <template v-if="comparisonTableMode === 'detailed'">
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Saldo ao Parar</span>
+                    <span class="text-[#A1A1AA] font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.netWorthAtStopInCents) }}
                     </span>
                   </div>
-                </td>
-                <td class="py-3 pl-3 text-right text-finance-pos font-bold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-                </td>
-              </tr>
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aportes Economizados</span>
+                    <span class="text-[#71717A] font-semibold">—</span>
+                  </div>
+                </template>
+              </div>
+            </div>
 
-              <!-- Parar Agora (Coast) -->
-              <tr
-                class="hover:bg-surface-hover/60 transition cursor-pointer"
-                @click="openScenarioMonthly('stop_now')"
-              >
-                <td class="py-3 pr-3 font-sans">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-finance-career shrink-0" />
-                    <span class="font-bold text-finance-career">Parar Agora (Coast)</span>
-                    <span class="text-[10px] text-[#71717A] font-mono">(0a)</span>
-                  </div>
-                </td>
-                <td class="py-3 px-3 text-right text-[#A1A1AA]">
-                  R$ 0,00
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-career font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.netWorthAtStopInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-pos">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.totalReturnsInCents) }}
-                </td>
-                <td v-if="comparisonTableMode === 'detailed'" class="py-3 px-3 text-right text-finance-career font-semibold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.totalIncomeFreedForLivingInCents) }}
-                </td>
-                <td class="py-3 px-3 text-right">
-                  <div class="inline-flex items-center justify-end gap-2">
-                    <span class="text-white font-bold">
-                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.finalNetWorthInCents) }}
+            <div class="pt-2 border-t border-border-subtle/40 flex items-center justify-between text-[11px] text-[#A1A1AA] group-hover:text-finance-invest">
+              <span>Aporte até o fim</span>
+              <span class="font-bold font-mono">Ver Mês a Mês →</span>
+            </div>
+          </div>
+
+          <!-- 2. Parar aos 10 Anos -->
+          <div
+            data-testid="scenario-card-stop-10"
+            class="bg-background border border-border-subtle hover:border-accent-yellow/50 rounded-xl p-3.5 flex flex-col justify-between gap-3 transition cursor-pointer group"
+            @click="openScenarioMonthly('stop_10_years')"
+          >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between border-b border-border-subtle/70 pb-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-accent-yellow shrink-0" />
+                  <span class="font-bold text-sm text-accent-yellow group-hover:underline">Parar aos 10 Anos</span>
+                  <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.stop10Years.yearsOfAporte }}a)</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-yellow/15 text-accent-yellow font-bold font-mono">
+                  {{ simulation.scenarios.stop10Years.percentageOfContinuous }}%
+                </span>
+              </div>
+
+              <!-- Patrimônio Final & Renda -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-[#71717A] uppercase font-bold block">Patrimônio Final ({{ effectiveHorizonYears }}a)</span>
+                <div class="text-base sm:text-lg font-extrabold font-mono text-white">
+                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.finalNetWorthInCents) }}
+                </div>
+                <div class="text-xs text-finance-pos font-mono font-bold flex items-center gap-1">
+                  <span>Renda Passiva:</span>
+                  <span>{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.estimatedMonthlyPassiveIncomeInCents) }}</span>
+                  <span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+                </div>
+              </div>
+
+              <!-- Métricas Secundárias -->
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle/50 text-[11px] font-mono">
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Total Aportado</span>
+                  <span class="text-white font-semibold">
+                    {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalContributedInCents) }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros Gerados</span>
+                  <span class="text-finance-pos font-semibold">
+                    +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalReturnsInCents) }}
+                  </span>
+                </div>
+                <template v-if="comparisonTableMode === 'detailed'">
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Saldo ao Parar</span>
+                    <span class="text-accent-yellow font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.netWorthAtStopInCents) }}
                     </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-career/10 text-finance-career font-semibold w-12 text-center">
-                      {{ simulation.scenarios.stopNow.percentageOfContinuous }}%
+                  </div>
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aportes Economizados</span>
+                    <span class="text-accent-yellow font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop10Years.totalIncomeFreedForLivingInCents) }}
                     </span>
                   </div>
-                </td>
-                <td class="py-3 pl-3 text-right text-finance-pos font-bold">
-                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </template>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-border-subtle/40 flex items-center justify-between text-[11px] text-[#A1A1AA] group-hover:text-accent-yellow">
+              <span>Aporta só 10 anos</span>
+              <span class="font-bold font-mono">Ver Mês a Mês →</span>
+            </div>
+          </div>
+
+          <!-- 3. Parar aos 5 Anos -->
+          <div
+            data-testid="scenario-card-stop-5"
+            class="bg-background border border-border-subtle hover:border-finance-pos/50 rounded-xl p-3.5 flex flex-col justify-between gap-3 transition cursor-pointer group"
+            @click="openScenarioMonthly('stop_5_years')"
+          >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between border-b border-border-subtle/70 pb-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-finance-pos shrink-0" />
+                  <span class="font-bold text-sm text-finance-pos group-hover:underline">Parar aos 5 Anos</span>
+                  <span class="text-[10px] text-[#71717A] font-mono">({{ simulation.scenarios.stop5Years.yearsOfAporte }}a)</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-pos/15 text-finance-pos font-bold font-mono">
+                  {{ simulation.scenarios.stop5Years.percentageOfContinuous }}%
+                </span>
+              </div>
+
+              <!-- Patrimônio Final & Renda -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-[#71717A] uppercase font-bold block">Patrimônio Final ({{ effectiveHorizonYears }}a)</span>
+                <div class="text-base sm:text-lg font-extrabold font-mono text-white">
+                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.finalNetWorthInCents) }}
+                </div>
+                <div class="text-xs text-finance-pos font-mono font-bold flex items-center gap-1">
+                  <span>Renda Passiva:</span>
+                  <span>{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.estimatedMonthlyPassiveIncomeInCents) }}</span>
+                  <span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+                </div>
+              </div>
+
+              <!-- Métricas Secundárias -->
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle/50 text-[11px] font-mono">
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Total Aportado</span>
+                  <span class="text-white font-semibold">
+                    {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalContributedInCents) }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros Gerados</span>
+                  <span class="text-finance-pos font-semibold">
+                    +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalReturnsInCents) }}
+                  </span>
+                </div>
+                <template v-if="comparisonTableMode === 'detailed'">
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Saldo ao Parar</span>
+                    <span class="text-finance-pos font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.netWorthAtStopInCents) }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aportes Economizados</span>
+                    <span class="text-finance-pos font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalIncomeFreedForLivingInCents) }}
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-border-subtle/40 flex items-center justify-between text-[11px] text-[#A1A1AA] group-hover:text-finance-pos">
+              <span>Aporta só 5 anos</span>
+              <span class="font-bold font-mono">Ver Mês a Mês →</span>
+            </div>
+          </div>
+
+          <!-- 4. Parar Agora (Coast FIRE) -->
+          <div
+            data-testid="scenario-card-stop-now"
+            class="bg-background border border-border-subtle hover:border-finance-career/50 rounded-xl p-3.5 flex flex-col justify-between gap-3 transition cursor-pointer group"
+            @click="openScenarioMonthly('stop_now')"
+          >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between border-b border-border-subtle/70 pb-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
+                  <span class="font-bold text-sm text-finance-career group-hover:underline">Parar Agora (Coast)</span>
+                  <span class="text-[10px] text-[#71717A] font-mono">(0a)</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-finance-career/15 text-finance-career font-bold font-mono">
+                  {{ simulation.scenarios.stopNow.percentageOfContinuous }}%
+                </span>
+              </div>
+
+              <!-- Patrimônio Final & Renda -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-[#71717A] uppercase font-bold block">Patrimônio Final ({{ effectiveHorizonYears }}a)</span>
+                <div class="text-base sm:text-lg font-extrabold font-mono text-white">
+                  {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.finalNetWorthInCents) }}
+                </div>
+                <div class="text-xs text-finance-pos font-mono font-bold flex items-center gap-1">
+                  <span>Renda Passiva:</span>
+                  <span>{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.estimatedMonthlyPassiveIncomeInCents) }}</span>
+                  <span class="text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
+                </div>
+              </div>
+
+              <!-- Métricas Secundárias -->
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle/50 text-[11px] font-mono">
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Total Aportado</span>
+                  <span class="text-[#A1A1AA] font-semibold">R$ 0,00</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-[#71717A] font-sans block uppercase">Juros Gerados</span>
+                  <span class="text-finance-pos font-semibold">
+                    +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.totalReturnsInCents) }}
+                  </span>
+                </div>
+                <template v-if="comparisonTableMode === 'detailed'">
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Saldo ao Parar</span>
+                    <span class="text-finance-career font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.netWorthAtStopInCents) }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="text-[9px] text-[#71717A] font-sans block uppercase">Aportes Economizados</span>
+                    <span class="text-finance-career font-semibold">
+                      {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.stopNow.totalIncomeFreedForLivingInCents) }}
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-border-subtle/40 flex items-center justify-between text-[11px] text-[#A1A1AA] group-hover:text-finance-career">
+              <span>Zero novos aportes</span>
+              <span class="font-bold font-mono">Ver Mês a Mês →</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1037,13 +1129,13 @@ const paginatedMonthlyPoints = computed(() => {
           </div>
         </div>
 
-        <!-- FILTRO DE ANO NO TOPO (Item 6: 'Por página' movido para o rodapé) -->
-        <div class="flex flex-wrap items-center justify-between gap-2.5">
-          <div class="flex items-center gap-2">
-            <label class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap">Filtrar por Ano:</label>
+        <!-- FILTRO DE ANO NO TOPO (Item 3 & 6: Layout responsivo sem transbordar o container) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+          <div class="flex items-center gap-2 w-full sm:w-auto min-w-0 max-w-full">
+            <label class="text-xs text-[#A1A1AA] font-semibold whitespace-nowrap shrink-0">Filtrar por Ano:</label>
             <select
               v-model="selectedYearFilter"
-              class="bg-background border border-border-subtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-accent-yellow outline-none cursor-pointer"
+              class="w-full sm:w-auto flex-1 min-w-0 max-w-full bg-background border border-border-subtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-accent-yellow outline-none cursor-pointer truncate"
             >
               <option value="all">Todos os Anos (1 a {{ effectiveHorizonYears }}a)</option>
               <option v-for="y in effectiveHorizonYears" :key="y" :value="y">

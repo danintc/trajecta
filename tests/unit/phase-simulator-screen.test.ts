@@ -323,6 +323,27 @@ describe('PhaseSimulatorScreen Component', () => {
     expect(wrapper.text()).toContain('Renda Mensal Simulada');
     expect(wrapper.text()).toContain('Comparativo dos Cenários de Aporte (15 Anos)');
   });
+
+  it('deve renderizar o comparativo dos cenários de aporte em formato de cards ao invés de planilha e alternar para a aba mensal ao clicar em um card', async () => {
+    const wrapper = mount(PhaseSimulatorScreen, {
+      props: {
+        assets: mockAssets,
+        careerRecords: mockCareerRecords,
+        transactions: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="scenario-card-continuous"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="scenario-card-stop-10"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="scenario-card-stop-5"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="scenario-card-stop-now"]').exists()).toBe(true);
+
+    // Clicar no card de Parar aos 5 Anos deve levar para a aba Mês a Mês selecionando o cenário
+    await wrapper.find('[data-testid="scenario-card-stop-5"]').trigger('click');
+    expect(wrapper.text()).toContain('Evolução Patrimonial e Renda Passiva Mês a Mês');
+  });
 });
 
 

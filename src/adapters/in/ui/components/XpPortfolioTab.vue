@@ -15,7 +15,6 @@ import EmptyState from './EmptyState.vue';
 
 export type XpPortfolioSubPill =
   | 'classe'
-  | 'produto'
   | 'liquidez'
   | 'instituicao'
   | 'ativos'
@@ -615,108 +614,7 @@ const classCategories = computed<PortfolioCategoryGroup[]>(() => {
   });
 });
 
-// 2. CATEGORIAS POR PRODUTO (Expansíveis ao clicar, ex: Fundos Imobiliários)
-const productCategories = computed<PortfolioCategoryGroup[]>(() => {
-  if (props.assets.length === 0) {
-    return [
-      {
-        key: 'etfs_ext',
-        name: 'ETFs & Fundos Internacionais',
-        color: '#EAB308',
-        totalCents: Math.round(totalInvestedInCents.value * 0.74),
-        percent: 74,
-        percentLabel: '74%',
-        profitPercent: 21.37,
-        assets: demoAssetsMap.ivvb11,
-      },
-      {
-        key: 'acoes_nacionais',
-        name: 'Ações Nacionais (B3)',
-        color: '#A855F7',
-        totalCents: Math.round(totalInvestedInCents.value * 0.17),
-        percent: 17,
-        percentLabel: '17%',
-        profitPercent: 10.09,
-        assets: demoAssetsMap.petr4,
-      },
-      {
-        key: 'fiis_prod',
-        name: 'Fundos Imobiliários (FIIs)',
-        color: '#6366F1',
-        totalCents: Math.round(totalInvestedInCents.value * 0.05),
-        percent: 5,
-        percentLabel: '5%',
-        profitPercent: 4.82,
-        assets: demoAssetsMap.hglg11,
-      },
-      {
-        key: 'cdb_titulos',
-        name: 'Títulos Privados & Tesouro',
-        color: '#EF4444',
-        totalCents: Math.round(totalInvestedInCents.value * 0.03),
-        percent: 3,
-        percentLabel: '3%',
-        profitPercent: 12.47,
-        assets: demoAssetsMap.cdb,
-      },
-      {
-        key: 'conta_prov',
-        name: 'Proventos em Conta',
-        color: '#06B6D4',
-        totalCents: Math.round(totalInvestedInCents.value * 0.01),
-        percent: 1,
-        percentLabel: '1%',
-        profitPercent: 1.15,
-        assets: demoAssetsMap.caixa,
-      },
-    ];
-  }
-
-  const productMeta: Record<string, { key: string; name: string; color: string }> = {
-    internacional: {
-      key: 'etfs_ext',
-      name: 'ETFs & Fundos Internacionais',
-      color: '#EAB308',
-    },
-    acoes_br: {
-      key: 'acoes_nacionais',
-      name: 'Ações Nacionais (B3)',
-      color: '#A855F7',
-    },
-    fiis: {
-      key: 'fiis_prod',
-      name: 'Fundos Imobiliários (FIIs)',
-      color: '#6366F1',
-    },
-    renda_fixa: {
-      key: 'cdb_titulos',
-      name: 'Títulos Privados & Tesouro',
-      color: '#EF4444',
-    },
-    cripto: {
-      key: 'cripto_prod',
-      name: 'Criptoativos & Digitais',
-      color: '#F97316',
-    },
-    reserva_emergencia: {
-      key: 'conta_prov',
-      name: 'Proventos & Reserva em Conta',
-      color: '#06B6D4',
-    },
-  };
-
-  return buildCategoryGroups(institutionFilteredAssets.value, (a) => {
-    return (
-      productMeta[a.assetClass] || {
-        key: `prod_${a.assetClass}`,
-        name: formatClassLabel(a.assetClass),
-        color: '#71717A',
-      }
-    );
-  });
-});
-
-// 3. CATEGORIAS POR LIQUIDEZ (Expansíveis ao clicar)
+// 2. CATEGORIAS POR LIQUIDEZ (Expansíveis ao clicar)
 const liquidityCategories = computed<PortfolioCategoryGroup[]>(() => {
   if (props.assets.length === 0) {
     return [
@@ -885,7 +783,6 @@ const institutionCategories = computed<PortfolioCategoryGroup[]>(() => {
 
 // Categorias ativas para a aba selecionada (No modo 'ativos', o Donut exibe as categorias por Classe)
 const activeCategoryList = computed<PortfolioCategoryGroup[]>(() => {
-  if (activePill.value === 'produto') return productCategories.value;
   if (activePill.value === 'liquidez') return liquidityCategories.value;
   if (activePill.value === 'instituicao') return institutionCategories.value;
   if (activePill.value === 'objetivos') return objectiveCategories.value;
@@ -923,12 +820,12 @@ const allPortfolioAssets = computed<PortfolioAssetItem[]>(() => {
 });
 
 // Quantidade exibida no badge superior: nunca mostra "0 ativos listados" por acidente
-// quando o usuário está nas abas Classe/Produto/Liquidez/Objetivos
+// quando o usuário está nas abas Classe/Liquidez/Instituição/Objetivos sem filtro
 const headerListedAssetsCount = computed(() => {
   if (props.assets.length === 0) {
     return props.showEmptyState ? 0 : allPortfolioAssets.value.length;
   }
-  if (activePill.value === 'ativos') {
+  if (activePill.value === 'ativos' || selectedClassFilter.value !== 'ALL') {
     return allPortfolioAssets.value.length;
   }
   return institutionFilteredAssets.value.length;
@@ -981,21 +878,25 @@ function toggleCategoryExpansion(key: string) {
 
   if (selectedCategoryKey.value === key) {
     selectedCategoryKey.value = null;
+    if (activePill.value === 'classe') {
+      selectedClassFilter.value = 'ALL';
+    }
   } else {
     selectedCategoryKey.value = key;
+    if (activePill.value === 'classe') {
+      selectedClassFilter.value = key;
+    }
   }
 }
 
 function handleSelectClassFilter(clsKey: string) {
   hoveredCategoryKey.value = null;
-  if (clsKey === 'ALL' || (activePill.value === 'ativos' && selectedClassFilter.value === clsKey)) {
+  if (clsKey === 'ALL' || selectedClassFilter.value === clsKey) {
     selectedClassFilter.value = 'ALL';
     selectedCategoryKey.value = null;
-    activePill.value = 'ativos';
   } else {
     selectedClassFilter.value = clsKey;
     selectedCategoryKey.value = clsKey;
-    activePill.value = 'ativos';
   }
 }
 </script>
@@ -1017,16 +918,15 @@ function handleSelectClassFilter(clsKey: string) {
           </span>
         </div>
         <p class="text-xs text-[#71717A] mt-0.5">
-          Custódia consolidada por classe, produto, liquidez, instituição e objetivos
+          Custódia consolidada por classe, liquidez, instituição, ativos e objetivos
         </p>
       </div>
 
-      <!-- SUB-NAV PILLS: [ Classe ] [ Produto ] [ Liquidez ] [ Instituição ] [ Ativos ] [ Objetivos ] -->
+      <!-- SUB-NAV PILLS: [ Classe ] [ Liquidez ] [ Instituição ] [ Ativos ] [ Objetivos ] -->
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
         <button
           v-for="pill in [
             { id: 'classe', label: 'Classe' },
-            { id: 'produto', label: 'Produto' },
             { id: 'liquidez', label: 'Liquidez' },
             { id: 'instituicao', label: 'Instituição' },
             { id: 'ativos', label: 'Ativos' },
@@ -1168,17 +1068,20 @@ function handleSelectClassFilter(clsKey: string) {
       v-if="props.assets.length > 0"
       class="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-border-subtle/60"
     >
-      <!-- Filtro Rápido por Classe de Ativos -->
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <!-- Filtro Rápido por Classe de Ativos (Sincronizado de forma bidirecional com os cards acima) -->
+      <div
+        v-if="activePill === 'classe' || activePill === 'ativos'"
+        class="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
+      >
         <button
           v-for="cls in [{ key: 'ALL', label: 'Todos' }, ...props.availableClasses]"
           :key="cls.key"
           :data-testid="`class-filter-btn-${cls.key}`"
-          :data-selected="selectedClassFilter === cls.key && activePill === 'ativos' ? 'true' : 'false'"
+          :data-selected="selectedClassFilter === cls.key ? 'true' : 'false'"
           type="button"
           class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer flex items-center gap-1"
           :class="
-            selectedClassFilter === cls.key && activePill === 'ativos'
+            selectedClassFilter === cls.key
               ? 'bg-finance-invest text-black font-bold border-finance-invest'
               : (classAssetCounts[cls.key] || 0) > 0
                 ? 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white'
