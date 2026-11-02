@@ -450,31 +450,31 @@ function handleSvgTouch(e: TouchEvent) {
           </button>
         </div>
 
-        <!-- Seletor de Benchmark ocupando espaço proporcional junto aos botões -->
-        <div class="sm:col-span-4 flex items-center justify-between gap-2 bg-[#18181B] border border-[#27272A] rounded-2xl px-3 py-1.5 min-w-0">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] shrink-0">
-            Índice:
-          </span>
-          <div class="relative flex items-center min-w-0 flex-1">
-            <select
-              id="benchmark-select"
-              v-model="selectedBenchmark"
-              class="w-full bg-transparent text-[11px] sm:text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-5 py-0.5 appearance-none"
+        <!-- Seletor de Benchmark minimalista (sem rótulo "Índice:") -->
+        <div class="sm:col-span-4 relative flex items-center gap-1.5 bg-[#18181B]/80 hover:bg-[#27272A]/80 border border-border-subtle/80 rounded-xl px-2.5 py-1.5 min-w-0 transition">
+          <span
+            class="w-2 h-2 rounded-full shrink-0"
+            :style="{ backgroundColor: currentBenchmark.color }"
+          />
+          <select
+            id="benchmark-select"
+            v-model="selectedBenchmark"
+            aria-label="Selecionar benchmark"
+            class="w-full bg-transparent text-[11px] sm:text-xs font-semibold text-[#E4E4E7] focus:outline-none transition cursor-pointer pr-5 appearance-none truncate"
+          >
+            <option
+              v-for="b in BENCHMARK_LIST"
+              :key="b.id"
+              :value="b.id"
+              class="bg-[#18181B] text-white"
             >
-              <option
-                v-for="b in BENCHMARK_LIST"
-                :key="b.id"
-                :value="b.id"
-                class="bg-[#18181B] text-white"
-              >
-                {{ b.name }}
-              </option>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#A1A1AA]">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+              {{ b.name }}
+            </option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[#71717A]">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
       </div>
