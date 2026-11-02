@@ -331,7 +331,7 @@ const paginatedMonthlyPoints = computed(() => {
       <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs shrink-0 w-full lg:w-auto">
         <button
           type="button"
-          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm"
           title="1. Construção (R$ 100k)"
           @click="applyPresetCase('construcao')"
         >
@@ -340,7 +340,7 @@ const paginatedMonthlyPoints = computed(() => {
         </button>
         <button
           type="button"
-          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm"
           title="2. Transição (R$ 500k)"
           @click="applyPresetCase('transicao')"
         >
@@ -349,7 +349,7 @@ const paginatedMonthlyPoints = computed(() => {
         </button>
         <button
           type="button"
-          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm truncate"
+          class="px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold text-white bg-surface hover:bg-surface-hover border border-border-subtle hover:border-white/20 transition text-center cursor-pointer shadow-sm"
           title="3. Manutenção (R$ 5M)"
           @click="applyPresetCase('manutencao')"
         >
@@ -660,26 +660,26 @@ const paginatedMonthlyPoints = computed(() => {
             <div class="grid grid-cols-2 gap-2">
               <!-- Total Patrimônio Simulado -->
               <div class="bg-background/80 border border-border-subtle/70 rounded-xl p-2 sm:p-2.5 flex flex-col justify-between">
-                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide truncate">
+                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide break-words">
                   Patrimônio Total Simulado
                 </span>
-                <div class="text-sm sm:text-base font-extrabold font-mono text-accent-yellow mt-0.5 truncate">
+                <div class="text-sm sm:text-base font-extrabold font-mono text-accent-yellow mt-0.5 break-words">
                   {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.continuous.finalNetWorthInCents) }}
                 </div>
-                <span class="text-[9px] text-[#71717A] font-mono mt-0.5 truncate">
+                <span class="text-[9px] text-[#71717A] font-mono mt-0.5 break-words">
                   Aportado: {{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalContributedInCents) }}
                 </span>
               </div>
 
               <!-- Renda Mensal Simulada -->
               <div class="bg-background/80 border border-border-subtle/70 rounded-xl p-2 sm:p-2.5 flex flex-col justify-between">
-                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide truncate">
+                <span class="text-[9.5px] sm:text-[10px] font-semibold text-[#A1A1AA] uppercase tracking-wide break-words">
                   Renda Mensal Simulada
                 </span>
-                <div class="text-sm sm:text-base font-extrabold font-mono text-finance-invest mt-0.5 truncate">
+                <div class="text-sm sm:text-base font-extrabold font-mono text-finance-invest mt-0.5 break-words">
                   {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.continuous.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-[9px] sm:text-[10px] text-[#71717A] font-sans font-normal">/mês</span>
                 </div>
-                <span class="text-[9px] text-finance-pos font-mono mt-0.5 truncate">
+                <span class="text-[9px] text-finance-pos font-mono mt-0.5 break-words">
                   Juros: +{{ isPrivacyActive ? '••••' : formatCentsToBrl(simulation.scenarios.continuous.totalReturnsInCents) }}
                 </span>
               </div>
@@ -740,7 +740,7 @@ const paginatedMonthlyPoints = computed(() => {
             <span class="font-semibold whitespace-nowrap">Renda Liberada p/ Usufruto (5a)</span>
             <span class="text-accent-yellow font-bold whitespace-nowrap shrink-0">🏖️ Qualidade</span>
           </div>
-          <div class="text-2xl font-extrabold font-mono text-accent-yellow whitespace-nowrap truncate">
+          <div class="text-2xl font-extrabold font-mono text-accent-yellow break-words">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.stop5Years.totalIncomeFreedForLivingInCents) }}
           </div>
           <p class="text-[11px] text-[#71717A] leading-relaxed">
@@ -759,7 +759,7 @@ const paginatedMonthlyPoints = computed(() => {
             <span class="font-semibold whitespace-nowrap">Renda Passiva (Parar 5a)</span>
             <span class="text-finance-invest font-bold whitespace-nowrap shrink-0">💵 Passiva</span>
           </div>
-          <div class="text-2xl font-extrabold font-mono text-finance-invest whitespace-nowrap truncate">
+          <div class="text-2xl font-extrabold font-mono text-finance-invest break-words">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(simulation.scenarios.stop5Years.estimatedMonthlyPassiveIncomeInCents) }}<span class="text-xs text-[#71717A]">/mês</span>
           </div>
           <p class="text-[11px] text-[#71717A] leading-relaxed">

@@ -215,16 +215,7 @@ async function handleDeleteAsset(asset: Asset) {
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-        <button
-          type="button"
-          data-testid="btn-invest-import"
-          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition whitespace-nowrap cursor-pointer"
-          @click="emit('openImportModal')"
-        >
-          <AppIcon name="upload" size="16" class="text-finance-invest" />
-          <span>Importar Carteira / PDF</span>
-        </button>
+      <div class="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
           data-testid="btn-add-asset"
@@ -233,6 +224,16 @@ async function handleDeleteAsset(asset: Asset) {
         >
           <span class="text-base leading-none font-black">+</span>
           <span>Adicionar Ativo</span>
+        </button>
+        <button
+          type="button"
+          data-testid="btn-invest-import"
+          title="Importar Carteira / PDF"
+          aria-label="Importar Carteira / PDF"
+          class="w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle hover:border-finance-invest/50 text-white flex items-center justify-center transition shrink-0 cursor-pointer"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="18" class="text-finance-invest" />
         </button>
       </div>
     </div>
@@ -464,7 +465,7 @@ async function handleDeleteAsset(asset: Asset) {
               <span class="text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
                 Patrimônio Atual
               </span>
-              <span class="text-xs sm:text-sm font-mono font-extrabold text-white mt-1 truncate">
+              <span class="text-xs sm:text-sm font-mono font-extrabold text-white mt-1 break-words">
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(totalInvestedInCents) }}
               </span>
             </div>
@@ -473,7 +474,7 @@ async function handleDeleteAsset(asset: Asset) {
               <span class="text-[10px] font-bold uppercase tracking-wider text-finance-pos">
                 Após o Aporte
               </span>
-              <span class="text-xs sm:text-sm font-mono font-extrabold text-finance-pos mt-1 truncate">
+              <span class="text-xs sm:text-sm font-mono font-extrabold text-finance-pos mt-1 break-words">
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(projectedPortfolioInCents) }}
               </span>
             </div>
@@ -491,7 +492,7 @@ async function handleDeleteAsset(asset: Asset) {
             <!-- Topo do Card: Nome da Classe + Input de Meta (%) -->
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <span class="text-white uppercase tracking-wider text-xs sm:text-sm font-extrabold block truncate">
+                <span class="text-white uppercase tracking-wider text-xs sm:text-sm font-extrabold block break-words">
                   {{ formatClassLabel(sug.assetClass) }}
                 </span>
                 <span class="text-[11px] font-mono text-[#71717A]">

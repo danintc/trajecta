@@ -133,9 +133,61 @@ async function loadDatabaseData() {
     db.snapshots.toArray(),
   ]);
 
-  transactions.value = txs;
-  assets.value = asts;
-  careerRecords.value = crs;
+  // 1. Deduplicação automática de Ativos (evita repetição de Saldo XP / ativos importados múltiplas vezes)
+  const uniqueAssetMap = new Map<string, Asset>();
+  const dupAssetIds: string[] = [];
+  for (const a of asts) {
+    const key = `${a.tickerOrName.toUpperCase().trim()}::${(a.institution || '').toUpperCase().trim()}`;
+    if (!uniqueAssetMap.has(key)) {
+      uniqueAssetMap.set(key, a);
+    } else {
+      dupAssetIds.push(a.id);
+    }
+  }
+  if (dupAssetIds.length > 0) {
+    await db.assets.bulkDelete(dupAssetIds);
+    void Promise.all(dupAssetIds.map((id) => cloudSyncService.deleteAsset(id)));
+  }
+
+  // 2. Deduplicação automática de Marcos de Carreira (evita repetição de cargos na mesma data)
+  const uniqueCareerMap = new Map<string, CareerRecord>();
+  const dupCareerIds: string[] = [];
+  for (const c of crs) {
+    const key = `${c.startDate}:${c.role.toUpperCase().trim()}`;
+    if (!uniqueCareerMap.has(key)) {
+      uniqueCareerMap.set(key, c);
+    } else {
+      dupCareerIds.push(c.id);
+    }
+  }
+  if (dupCareerIds.length > 0) {
+    await db.careerRecords.bulkDelete(dupCareerIds);
+    void Promise.all(dupCareerIds.map((id) => cloudSyncService.deleteCareerRecord(id)));
+  }
+
+  // 3. Deduplicação automática de Transações importadas (por dedupHash)
+  const uniqueTxMap = new Map<string, Transaction>();
+  const dupTxIds: string[] = [];
+  for (const t of txs) {
+    const key = t.dedupHash
+      ? `hash:${t.dedupHash}`
+      : t.id.startsWith('tx-imp-')
+        ? `imp:${t.date}|${t.type}|${t.amountInCents}|${t.description.toUpperCase().trim()}`
+        : `id:${t.id}`;
+    if (!uniqueTxMap.has(key)) {
+      uniqueTxMap.set(key, t);
+    } else {
+      dupTxIds.push(t.id);
+    }
+  }
+  if (dupTxIds.length > 0) {
+    await db.transactions.bulkDelete(dupTxIds);
+    void Promise.all(dupTxIds.map((id) => cloudSyncService.deleteTransaction(id)));
+  }
+
+  transactions.value = Array.from(uniqueTxMap.values());
+  assets.value = Array.from(uniqueAssetMap.values());
+  careerRecords.value = Array.from(uniqueCareerMap.values());
   snapshots.value = snaps;
 }
 
@@ -290,7 +342,7 @@ async function handleLogout() {
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-1.5">
-            <span class="font-bold text-sm sm:text-base tracking-tight text-white truncate">
+            <span class="font-bold text-sm sm:text-base tracking-tight text-white">
               Trajecta
             </span>
             <span
@@ -299,7 +351,7 @@ async function handleLogout() {
               {{ isSyncingCloud ? 'Sincronizando...' : 'Salvo na nuvem' }}
             </span>
           </div>
-          <p class="text-xs text-[#71717A] hidden sm:block truncate">
+          <p class="text-xs text-[#71717A] hidden sm:block">
             Sua trajetória da carreira ao patrimônio
           </p>
         </div>
@@ -307,8 +359,9 @@ async function handleLogout() {
 
       <!-- CONTROLES GLOBAIS -->
       <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        <!-- Botão Global de Importação (Planilhas Google Sheets / Excel / PDF / OFX) -->
+        <!-- Botão de Importação no Topo (Exibido apenas em telas que não possuem o botão minimalista ao lado de Adicionar) -->
         <button
+          v-if="activeTab === 'home' || activeTab === 'phase-simulator'"
           data-testid="btn-open-universal-import"
           type="button"
           class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background hover:border-accent-yellow/50 text-xs font-semibold text-white flex items-center gap-1.5 transition cursor-pointer shrink-0"
@@ -396,8 +449,8 @@ async function handleLogout() {
               class="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-border-subtle shadow-2xl p-4 z-50 space-y-3"
             >
               <div class="border-b border-border-subtle pb-3">
-                <div class="text-xs font-bold text-white truncate">{{ userDisplayName }}</div>
-                <div class="text-[11px] text-finance-neutral truncate">{{ userEmail }}</div>
+                <div class="text-xs font-bold text-white break-words">{{ userDisplayName }}</div>
+                <div class="text-[11px] text-finance-neutral break-all">{{ userEmail }}</div>
                 <div class="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-semibold">
                   <span class="w-2 h-2 rounded-full bg-finance-pos" />
                   <span class="text-finance-pos">

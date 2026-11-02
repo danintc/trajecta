@@ -60,6 +60,10 @@ describe('UniversalImportModal Component', () => {
 
     expect(await db.careerRecords.count()).toBe(18);
     expect(await db.snapshots.count()).toBe(76);
+
+    // Após importar, a planilha deve sair da área de revisão e os presets importados devem sair da aba
+    expect(wrapper.find('[data-testid="universal-staging-area"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="btn-preset-both-sheets"]').exists()).toBe(false);
   });
 
   it('deve permitir colar extrato de corretora/banco em texto, analisar e importar', async () => {

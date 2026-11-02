@@ -340,15 +340,6 @@ const periodLabel = computed(() => {
         <span class="text-[11px] text-[#71717A] sm:hidden">{{ periodLabel }}</span>
         <button
           type="button"
-          data-testid="btn-home-import"
-          class="px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-xs font-semibold text-white flex items-center gap-1.5 transition cursor-pointer shrink-0"
-          @click="emit('openImportModal')"
-        >
-          <AppIcon name="upload" size="13" class="text-accent-yellow" />
-          <span>Importar Planilhas / PDF</span>
-        </button>
-        <button
-          type="button"
           class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
           @click="emit('navigateToTimeline')"
         >
@@ -371,15 +362,15 @@ const periodLabel = computed(() => {
           @click="emit('navigateToTimeline')"
         >
           <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA]">
               Despesas
             </span>
             <span class="text-[10px] text-finance-neg hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
           </div>
-          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-neg mt-0.5 truncate">
+          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-neg mt-0.5 break-words">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(-periodSummary.totalExpensesInCents) }}
           </div>
-          <div class="text-[9px] sm:text-[11px] text-[#71717A] truncate mt-0.5">
+          <div class="text-[9px] sm:text-[11px] text-[#71717A] break-words mt-0.5">
             {{ filteredTransactions.filter((t) => t.type === 'expense').length }} saídas
           </div>
         </button>
@@ -393,15 +384,15 @@ const periodLabel = computed(() => {
           @click="emit('navigateToTimeline')"
         >
           <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA]">
               Receitas
             </span>
             <span class="text-[10px] text-finance-pos hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
           </div>
-          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-pos mt-0.5 truncate">
+          <div class="text-xs sm:text-xl font-extrabold font-mono text-finance-pos mt-0.5 break-words">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodSummary.totalIncomeInCents, { showSign: true }) }}
           </div>
-          <div class="text-[9px] sm:text-[11px] text-[#71717A] truncate mt-0.5">
+          <div class="text-[9px] sm:text-[11px] text-[#71717A] break-words mt-0.5">
             Entradas no período
           </div>
         </button>
@@ -415,18 +406,18 @@ const periodLabel = computed(() => {
           @click="emit('navigateToSimulator')"
         >
           <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA] truncate">
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#A1A1AA]">
               Saldo
             </span>
             <span class="text-[10px] text-accent-yellow hidden sm:inline group-hover:translate-x-0.5 transition">→</span>
           </div>
           <div
-            class="text-xs sm:text-xl font-extrabold font-mono mt-0.5 truncate"
+            class="text-xs sm:text-xl font-extrabold font-mono mt-0.5 break-words"
             :class="periodSummary.balanceInCents >= 0 ? 'text-white' : 'text-finance-neg'"
           >
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodSummary.balanceInCents, { showSign: true }) }}
           </div>
-          <div class="text-[9px] sm:text-[11px] text-accent-yellow font-semibold truncate mt-0.5">
+          <div class="text-[9px] sm:text-[11px] text-accent-yellow font-semibold break-words mt-0.5">
             {{ periodSummary.savingsRate }}% poupado
           </div>
         </button>
@@ -494,7 +485,7 @@ const periodLabel = computed(() => {
         >
           <div class="space-y-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-sm sm:text-lg font-extrabold text-white tracking-tight truncate">
+              <h2 class="text-sm sm:text-lg font-extrabold text-white tracking-tight break-words">
                 Balanço Patrimonial & Net Worth
               </h2>
               <span
@@ -503,7 +494,7 @@ const periodLabel = computed(() => {
                 Tempo Real
               </span>
             </div>
-            <p class="text-xs text-[#71717A] truncate">
+            <p class="text-xs text-[#71717A] break-words">
               Ativos reais deduzidos das faturas e parcelas futuras • Série histórica desde 07/2020
             </p>
           </div>
@@ -524,23 +515,23 @@ const periodLabel = computed(() => {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
           <div class="lg:col-span-4 bg-background/70 border border-border-subtle/80 rounded-2xl p-4 flex flex-col justify-between gap-3 overflow-hidden">
             <div class="space-y-1 min-w-0">
-              <div class="text-[10px] font-bold uppercase tracking-wider text-finance-neutral truncate">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-finance-neutral break-words">
                 PATRIMÔNIO LÍQUIDO (NET WORTH)
               </div>
               <div
                 data-testid="kpi-net-worth-total"
-                class="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight truncate"
+                class="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight break-words"
               >
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.netWorthTotalInCents) }}
               </div>
               <div
                 v-if="userWealth.hasHistory"
-                class="text-xs font-semibold truncate"
+                class="text-xs font-semibold break-words"
                 :class="periodWealthMetrics.returnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
               >
                 {{ periodWealthMetrics.returnPct >= 0 ? '▲ +' : '▼ ' }}{{ periodWealthMetrics.returnPct.toFixed(2).replace('.', ',') }}% {{ periodWealthMetrics.subtitleText }}
               </div>
-              <div v-else class="text-xs text-finance-pos font-semibold truncate">
+              <div v-else class="text-xs text-finance-pos font-semibold break-words">
                 ▲ Patrimônio consolidado ativo
               </div>
             </div>

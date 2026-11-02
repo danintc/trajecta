@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import type {
   ImportTargetModule,
   UniversalCommitResult,
@@ -11,6 +11,7 @@ import {
   parseStatementTextOrPdf,
   parseUniversalWorkbookBuffer,
 } from '@/adapters/in/ingestion/universal-importer';
+import { db } from '@/adapters/out/storage/dexie-db';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 
 export type ImportSourceMode = 'sheets' | 'file' | 'statement';
 export type ReviewTabKey = 'transactions' | 'assets' | 'career' | 'snapshots';
+export type PresetSheetKey = 'both_sheets' | 'finance_sheet' | 'career_sheet';
 
 const sourceMode = ref<ImportSourceMode>('sheets');
 const activeReviewTab = ref<ReviewTabKey>('transactions');
@@ -44,6 +46,9 @@ const replaceExistingData = ref(true);
 const parseResult = ref<UniversalParseResult | null>(null);
 const commitSummary = ref<UniversalCommitResult | null>(null);
 const errorMessage = ref('');
+const activePresetKey = ref<PresetSheetKey | null>(null);
+const importedPresets = ref<Set<PresetSheetKey>>(new Set());
+const showAlreadyImportedPresets = ref(false);
 
 const assetClassOptions = [
   { key: 'acoes_br', label: 'Ações Brasil' },
@@ -54,6 +59,56 @@ const assetClassOptions = [
   { key: 'reserva_emergencia', label: 'Caixa / Reserva' },
 ];
 
+async function syncImportedPresetsFromDatabase() {
+  try {
+    const [careerCount, snapshotCount] = await Promise.all([
+      db.careerRecords.count(),
+      db.snapshots.count(),
+    ]);
+    const nextSet = new Set<PresetSheetKey>();
+    if (careerCount >= 18) {
+      nextSet.add('career_sheet');
+    }
+    if (snapshotCount >= 76) {
+      nextSet.add('finance_sheet');
+    }
+    if (careerCount >= 18 && snapshotCount >= 76) {
+      nextSet.add('both_sheets');
+    }
+    importedPresets.value = nextSet;
+  } catch {
+    // Mantém estado atual caso banco não esteja acessível
+  }
+}
+
+const visiblePresets = computed(() => {
+  if (showAlreadyImportedPresets.value) {
+    return {
+      both_sheets: true,
+      finance_sheet: true,
+      career_sheet: true,
+    };
+  }
+  return {
+    both_sheets: !importedPresets.value.has('both_sheets'),
+    finance_sheet: !importedPresets.value.has('finance_sheet'),
+    career_sheet: !importedPresets.value.has('career_sheet'),
+  };
+});
+
+const hasAnyVisiblePreset = computed(
+  () =>
+    visiblePresets.value.both_sheets ||
+    visiblePresets.value.finance_sheet ||
+    visiblePresets.value.career_sheet
+);
+
+onMounted(() => {
+  if (props.isOpen) {
+    void syncImportedPresetsFromDatabase();
+  }
+});
+
 watch(
   () => props.isOpen,
   (open) => {
@@ -61,6 +116,9 @@ watch(
       parseResult.value = null;
       errorMessage.value = '';
       commitSummary.value = null;
+      activePresetKey.value = null;
+      showAlreadyImportedPresets.value = false;
+      void syncImportedPresetsFromDatabase();
       if (props.initialTargetModule && props.initialTargetModule !== 'all') {
         activeReviewTab.value = props.initialTargetModule;
       }
@@ -72,6 +130,7 @@ watch(sourceMode, () => {
   parseResult.value = null;
   errorMessage.value = '';
   commitSummary.value = null;
+  activePresetKey.value = null;
 });
 
 function selectBestReviewTab(res: UniversalParseResult) {
@@ -106,10 +165,11 @@ function selectBestReviewTab(res: UniversalParseResult) {
   }
 }
 
-async function handlePresetSheetImport(preset: 'both_sheets' | 'finance_sheet' | 'career_sheet') {
+async function handlePresetSheetImport(preset: PresetSheetKey) {
   isProcessing.value = true;
   errorMessage.value = '';
   commitSummary.value = null;
+  activePresetKey.value = preset;
   try {
     const res = await parseGoogleSheetByUrlOrPreset(preset);
     parseResult.value = res;
@@ -131,6 +191,7 @@ async function handleCustomUrlImport() {
   isProcessing.value = true;
   errorMessage.value = '';
   commitSummary.value = null;
+  activePresetKey.value = null;
   try {
     const res = await parseGoogleSheetByUrlOrPreset(googleSheetUrl.value.trim());
     parseResult.value = res;
@@ -152,6 +213,7 @@ async function handleFileUpload(event: Event) {
   isProcessing.value = true;
   errorMessage.value = '';
   commitSummary.value = null;
+  activePresetKey.value = null;
 
   try {
     const buffer = await file.arrayBuffer();
@@ -195,6 +257,7 @@ async function handleParseStatementText() {
   isProcessing.value = true;
   errorMessage.value = '';
   commitSummary.value = null;
+  activePresetKey.value = null;
   try {
     const res = await parseStatementTextOrPdf(
       pastedStatementText.value,
@@ -259,6 +322,48 @@ async function handleCommitImport() {
     });
     commitSummary.value = commitRes;
     if (commitRes.success) {
+      // Marca a planilha preset importada para que ela saia da aba de importação
+      const nextImported = new Set(importedPresets.value);
+      if (activePresetKey.value === 'both_sheets') {
+        nextImported.add('both_sheets');
+        nextImported.add('finance_sheet');
+        nextImported.add('career_sheet');
+      } else if (activePresetKey.value === 'finance_sheet') {
+        nextImported.add('finance_sheet');
+        if (nextImported.has('career_sheet')) nextImported.add('both_sheets');
+      } else if (activePresetKey.value === 'career_sheet') {
+        nextImported.add('career_sheet');
+        if (nextImported.has('finance_sheet')) nextImported.add('both_sheets');
+      }
+      importedPresets.value = nextImported;
+      showAlreadyImportedPresets.value = false;
+      activePresetKey.value = null;
+
+      // Remove os itens já importados da revisão visual para liberar a seleção de novas planilhas/arquivos
+      const remainingTxs = parseResult.value.transactions.filter((t) => !t.selected);
+      const remainingAssets = parseResult.value.assets.filter((a) => !a.selected);
+      const remainingCareers = parseResult.value.careerRecords.filter((c) => !c.selected);
+      const remainingSnapshots = parseResult.value.snapshots.filter((s) => !s.selected);
+      const remainingTotal =
+        remainingTxs.length +
+        remainingAssets.length +
+        remainingCareers.length +
+        remainingSnapshots.length;
+
+      if (remainingTotal === 0) {
+        parseResult.value = null;
+        googleSheetUrl.value = '';
+        pastedStatementText.value = '';
+      } else {
+        parseResult.value = {
+          ...parseResult.value,
+          transactions: remainingTxs,
+          assets: remainingAssets,
+          careerRecords: remainingCareers,
+          snapshots: remainingSnapshots,
+        };
+      }
+
       emit('success', commitRes);
     } else if (commitRes.errors.length > 0) {
       errorMessage.value = commitRes.errors[0];
@@ -272,6 +377,7 @@ function handleResetStaging() {
   parseResult.value = null;
   commitSummary.value = null;
   errorMessage.value = '';
+  activePresetKey.value = null;
 }
 </script>
 
@@ -296,8 +402,8 @@ function handleResetStaging() {
               <AppIcon name="upload" size="18" />
             </div>
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <h2 class="text-sm sm:text-base font-extrabold text-white truncate">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-sm sm:text-base font-extrabold text-white break-words">
                   Central de Importação Universal
                 </h2>
                 <span
@@ -306,7 +412,7 @@ function handleResetStaging() {
                   Multi-Menus
                 </span>
               </div>
-              <p class="text-[11px] text-[#A1A1AA] truncate">
+              <p class="text-[11px] text-[#A1A1AA] break-words">
                 Importe Google Sheets, Excel (.xlsx/.csv), PDF, OFX e Notas de Corretagem para qualquer menu
               </p>
             </div>
@@ -435,21 +541,26 @@ function handleResetStaging() {
             </div>
 
             <div
-              v-if="isOwnerProfile"
-              class="p-3 rounded-xl bg-finance-pos/10 border border-finance-pos/30 flex items-center justify-between gap-2 text-xs"
+              v-if="isOwnerProfile && !hasAnyVisiblePreset"
+              class="p-3.5 rounded-xl bg-finance-pos/10 border border-finance-pos/30 flex flex-wrap items-center justify-between gap-2 text-xs"
             >
               <div class="flex items-center gap-2 text-finance-pos font-bold">
                 <span>✓</span>
-                <span>Suas 2 planilhas já estão sincronizadas no seu perfil.</span>
+                <span>Suas planilhas principais já foram importadas. Cole outra planilha abaixo ou escolha outra aba de importação.</span>
               </div>
-              <span class="text-[10px] font-mono text-[#A1A1AA] hidden sm:inline">
-                Use abaixo apenas se quiser ressincronizar
-              </span>
+              <button
+                type="button"
+                class="text-[11px] font-semibold text-accent-yellow hover:underline cursor-pointer shrink-0"
+                @click="showAlreadyImportedPresets = true"
+              >
+                Reexibir planilhas já importadas
+              </button>
             </div>
 
-            <!-- BOTÕES 1-CLICK DAS PLANILHAS DO USUÁRIO (Exibidos exclusivamente para o perfil do proprietário) -->
-            <div v-if="isOwnerProfile" class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <!-- BOTÕES 1-CLICK DAS PLANILHAS DO USUÁRIO (Ocultados automaticamente após importação) -->
+            <div v-if="isOwnerProfile && hasAnyVisiblePreset" class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <button
+                v-if="visiblePresets.both_sheets"
                 type="button"
                 data-testid="btn-preset-both-sheets"
                 :disabled="isProcessing"
@@ -473,6 +584,7 @@ function handleResetStaging() {
               </button>
 
               <button
+                v-if="visiblePresets.finance_sheet"
                 type="button"
                 data-testid="btn-preset-finance-sheet"
                 :disabled="isProcessing"
@@ -489,13 +601,14 @@ function handleResetStaging() {
                   <div class="text-xs font-bold text-white">
                     Investimentos, Gastos & Rentabilidade
                   </div>
-                  <p class="text-[10px] text-[#71717A] mt-0.5 truncate">
-                    ID: 1o6LiJKCGlxF0VtouXLcq...
+                  <p class="text-[10px] text-[#71717A] mt-0.5 break-all">
+                    Planilha Financeira Conectada
                   </p>
                 </div>
               </button>
 
               <button
+                v-if="visiblePresets.career_sheet"
                 type="button"
                 data-testid="btn-preset-career-sheet"
                 :disabled="isProcessing"
@@ -512,8 +625,8 @@ function handleResetStaging() {
                   <div class="text-xs font-bold text-white">
                     Evolução Salarial & Cargos (2021–2026)
                   </div>
-                  <p class="text-[10px] text-[#71717A] mt-0.5 truncate">
-                    ID: 1XqyqOhUA4pTRbjIQuV0R...
+                  <p class="text-[10px] text-[#71717A] mt-0.5 break-all">
+                    Planilha de Carreira Conectada
                   </p>
                 </div>
               </button>
@@ -761,10 +874,10 @@ function handleResetStaging() {
                 :key="tx.id"
                 class="p-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs hover:bg-white/[0.02]"
               >
-                <label class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer">
+                <label class="flex flex-wrap items-center gap-2 min-w-0 flex-1 cursor-pointer">
                   <input v-model="tx.selected" type="checkbox" class="rounded accent-accent-yellow" />
                   <span class="font-mono text-[11px] text-[#A1A1AA] shrink-0">{{ tx.date }}</span>
-                  <span class="font-medium text-white truncate">{{ tx.description }}</span>
+                  <span class="font-medium text-white break-words">{{ tx.description }}</span>
                   <span
                     v-if="tx.isDuplicate"
                     class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0"
@@ -853,13 +966,13 @@ function handleResetStaging() {
                 :key="rec.id"
                 class="p-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs hover:bg-white/[0.02]"
               >
-                <label class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer">
+                <label class="flex flex-wrap items-center gap-2 min-w-0 flex-1 cursor-pointer">
                   <input v-model="rec.selected" type="checkbox" class="rounded accent-accent-yellow" />
                   <span class="font-mono text-[11px] text-finance-career font-bold shrink-0">
                     {{ rec.startDate }}
                   </span>
-                  <span class="font-bold text-white truncate">{{ rec.role }}</span>
-                  <span class="text-[11px] text-[#71717A] truncate hidden sm:inline">
+                  <span class="font-bold text-white break-words">{{ rec.role }}</span>
+                  <span class="text-[11px] text-[#71717A] break-words">
                     • {{ rec.company }}
                   </span>
                 </label>

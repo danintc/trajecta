@@ -667,11 +667,11 @@ function handleBarHover(idx: number) {
       </div>
 
       <!-- Segmented Control Estilo XP: [ Rentabilidade ] [ Patrimônio ] [ Histórico & Fluxo ] -->
-      <div class="inline-flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle w-full sm:w-auto">
+      <div class="flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle w-full">
         <button
           type="button"
           data-testid="tab-mode-rentabilidade"
-          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
+          class="flex-1 px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer text-center"
           :class="
             displayMode === 'rentabilidade'
               ? 'bg-white text-black shadow-md font-extrabold'
@@ -684,7 +684,7 @@ function handleBarHover(idx: number) {
         <button
           type="button"
           data-testid="tab-mode-patrimonio"
-          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
+          class="flex-1 px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer text-center"
           :class="
             displayMode === 'patrimonio'
               ? 'bg-white text-black shadow-md font-extrabold'
@@ -698,7 +698,7 @@ function handleBarHover(idx: number) {
           v-if="userWealth.hasHistory"
           type="button"
           data-testid="tab-mode-historico"
-          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
+          class="flex-1 px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer text-center"
           :class="
             displayMode === 'historico'
               ? 'bg-accent-yellow text-black shadow-md font-extrabold'
@@ -714,8 +714,8 @@ function handleBarHover(idx: number) {
     <template v-if="displayMode !== 'historico'">
       <!-- BLOCO RESUMO PRINCIPAL (VALOR + VARIAÇÃO + % DO BENCHMARK) -->
       <div class="space-y-3">
-        <div class="text-[11px] sm:text-xs text-[#71717A] flex items-center justify-between gap-2 w-full min-w-0">
-          <span class="truncate">
+        <div class="text-[11px] sm:text-xs text-[#71717A] flex flex-wrap items-center justify-between gap-2 w-full min-w-0">
+          <span class="break-words">
             {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.headerDateLabel }}
           </span>
           <button
@@ -766,56 +766,66 @@ function handleBarHover(idx: number) {
           </span>
         </div>
 
-        <!-- SELECTORES: ANO E BENCHMARK (Responsivos 50/50 sem transbordar no mobile) -->
-        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 pt-1 w-full">
-          <!-- Dropdown Ano -->
-          <div class="relative min-w-0">
-            <select
-              v-model="selectedYear"
-              data-testid="select-evolution-period"
-              class="w-full sm:w-auto bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-2 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition truncate"
-              @change="
-                hoveredIdx = null;
-                pinnedIdx = null;
-              "
-            >
-              <option value="2026">2026 (No ano)</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-              <option value="2021">2021</option>
-              <option value="2020">2020</option>
-              <option value="12m">Últimos 12 meses</option>
-              <option value="since_2020">Desde o início (07/2020)</option>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+        <!-- SELETORES: PERÍODO E BENCHMARK (Distribuídos 50/50 sem espaço morto na lateral) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 w-full">
+          <!-- Dropdown Ano / Período -->
+          <div class="flex items-center justify-between gap-2 bg-[#18181B] hover:bg-[#27272A]/80 border border-[#27272A] rounded-xl px-3 py-2 min-w-0 transition">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] shrink-0">
+              Período:
+            </span>
+            <div class="relative flex-1 min-w-0">
+              <select
+                v-model="selectedYear"
+                data-testid="select-evolution-period"
+                class="w-full bg-transparent text-xs font-bold text-white pr-6 appearance-none cursor-pointer focus:outline-none"
+                @change="
+                  hoveredIdx = null;
+                  pinnedIdx = null;
+                "
+              >
+                <option value="2026" class="bg-[#18181B] text-white">2026 (No ano)</option>
+                <option value="2025" class="bg-[#18181B] text-white">2025</option>
+                <option value="2024" class="bg-[#18181B] text-white">2024</option>
+                <option value="2023" class="bg-[#18181B] text-white">2023</option>
+                <option value="2022" class="bg-[#18181B] text-white">2022</option>
+                <option value="2021" class="bg-[#18181B] text-white">2021</option>
+                <option value="2020" class="bg-[#18181B] text-white">2020</option>
+                <option value="12m" class="bg-[#18181B] text-white">Últimos 12 meses</option>
+                <option value="since_2020" class="bg-[#18181B] text-white">Desde o início (07/2020)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#71717A]">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
 
           <!-- Dropdown Benchmark Selecionável -->
-          <div class="relative min-w-0">
-            <select
-              v-model="selectedBenchmark"
-              data-testid="select-evolution-benchmark"
-              class="w-full sm:w-auto bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-2 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition truncate"
-            >
-              <option
-                v-for="b in BENCHMARK_LIST"
-                :key="b.id"
-                :value="b.id"
-                class="bg-[#18181B] text-white"
+          <div class="flex items-center justify-between gap-2 bg-[#18181B] hover:bg-[#27272A]/80 border border-[#27272A] rounded-xl px-3 py-2 min-w-0 transition">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] shrink-0">
+              Benchmark:
+            </span>
+            <div class="relative flex-1 min-w-0">
+              <select
+                v-model="selectedBenchmark"
+                data-testid="select-evolution-benchmark"
+                class="w-full bg-transparent text-xs font-bold text-white pr-6 appearance-none cursor-pointer focus:outline-none"
               >
-                {{ b.name }}
-              </option>
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+                <option
+                  v-for="b in BENCHMARK_LIST"
+                  :key="b.id"
+                  :value="b.id"
+                  class="bg-[#18181B] text-white"
+                >
+                  {{ b.name }}
+                </option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#71717A]">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

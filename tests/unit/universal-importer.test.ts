@@ -89,6 +89,15 @@ describe('Universal Importer Engine (Google Sheets, Multi-Tab XLSX, PDF & OFX)',
     expect(await db.snapshots.count()).toBe(76);
     expect(await db.assets.count()).toBe(7);
     expect(await db.transactions.count()).toBe(109);
+
+    // Importar novamente (mesmo em modo mesclar replaceExistingData: false) NÃO deve duplicar registros
+    const secondParse = await parseGoogleSheetByUrlOrPreset('both_sheets');
+    const secondCommit = await commitUniversalImport(secondParse, { replaceExistingData: false });
+    expect(secondCommit.success).toBe(true);
+    expect(await db.careerRecords.count()).toBe(18);
+    expect(await db.snapshots.count()).toBe(76);
+    expect(await db.assets.count()).toBe(7);
+    expect(await db.transactions.count()).toBe(109);
   });
 
   it('deve garantir isolamento multi-usuário: outros perfis não recebem o histórico 2020-2026 do Daniel', () => {

@@ -1223,6 +1223,31 @@ export async function parseGoogleSheetByUrlOrPreset(
   }
 }
 
+function slugifyImportKey(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+export function generateDeterministicAssetId(tickerOrName: string, institution = ''): string {
+  const tickerSlug = slugifyImportKey(tickerOrName) || 'ativo';
+  const instSlug = slugifyImportKey(institution || 'xp-investimentos') || 'corretora';
+  return `asset-imp-${tickerSlug}-${instSlug}`;
+}
+
+export function generateDeterministicCareerId(
+  startDate: string,
+  role: string,
+  company = ''
+): string {
+  const roleSlug = slugifyImportKey(role) || 'cargo';
+  const companySlug = slugifyImportKey(company || 'empresa') || 'empresa';
+  return `career-imp-${startDate}-${roleSlug}-${companySlug}`;
+}
+
 /**
  * Grava no banco local (Dexie) e sincroniza com a nuvem todos os registros aprovados na revisão visual
  */
@@ -1245,6 +1270,13 @@ export async function commitUniversalImport(
     const selectedCareers = parsed.careerRecords.filter((c) => c.selected);
     const selectedSnapshots = parsed.snapshots.filter((s) => s.selected);
 
+    // Captura estado anterior antes de limpar para preservar IDs determinísticos e remover órfãos na nuvem
+    const [prevTxs, prevAssets, prevCareers] = await Promise.all([
+      selectedTxs.length > 0 ? db.transactions.toArray() : Promise.resolve([] as Transaction[]),
+      selectedAssets.length > 0 ? db.assets.toArray() : Promise.resolve([] as Asset[]),
+      selectedCareers.length > 0 ? db.careerRecords.toArray() : Promise.resolve([] as CareerRecord[]),
+    ]);
+
     if (options.replaceExistingData) {
       if (selectedTxs.length > 0) await db.transactions.clear();
       if (selectedAssets.length > 0) await db.assets.clear();
@@ -1254,25 +1286,31 @@ export async function commitUniversalImport(
 
     // 1. Persistir Transações
     if (selectedTxs.length > 0) {
-      const existingTxs = await db.transactions.toArray();
-      const existingHashes = new Set(
-        existingTxs.map(
-          (t) => t.dedupHash || generateTransactionDedupHash(t.date, t.amountInCents, t.description)
-        )
-      );
+      const prevTxByHash = new Map<string, Transaction>();
+      for (const t of prevTxs) {
+        const h = t.dedupHash || generateTransactionDedupHash(t.date, t.amountInCents, t.description);
+        if (!prevTxByHash.has(h)) {
+          prevTxByHash.set(h, t);
+        }
+      }
+
+      const existingHashes = options.replaceExistingData
+        ? new Set<string>()
+        : new Set<string>(prevTxByHash.keys());
 
       const toInsert: Transaction[] = [];
       for (let i = 0; i < selectedTxs.length; i++) {
         const item = selectedTxs[i];
         const hash = generateTransactionDedupHash(item.date, item.amountInCents, item.description);
-        if (!options.replaceExistingData && existingHashes.has(hash)) {
+        if (existingHashes.has(hash)) {
           transactionsSkippedDuplicate++;
           continue;
         }
         existingHashes.add(hash);
 
+        const prevMatch = prevTxByHash.get(hash);
         toInsert.push({
-          id: `tx-imp-${Date.now()}-${i}`,
+          id: prevMatch ? prevMatch.id : `tx-imp-${hash}`,
           type: item.type,
           description: item.description,
           amountInCents: item.amountInCents,
@@ -1282,9 +1320,17 @@ export async function commitUniversalImport(
           isInstallment: Boolean(item.isInstallment),
           source: item.source,
           dedupHash: hash,
-          createdAt: now,
+          createdAt: prevMatch ? prevMatch.createdAt : now,
           updatedAt: now,
         });
+      }
+
+      if (options.replaceExistingData && prevTxs.length > 0) {
+        const keptIds = new Set(toInsert.map((t) => t.id));
+        const staleIds = prevTxs.map((t) => t.id).filter((id) => !keptIds.has(id));
+        if (staleIds.length > 0) {
+          await Promise.all(staleIds.map((id) => cloudSyncService.deleteTransaction(id)));
+        }
       }
 
       if (toInsert.length > 0) {
@@ -1294,24 +1340,28 @@ export async function commitUniversalImport(
       }
     }
 
-    // 2. Persistir Ativos / Custódia
+    // 2. Persistir Ativos / Custódia (Deduplicado por Ticker + Corretora com ID determinístico)
     if (selectedAssets.length > 0) {
-      const existingAssets = await db.assets.toArray();
-      const byTicker = new Map(
-        existingAssets.map((a) => [a.tickerOrName.toUpperCase().trim(), a])
-      );
+      const byTicker = new Map<string, Asset>();
+      for (const a of prevAssets) {
+        const key = a.tickerOrName.toUpperCase().trim();
+        if (!byTicker.has(key)) {
+          byTicker.set(key, a);
+        }
+      }
 
-      const assetsToPut: Asset[] = [];
+      const dedupedAssetsMap = new Map<string, Asset>();
       for (let i = 0; i < selectedAssets.length; i++) {
         const item = selectedAssets[i];
         const key = item.tickerOrName.toUpperCase().trim();
         const existing = byTicker.get(key);
+        const institution = item.institution || 'XP Investimentos';
 
         const entity: Asset = {
-          id: existing ? existing.id : `asset-imp-${Date.now()}-${i}`,
+          id: existing ? existing.id : generateDeterministicAssetId(item.tickerOrName, institution),
           tickerOrName: item.tickerOrName.trim(),
           assetClass: item.assetClass,
-          institution: item.institution || 'XP Investimentos',
+          institution,
           totalQuantity: item.totalQuantity,
           averagePriceInCents: item.averagePriceInCents,
           currentPriceInCents: item.currentPriceInCents,
@@ -1319,7 +1369,17 @@ export async function commitUniversalImport(
           createdAt: existing ? existing.createdAt : now,
           updatedAt: now,
         };
-        assetsToPut.push(entity);
+        dedupedAssetsMap.set(key, entity);
+      }
+
+      const assetsToPut = Array.from(dedupedAssetsMap.values());
+
+      if (options.replaceExistingData && prevAssets.length > 0) {
+        const keptIds = new Set(assetsToPut.map((a) => a.id));
+        const staleIds = prevAssets.map((a) => a.id).filter((id) => !keptIds.has(id));
+        if (staleIds.length > 0) {
+          await Promise.all(staleIds.map((id) => cloudSyncService.deleteAsset(id)));
+        }
       }
 
       if (assetsToPut.length > 0) {
@@ -1329,14 +1389,23 @@ export async function commitUniversalImport(
       }
     }
 
-    // 3. Persistir Registros de Carreira / Salários
+    // 3. Persistir Registros de Carreira / Salários (Deduplicado por Data + Cargo com ID determinístico)
     if (selectedCareers.length > 0) {
-      const existingCareers = await db.careerRecords.toArray();
-      const byDateAndRole = new Map(
-        existingCareers.map((c) => [`${c.startDate}:${c.role.toUpperCase().trim()}`, c])
-      );
+      const byDateAndRole = new Map<string, CareerRecord>();
+      for (const c of prevCareers) {
+        const key = `${c.startDate}:${c.role.toUpperCase().trim()}`;
+        if (!byDateAndRole.has(key)) {
+          byDateAndRole.set(key, c);
+        }
+      }
 
-      const sortedCareers = [...selectedCareers].sort((a, b) =>
+      const uniqueIncomingMap = new Map<string, (typeof selectedCareers)[number]>();
+      for (const item of selectedCareers) {
+        const key = `${item.startDate}:${item.role.toUpperCase().trim()}`;
+        uniqueIncomingMap.set(key, item);
+      }
+
+      const sortedCareers = Array.from(uniqueIncomingMap.values()).sort((a, b) =>
         a.startDate.localeCompare(b.startDate)
       );
 
@@ -1348,7 +1417,9 @@ export async function commitUniversalImport(
         const existing = byDateAndRole.get(key);
 
         const entity: CareerRecord = {
-          id: existing ? existing.id : `career-imp-${Date.now()}-${i}`,
+          id: existing
+            ? existing.id
+            : generateDeterministicCareerId(item.startDate, item.role, item.company),
           company: item.company,
           role: item.role,
           startDate: item.startDate,
@@ -1362,6 +1433,14 @@ export async function commitUniversalImport(
           updatedAt: now,
         };
         careersToPut.push(entity);
+      }
+
+      if (options.replaceExistingData && prevCareers.length > 0) {
+        const keptIds = new Set(careersToPut.map((c) => c.id));
+        const staleIds = prevCareers.map((c) => c.id).filter((id) => !keptIds.has(id));
+        if (staleIds.length > 0) {
+          await Promise.all(staleIds.map((id) => cloudSyncService.deleteCareerRecord(id)));
+        }
       }
 
       if (careersToPut.length > 0) {

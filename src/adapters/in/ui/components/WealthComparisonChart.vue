@@ -191,25 +191,25 @@ const hoveredData = computed(() => {
         <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1.5 rounded-xl border border-border-subtle hover:border-finance-invest/50 transition whitespace-nowrap">
           <input v-model="showContinuous" type="checkbox" class="accent-finance-invest rounded shrink-0" />
           <span class="w-2 h-2 rounded-full bg-finance-invest shrink-0" />
-          <span class="text-white text-[11px] font-semibold truncate">Contínuo ({{ horizonYears }}a)</span>
+          <span class="text-white text-[11px] font-semibold">Contínuo ({{ horizonYears }}a)</span>
         </label>
 
         <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1.5 rounded-xl border border-border-subtle hover:border-accent-yellow/50 transition whitespace-nowrap">
           <input v-model="showStop10" type="checkbox" class="accent-accent-yellow rounded shrink-0" />
           <span class="w-2 h-2 rounded-full bg-accent-yellow shrink-0" />
-          <span class="text-white text-[11px] font-semibold truncate">Parar aos 10a</span>
+          <span class="text-white text-[11px] font-semibold">Parar aos 10a</span>
         </label>
 
         <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1.5 rounded-xl border border-border-subtle hover:border-finance-pos/50 transition whitespace-nowrap">
           <input v-model="showStop5" type="checkbox" class="accent-finance-pos rounded shrink-0" />
           <span class="w-2 h-2 rounded-full bg-finance-pos shrink-0" />
-          <span class="text-white text-[11px] font-semibold truncate">Parar aos 5a</span>
+          <span class="text-white text-[11px] font-semibold">Parar aos 5a</span>
         </label>
 
         <label class="flex items-center gap-1.5 cursor-pointer bg-background px-2.5 py-1.5 rounded-xl border border-border-subtle hover:border-finance-career/50 transition whitespace-nowrap">
           <input v-model="showStopNow" type="checkbox" class="accent-finance-career rounded shrink-0" />
           <span class="w-2 h-2 rounded-full bg-finance-career shrink-0" />
-          <span class="text-white text-[11px] font-semibold truncate">Parar Agora (Coast)</span>
+          <span class="text-white text-[11px] font-semibold">Parar Agora (Coast)</span>
         </label>
       </div>
     </div>
@@ -228,7 +228,7 @@ const hoveredData = computed(() => {
           </span>
           <span class="text-[9px] text-[#71717A] group-hover:text-white">Mês a mês →</span>
         </div>
-        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 truncate">
+        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 break-words">
           {{ isPrivacyActive ? 'R$ •••••' : formatCompactBrl(hoveredData ? hoveredData.continuous : scenarios.continuous.finalNetWorthInCents) }}
         </div>
       </button>
@@ -245,7 +245,7 @@ const hoveredData = computed(() => {
           </span>
           <span class="text-[9px] text-[#71717A] group-hover:text-white">{{ scenarios.stop10Years.percentageOfContinuous }}% →</span>
         </div>
-        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 truncate">
+        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 break-words">
           {{ isPrivacyActive ? 'R$ •••••' : formatCompactBrl(hoveredData ? hoveredData.stop10 : scenarios.stop10Years.finalNetWorthInCents) }}
         </div>
       </button>
@@ -262,7 +262,7 @@ const hoveredData = computed(() => {
           </span>
           <span class="text-[9px] text-[#71717A] group-hover:text-white">{{ scenarios.stop5Years.percentageOfContinuous }}% →</span>
         </div>
-        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 truncate">
+        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 break-words">
           {{ isPrivacyActive ? 'R$ •••••' : formatCompactBrl(hoveredData ? hoveredData.stop5 : scenarios.stop5Years.finalNetWorthInCents) }}
         </div>
       </button>
@@ -279,7 +279,7 @@ const hoveredData = computed(() => {
           </span>
           <span class="text-[9px] text-[#71717A] group-hover:text-white">{{ scenarios.stopNow.percentageOfContinuous }}% →</span>
         </div>
-        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 truncate">
+        <div class="text-xs sm:text-sm font-extrabold font-mono text-white mt-0.5 break-words">
           {{ isPrivacyActive ? 'R$ •••••' : formatCompactBrl(hoveredData ? hoveredData.stopNow : scenarios.stopNow.finalNetWorthInCents) }}
         </div>
       </button>

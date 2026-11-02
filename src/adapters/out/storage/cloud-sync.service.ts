@@ -254,8 +254,32 @@ export const cloudSyncService = {
 
     if (hasCloudData) {
       if (cloudTxs.length > 0) {
+        const mappedTxs = cloudTxs.map(mapRowToTx);
+        const uniqueTxMap = new Map<string, Transaction>();
+        const duplicateTxIds: string[] = [];
+
+        for (const tx of mappedTxs) {
+          const naturalKey =
+            tx.dedupHash ||
+            `${tx.date}|${tx.type}|${tx.amountInCents}|${tx.description.toUpperCase().trim()}`;
+          const prev = uniqueTxMap.get(naturalKey);
+          if (!prev) {
+            uniqueTxMap.set(naturalKey, tx);
+          } else {
+            duplicateTxIds.push(tx.id);
+          }
+        }
+
         await db.transactions.clear();
-        await db.transactions.bulkPut(cloudTxs.map(mapRowToTx));
+        await db.transactions.bulkPut(Array.from(uniqueTxMap.values()));
+
+        if (duplicateTxIds.length > 0) {
+          try {
+            await Promise.all(duplicateTxIds.map((id) => this.deleteTransaction(id)));
+          } catch {
+            // Ignora falha silenciosa de limpeza caso mock ou offline
+          }
+        }
       } else {
         const localTxs = await db.transactions.toArray();
         if (localTxs.length > 0) {
@@ -264,8 +288,30 @@ export const cloudSyncService = {
       }
 
       if (cloudAssets.length > 0) {
+        const mappedAssets = cloudAssets.map(mapRowToAsset);
+        const uniqueAssetMap = new Map<string, Asset>();
+        const duplicateAssetIds: string[] = [];
+
+        for (const asset of mappedAssets) {
+          const naturalKey = `${asset.tickerOrName.toUpperCase().trim()}::${(asset.institution || '').toUpperCase().trim()}`;
+          const prev = uniqueAssetMap.get(naturalKey);
+          if (!prev) {
+            uniqueAssetMap.set(naturalKey, asset);
+          } else {
+            duplicateAssetIds.push(asset.id);
+          }
+        }
+
         await db.assets.clear();
-        await db.assets.bulkPut(cloudAssets.map(mapRowToAsset));
+        await db.assets.bulkPut(Array.from(uniqueAssetMap.values()));
+
+        if (duplicateAssetIds.length > 0) {
+          try {
+            await Promise.all(duplicateAssetIds.map((id) => this.deleteAsset(id)));
+          } catch {
+            // Ignora falha silenciosa de limpeza caso mock ou offline
+          }
+        }
       } else {
         const localAssets = await db.assets.toArray();
         if (localAssets.length > 0) {
@@ -274,8 +320,30 @@ export const cloudSyncService = {
       }
 
       if (cloudCareers.length > 0) {
+        const mappedCareers = cloudCareers.map(mapRowToCareer);
+        const uniqueCareerMap = new Map<string, CareerRecord>();
+        const duplicateCareerIds: string[] = [];
+
+        for (const rec of mappedCareers) {
+          const naturalKey = `${rec.startDate}:${rec.role.toUpperCase().trim()}`;
+          const prev = uniqueCareerMap.get(naturalKey);
+          if (!prev) {
+            uniqueCareerMap.set(naturalKey, rec);
+          } else {
+            duplicateCareerIds.push(rec.id);
+          }
+        }
+
         await db.careerRecords.clear();
-        await db.careerRecords.bulkPut(cloudCareers.map(mapRowToCareer));
+        await db.careerRecords.bulkPut(Array.from(uniqueCareerMap.values()));
+
+        if (duplicateCareerIds.length > 0) {
+          try {
+            await Promise.all(duplicateCareerIds.map((id) => this.deleteCareerRecord(id)));
+          } catch {
+            // Ignora falha silenciosa de limpeza caso mock ou offline
+          }
+        }
       } else {
         const localCareers = await db.careerRecords.toArray();
         if (localCareers.length > 0) {

@@ -248,17 +248,8 @@ function handleDelete(id: string, description: string) {
         </p>
       </div>
 
-      <!-- Botões de Importação e Novo Lançamento -->
-      <div class="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
-        <button
-          data-testid="btn-timeline-import"
-          type="button"
-          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
-          @click="emit('openImportModal')"
-        >
-          <AppIcon name="upload" size="16" class="text-accent-yellow" />
-          <span>Importar Planilha / PDF</span>
-        </button>
+      <!-- Botão Principal de Novo Lançamento + Botão Minimalista de Importação ao lado -->
+      <div class="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
         <button
           data-testid="fab-add-transaction"
           type="button"
@@ -267,6 +258,16 @@ function handleDelete(id: string, description: string) {
         >
           <AppIcon name="plus" size="18" stroke-width="3" />
           <span>Novo Lançamento</span>
+        </button>
+        <button
+          data-testid="btn-timeline-import"
+          type="button"
+          title="Importar Planilha / PDF"
+          aria-label="Importar Planilha / PDF"
+          class="w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle hover:border-accent-yellow/50 text-white flex items-center justify-center transition cursor-pointer shrink-0"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="18" class="text-accent-yellow" />
         </button>
       </div>
     </div>
@@ -399,7 +400,7 @@ function handleDelete(id: string, description: string) {
             </button>
             <span
               data-testid="period-active-label"
-              class="text-xs font-bold text-white uppercase tracking-wider px-2 py-1 text-center truncate flex-1"
+              class="text-xs font-bold text-white uppercase tracking-wider px-2 py-1 text-center flex-1 break-words"
             >
               {{ activeDateRange.label }}
             </span>
@@ -726,9 +727,9 @@ function handleDelete(id: string, description: string) {
                     <AppIcon :name="categoryMap.get(tx.categoryId)?.icon || 'more-horizontal'" size="16" />
                   </button>
                   <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                    <div class="flex items-center gap-1.5 flex-wrap">
                       <span
-                        class="text-xs sm:text-sm font-bold text-white group-hover:text-accent-yellow transition truncate"
+                        class="text-xs sm:text-sm font-bold text-white group-hover:text-accent-yellow transition break-words"
                       >
                         {{ tx.description }}
                       </span>
@@ -740,11 +741,11 @@ function handleDelete(id: string, description: string) {
                         [{{ tx.currentInstallment }}/{{ tx.totalInstallments }}]
                       </span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-xs text-[#71717A] truncate mt-0.5">
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs text-[#71717A] mt-0.5">
                       <span class="font-mono font-bold text-accent-yellow/90 bg-accent-yellow/10 px-1.5 py-0.2 rounded text-[10px] shrink-0">
                         {{ format(new Date(`${tx.date}T12:00:00Z`), 'dd/MM') }}
                       </span>
-                      <span class="truncate">
+                      <span class="break-words">
                         {{ categoryMap.get(tx.categoryId)?.name || 'Geral' }} • {{ tx.accountOrCard }}
                       </span>
                     </div>

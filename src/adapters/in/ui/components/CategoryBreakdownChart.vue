@@ -235,11 +235,11 @@ function handleSliceSelect(_slice: DonutSlice, idx: number) {
               >
                 <AppIcon :name="item.icon" size="14" />
               </div>
-              <div class="truncate">
-                <div class="text-xs font-bold text-white group-hover:text-accent-yellow transition truncate">
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-white group-hover:text-accent-yellow transition break-words">
                   {{ item.name }}
                 </div>
-                <div class="text-[10px] text-[#71717A] flex items-center gap-1">
+                <div class="text-[10px] text-[#71717A] flex flex-wrap items-center gap-1">
                   <span>{{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }}</span>
                   <span class="text-accent-yellow opacity-0 group-hover:opacity-100 transition">• Ver no extrato →</span>
                 </div>

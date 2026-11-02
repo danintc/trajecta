@@ -141,9 +141,7 @@ const hoveredSlice = computed(() => {
 
 const activeLabel = computed(() => {
   if (!hoveredSlice.value) return 'TOTAL';
-  return hoveredSlice.value.label.length > 14
-    ? hoveredSlice.value.label.slice(0, 13) + '…'
-    : hoveredSlice.value.label;
+  return hoveredSlice.value.label;
 });
 
 const activeValueFormatted = computed(() => {
@@ -249,9 +247,9 @@ function getResponsiveFontSize(valueStr: string): number {
         v-if="isEmpty"
         class="flex items-center justify-between gap-2 p-3 rounded-xl bg-background/60 border border-border-subtle/60"
       >
-        <div class="flex items-center gap-2 truncate">
+        <div class="flex items-center gap-2 min-w-0">
           <span class="w-2.5 h-2.5 rounded-full bg-[#3F3F46] shrink-0" />
-          <span class="text-finance-neutral text-xs truncate">
+          <span class="text-finance-neutral text-xs break-words">
             {{ emptyText }}
           </span>
         </div>
@@ -287,7 +285,7 @@ function getResponsiveFontSize(valueStr: string): number {
                 :style="{ backgroundColor: s.color }"
               />
               <span
-                class="truncate text-xs"
+                class="break-words text-xs"
                 :class="hoveredIndex === idx ? 'text-white font-bold' : 'text-[#E4E4E7] font-medium'"
               >
                 {{ s.label }}

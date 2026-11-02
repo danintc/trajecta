@@ -93,6 +93,11 @@ const activePointIdx = computed(() => {
 const activePoint = computed(() => {
   return coords.value[activePointIdx.value] || null;
 });
+
+const xAxisStep = computed(() => {
+  if (coords.value.length <= 5) return 1;
+  return Math.max(2, Math.ceil(coords.value.length / 5));
+});
 </script>
 
 <template>
@@ -105,11 +110,11 @@ const activePoint = computed(() => {
       v-if="activePoint"
       class="bg-background/90 rounded-xl border border-finance-career/30 p-3 space-y-2 overflow-hidden shadow-sm"
     >
-      <div class="flex items-center justify-between gap-2 min-w-0">
-        <div class="flex items-center gap-2 min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-2 min-w-0">
+        <div class="flex flex-wrap items-center gap-1.5 min-w-0">
           <span class="w-2.5 h-2.5 rounded-full bg-finance-career shrink-0" />
-          <span class="font-bold text-white text-xs sm:text-sm truncate">{{ activePoint.role }}</span>
-          <span v-if="activePoint.company" class="text-xs text-[#A1A1AA] truncate">• {{ activePoint.company }}</span>
+          <span class="font-bold text-white text-xs sm:text-sm break-words">{{ activePoint.role }}</span>
+          <span v-if="activePoint.company" class="text-xs text-[#A1A1AA] break-words">• {{ activePoint.company }}</span>
         </div>
         <span class="text-[10px] sm:text-[11px] text-finance-career font-bold bg-finance-career/10 border border-finance-career/25 px-2.5 py-0.5 rounded-md shrink-0 font-mono">
           {{ activePoint.label }}
@@ -118,18 +123,18 @@ const activePoint = computed(() => {
 
       <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-1.5 border-t border-border-subtle/50">
         <div class="bg-surface/60 border border-border-subtle/40 rounded-lg p-2 min-w-0">
-          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider truncate font-sans">
+          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider font-sans">
             Salário Bruto
           </span>
-          <span class="font-extrabold text-finance-career text-xs sm:text-sm truncate block mt-0.5">
+          <span class="font-extrabold text-finance-career text-xs sm:text-sm block mt-0.5">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.grossSalary) }}
           </span>
         </div>
         <div class="bg-surface/60 border border-border-subtle/40 rounded-lg p-2 min-w-0">
-          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider truncate font-sans">
+          <span class="text-[10px] text-finance-neutral block uppercase tracking-wider font-sans">
             Total Cash Anual
           </span>
-          <span class="font-extrabold text-white text-xs sm:text-sm truncate block mt-0.5">
+          <span class="font-extrabold text-white text-xs sm:text-sm block mt-0.5">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.totalCash) }}
           </span>
         </div>
@@ -197,8 +202,9 @@ const activePoint = computed(() => {
             opacity="0.7"
           />
 
-          <!-- Legenda / Valor Acima do Ponto -->
+          <!-- Legenda / Valor Acima do Ponto (Exibido nos pontos-chave para não sobrepor) -->
           <text
+            v-if="coords.length <= 5 || activePointIdx === idx || idx === 0 || idx === coords.length - 1"
             :x="pt.x"
             :y="pt.y - 12"
             text-anchor="middle"
@@ -221,8 +227,9 @@ const activePoint = computed(() => {
             style="transition: r 150ms ease"
           />
 
-          <!-- Eixo X: Apenas a Data -->
+          <!-- Eixo X: Apenas a Data (Espaçada dinamicamente para evitar sobreposição) -->
           <text
+            v-if="coords.length <= 5 || activePointIdx === idx || idx % xAxisStep === 0 || idx === coords.length - 1"
             :x="pt.x"
             :y="height - 8"
             text-anchor="middle"
@@ -255,7 +262,7 @@ const activePoint = computed(() => {
         v-for="(pt, idx) in coords"
         :key="`legend-${idx}`"
         type="button"
-        class="px-2.5 py-1.5 rounded-xl border text-xs flex items-center gap-1.5 transition cursor-pointer"
+        class="px-2.5 py-1.5 rounded-xl border text-xs flex flex-wrap items-center gap-1.5 transition cursor-pointer text-left"
         :class="
           activePointIdx === idx
             ? 'bg-finance-career/15 border-finance-career text-white font-bold shadow-sm'
@@ -267,9 +274,9 @@ const activePoint = computed(() => {
           class="w-2 h-2 rounded-full shrink-0"
           :class="activePointIdx === idx ? 'bg-finance-career' : 'bg-[#52525B]'"
         />
-        <span class="font-mono text-[11px] text-finance-career">{{ pt.shortDate }}</span>
-        <span class="truncate max-w-[140px]">{{ pt.role }}</span>
-        <span class="text-[10px] text-[#71717A] truncate hidden sm:inline">• {{ pt.label }}</span>
+        <span class="font-mono text-[11px] text-finance-career shrink-0">{{ pt.shortDate }}</span>
+        <span class="break-words">{{ pt.role }}</span>
+        <span class="text-[10px] text-[#71717A] hidden sm:inline">• {{ pt.label }}</span>
       </button>
     </div>
   </div>

@@ -372,93 +372,94 @@ function handleSvgTouch(e: TouchEvent) {
     data-testid="net-worth-line-chart"
     class="flex flex-col justify-between h-full w-full select-none space-y-3"
   >
-    <!-- Cabeçalho Distribuído: Controles (Rendimento / Patrimônio à esquerda + Benchmark à direita) + Métricas em linha única -->
+    <!-- Cabeçalho Distribuído: Controles preenchidos proporcionalmente sem áreas vazias -->
     <div class="flex flex-col gap-2.5 w-full">
-      <!-- Linha 1: Segmented Control à esquerda, Estilo Visual no centro e Benchmark à direita -->
-      <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 w-full min-w-0">
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <!-- Segmented Control: Rendimento | Patrimônio -->
-          <div class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
-            <button
-              type="button"
-              class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
-              :class="
-                displayMode === 'rendimento'
-                  ? 'bg-white text-black shadow-md font-extrabold'
-                  : 'text-[#A1A1AA] hover:text-white'
-              "
-              @click="displayMode = 'rendimento'"
-            >
-              Rendimento
-            </button>
-            <button
-              type="button"
-              class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
-              :class="
-                displayMode === 'patrimonio'
-                  ? 'bg-white text-black shadow-md font-extrabold'
-                  : 'text-[#A1A1AA] hover:text-white'
-              "
-              @click="displayMode = 'patrimonio'"
-            >
-              Patrimônio
-            </button>
-          </div>
-
-          <!-- Seletor de Estilo de Gráfico (Inspirado nos 4 Gráficos da Planilha Rentabilidade) -->
-          <div
-            data-testid="net-worth-visual-style-selector"
-            class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0"
+      <!-- Linha 1: Segmented Control, Estilo Visual e Benchmark distribuídos proporcionalmente -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 w-full min-w-0">
+        <!-- Segmented Control: Rendimento | Patrimônio -->
+        <div class="sm:col-span-4 flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle">
+          <button
+            type="button"
+            class="flex-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer text-center"
+            :class="
+              displayMode === 'rendimento'
+                ? 'bg-white text-black shadow-md font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="displayMode = 'rendimento'"
           >
-            <button
-              type="button"
-              data-testid="btn-style-mountain"
-              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
-              :class="
-                visualStyle === 'mountain'
-                  ? 'bg-accent-yellow text-black font-extrabold'
-                  : 'text-[#A1A1AA] hover:text-white'
-              "
-              @click="visualStyle = 'mountain'"
-            >
-              Curva
-            </button>
-            <button
-              type="button"
-              data-testid="btn-style-bars"
-              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
-              :class="
-                visualStyle === 'bars'
-                  ? 'bg-accent-yellow text-black font-extrabold'
-                  : 'text-[#A1A1AA] hover:text-white'
-              "
-              @click="visualStyle = 'bars'"
-            >
-              Mensal
-            </button>
-            <button
-              type="button"
-              data-testid="btn-style-annual"
-              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
-              :class="
-                visualStyle === 'annual'
-                  ? 'bg-accent-yellow text-black font-extrabold'
-                  : 'text-[#A1A1AA] hover:text-white'
-              "
-              @click="visualStyle = 'annual'"
-            >
-              Anual (20–26)
-            </button>
-          </div>
+            Rendimento
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer text-center"
+            :class="
+              displayMode === 'patrimonio'
+                ? 'bg-white text-black shadow-md font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="displayMode = 'patrimonio'"
+          >
+            Patrimônio
+          </button>
         </div>
 
-        <!-- Seletor de Benchmark alinhado à direita (sem 'vs' e responsivo para não cortar) -->
-        <div class="inline-flex items-center bg-[#18181B] border border-[#27272A] rounded-2xl px-2 sm:px-3 py-1 min-w-0 max-w-[48%] sm:max-w-none ml-auto">
-          <div class="relative flex items-center min-w-0 w-full">
+        <!-- Seletor de Estilo de Gráfico (Curva | Mensal | Anual) -->
+        <div
+          data-testid="net-worth-visual-style-selector"
+          class="sm:col-span-4 flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle"
+        >
+          <button
+            type="button"
+            data-testid="btn-style-mountain"
+            class="flex-1 px-2 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer text-center"
+            :class="
+              visualStyle === 'mountain'
+                ? 'bg-accent-yellow text-black font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="visualStyle = 'mountain'"
+          >
+            Curva
+          </button>
+          <button
+            type="button"
+            data-testid="btn-style-bars"
+            class="flex-1 px-2 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer text-center"
+            :class="
+              visualStyle === 'bars'
+                ? 'bg-accent-yellow text-black font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="visualStyle = 'bars'"
+          >
+            Mensal
+          </button>
+          <button
+            type="button"
+            data-testid="btn-style-annual"
+            class="flex-1 px-2 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer text-center"
+            :class="
+              visualStyle === 'annual'
+                ? 'bg-accent-yellow text-black font-extrabold'
+                : 'text-[#A1A1AA] hover:text-white'
+            "
+            @click="visualStyle = 'annual'"
+          >
+            Anual (20–26)
+          </button>
+        </div>
+
+        <!-- Seletor de Benchmark ocupando espaço proporcional junto aos botões -->
+        <div class="sm:col-span-4 flex items-center justify-between gap-2 bg-[#18181B] border border-[#27272A] rounded-2xl px-3 py-1.5 min-w-0">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] shrink-0">
+            Índice:
+          </span>
+          <div class="relative flex items-center min-w-0 flex-1">
             <select
               id="benchmark-select"
               v-model="selectedBenchmark"
-              class="w-full bg-transparent text-[11px] sm:text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-4 sm:pr-5 py-0.5 appearance-none truncate"
+              class="w-full bg-transparent text-[11px] sm:text-xs font-extrabold text-white focus:outline-none transition cursor-pointer pr-5 py-0.5 appearance-none"
             >
               <option
                 v-for="b in BENCHMARK_LIST"
@@ -470,7 +471,7 @@ function handleSvgTouch(e: TouchEvent) {
               </option>
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[#A1A1AA]">
-              <svg class="w-3 sm:w-3.5 h-3 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -725,7 +726,7 @@ function handleSvgTouch(e: TouchEvent) {
           </div>
           <span
             v-if="idx % xAxisLabelStep === 0 || idx === coords.length - 1"
-            class="text-[8px] sm:text-[9px] text-[#71717A] mt-1 truncate"
+            class="text-[8px] sm:text-[9px] text-[#71717A] mt-1 whitespace-nowrap"
           >
             {{ pt.dateLabel }}
           </span>
@@ -790,7 +791,7 @@ function handleSvgTouch(e: TouchEvent) {
         <span
           v-if="activePt.careerMilestoneRole"
           data-testid="badge-career-milestone"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 truncate"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 break-words"
         >
           💼 {{ activePt.careerMilestoneRole }}
         </span>

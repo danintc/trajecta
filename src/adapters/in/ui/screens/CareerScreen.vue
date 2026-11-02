@@ -134,16 +134,7 @@ const maxSalaryInCents = computed(() => {
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-        <button
-          type="button"
-          data-testid="btn-career-import"
-          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition whitespace-nowrap cursor-pointer"
-          @click="emit('openImportModal')"
-        >
-          <AppIcon name="upload" size="16" class="text-finance-career" />
-          <span>Importar Planilha Salarial</span>
-        </button>
+      <div class="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
           data-testid="btn-add-career"
@@ -152,6 +143,16 @@ const maxSalaryInCents = computed(() => {
         >
           <span class="text-base leading-none font-black">+</span>
           <span>Novo Marco Profissional</span>
+        </button>
+        <button
+          type="button"
+          data-testid="btn-career-import"
+          title="Importar Planilha Salarial"
+          aria-label="Importar Planilha Salarial"
+          class="w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle hover:border-finance-career/50 text-white flex items-center justify-center transition shrink-0 cursor-pointer"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="18" class="text-finance-career" />
         </button>
       </div>
     </div>
@@ -337,14 +338,14 @@ const maxSalaryInCents = computed(() => {
           :is-privacy-active="isPrivacyActive"
         />
       </div>
-      <div v-else class="h-56 sm:h-64 w-full flex items-end justify-around pt-8 px-2 pb-2 gap-3 bg-background/50 rounded-xl border border-border-subtle/60">
+      <div v-else class="h-56 sm:h-64 w-full flex items-end justify-around pt-8 px-2 pb-2 gap-3 bg-background/50 rounded-xl border border-border-subtle/60 overflow-x-auto">
         <div
           v-for="(pt, idx) in salaryEvolutionPoints"
           :key="idx"
-          class="flex-1 flex flex-col items-center justify-end h-full gap-2 group max-w-[130px]"
+          class="flex-1 min-w-[90px] flex flex-col items-center justify-end h-full gap-2 group max-w-[140px]"
         >
           <div
-            class="text-[11px] font-mono text-finance-career font-bold transition truncate text-center whitespace-nowrap"
+            class="text-[11px] font-mono text-finance-career font-bold transition text-center whitespace-nowrap"
           >
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(pt.grossSalary) }}
           </div>
@@ -359,10 +360,10 @@ const maxSalaryInCents = computed(() => {
             />
           </div>
           <div class="text-center">
-            <div class="text-[11px] font-bold text-white truncate max-w-[110px]">
+            <div class="text-[11px] font-bold text-white break-words">
               {{ pt.role }}
             </div>
-            <div class="text-[10px] text-[#71717A] truncate">
+            <div class="text-[10px] text-[#71717A] break-words">
               {{ pt.label }}
             </div>
           </div>

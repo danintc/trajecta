@@ -88,8 +88,8 @@ function handleClick() {
     @click="handleClick"
     @keydown.enter="handleClick"
   >
-    <div class="flex items-center justify-between gap-1.5">
-      <span class="text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-finance-neutral truncate">
+    <div class="flex items-start justify-between gap-1.5">
+      <span class="text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-finance-neutral break-words">
         {{ title }}
       </span>
       <span
@@ -101,11 +101,11 @@ function handleClick() {
         <span v-else>{{ icon }}</span>
       </span>
     </div>
-    <div class="text-xs sm:text-lg lg:text-xl font-extrabold font-mono tracking-tight truncate" :class="textColorClass">
+    <div class="text-xs sm:text-lg lg:text-xl font-extrabold font-mono tracking-tight break-words" :class="textColorClass">
       {{ displayValue }}
     </div>
-    <div v-if="subtitle || actionHint" class="flex items-center justify-between gap-1 pt-0.5">
-      <span v-if="subtitle" class="text-[9px] sm:text-[11px] text-[#71717A] truncate">
+    <div v-if="subtitle || actionHint" class="flex flex-wrap items-center justify-between gap-1 pt-0.5">
+      <span v-if="subtitle" class="text-[9px] sm:text-[11px] text-[#71717A] break-words leading-snug">
         {{ subtitle }}
       </span>
       <span
