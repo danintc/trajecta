@@ -339,4 +339,24 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     expect(wrapper.text()).toContain('92,48% do CDI');
     expect(wrapper.text()).not.toContain('3747,79% do CDI');
   });
+
+  it('deve conter scroll horizontal sem vazar do container no gráfico de barras quando um período grande (76 meses) for selecionado', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const periodSelect = wrapper.find('[data-testid="select-evolution-period"]');
+    await periodSelect.setValue('since_2020');
+
+    const scrollContainer = wrapper.find('[data-testid="evolution-bars-scroll-container"]');
+    expect(scrollContainer.exists()).toBe(true);
+    expect(scrollContainer.classes()).toContain('overflow-x-auto');
+
+    const bar0 = wrapper.find('[data-testid="evolution-bar-0"]');
+    expect(bar0.exists()).toBe(true);
+    expect(bar0.classes()).toContain('shrink-0');
+  });
 });

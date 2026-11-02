@@ -1065,7 +1065,7 @@ function handleBarHover(idx: number) {
       </div>
 
       <!-- Gráfico de Barras Mensais (J, F, M, A, M, J, J, A, S, O, N, D) -->
-      <div class="bg-[#09090B]/60 rounded-2xl border border-border-subtle p-4 sm:p-5 space-y-3">
+      <div class="bg-[#09090B]/60 rounded-2xl border border-border-subtle p-4 sm:p-5 space-y-3 overflow-hidden">
         <!-- Painel Informativo da Barra Selecionada / Clicada -->
         <div
           v-if="activeBar"
@@ -1093,53 +1093,64 @@ function handleBarHover(idx: number) {
           <span v-else class="text-[#71717A]">Sem movimentação no mês</span>
         </div>
 
-        <div class="relative h-40 flex items-center justify-between gap-1 sm:gap-2">
-          <!-- Linha Central de Zero (Eixo Base) -->
-          <div class="absolute inset-x-0 top-1/2 h-[1px] bg-[#27272A] pointer-events-none" />
-
-          <!-- Barras Mensais Clicáveis -->
-          <button
-            v-for="(bar, idx) in monthlyBars"
-            :key="idx"
-            type="button"
-            :data-testid="`evolution-bar-${idx}`"
-            class="flex-1 flex flex-col items-center justify-center h-full relative cursor-pointer group rounded-lg transition px-0.5 focus:outline-none"
-            :class="selectedBarIdx === idx ? 'bg-white/5 ring-1 ring-accent-yellow/50' : 'hover:bg-white/5'"
-            @click="handleBarClick(idx)"
-            @mouseenter="handleBarHover(idx)"
+        <div
+          data-testid="evolution-bars-scroll-container"
+          class="relative w-full overflow-x-auto no-scrollbar pb-1"
+        >
+          <div
+            class="relative h-40 flex items-center justify-between min-w-full"
+            :class="monthlyBars.length > 14 ? 'gap-1 w-max' : 'gap-1 sm:gap-2 w-full'"
           >
-            <!-- Barra Superior (Positiva) -->
-            <div class="flex-1 flex items-end justify-center w-full pb-0.5">
-              <div
-                v-if="bar.hasData && bar.isPositive && bar.returnPct > 0"
-                class="w-2.5 sm:w-3 rounded-t-full transition-all"
-                :class="selectedBarIdx === idx ? 'bg-accent-yellow shadow-sm shadow-accent-yellow/50' : 'bg-[#E4E4E7] group-hover:bg-white'"
-                :style="{ height: `${Math.min(100, Math.max(18, (bar.returnPct / 14) * 100))}%` }"
-              />
-            </div>
+            <!-- Linha Central de Zero (Eixo Base) -->
+            <div class="absolute inset-x-0 top-1/2 h-[1px] bg-[#27272A] pointer-events-none" />
 
-            <!-- Rótulo do Mês no Centro -->
-            <div
-              class="h-5 flex items-center justify-center text-[10px] sm:text-xs font-bold transition"
-              :class="selectedBarIdx === idx ? 'text-accent-yellow font-extrabold' : 'text-[#71717A] group-hover:text-white'"
+            <!-- Barras Mensais Clicáveis -->
+            <button
+              v-for="(bar, idx) in monthlyBars"
+              :key="idx"
+              type="button"
+              :data-testid="`evolution-bar-${idx}`"
+              class="flex flex-col items-center justify-center h-full relative cursor-pointer group rounded-lg transition px-0.5 focus:outline-none"
+              :class="[
+                monthlyBars.length > 14 ? 'w-6 sm:w-7 shrink-0' : 'flex-1 min-w-0',
+                selectedBarIdx === idx ? 'bg-white/5 ring-1 ring-accent-yellow/50' : 'hover:bg-white/5',
+              ]"
+              @click="handleBarClick(idx)"
+              @mouseenter="handleBarHover(idx)"
             >
-              {{ bar.month }}
-            </div>
+              <!-- Barra Superior (Positiva) -->
+              <div class="flex-1 flex items-end justify-center w-full pb-0.5">
+                <div
+                  v-if="bar.hasData && bar.isPositive && bar.returnPct > 0"
+                  class="w-2 sm:w-3 rounded-t-full transition-all"
+                  :class="selectedBarIdx === idx ? 'bg-accent-yellow shadow-sm shadow-accent-yellow/50' : 'bg-[#E4E4E7] group-hover:bg-white'"
+                  :style="{ height: `${Math.min(100, Math.max(18, (bar.returnPct / 14) * 100))}%` }"
+                />
+              </div>
 
-            <!-- Barra Inferior (Negativa) -->
-            <div class="flex-1 flex items-start justify-center w-full pt-0.5">
+              <!-- Rótulo do Mês no Centro -->
               <div
-                v-if="bar.hasData && !bar.isPositive && bar.returnPct < 0"
-                class="w-2.5 sm:w-3 rounded-b-full transition-all"
-                :class="selectedBarIdx === idx ? 'bg-finance-neg shadow-sm shadow-finance-neg/50' : 'bg-[#52525B] group-hover:bg-[#A1A1AA]'"
-                :style="{ height: `${Math.min(100, Math.max(18, (Math.abs(bar.returnPct) / 14) * 100))}%` }"
-              />
-              <div
-                v-else-if="!bar.hasData"
-                class="w-1.5 h-1.5 rounded-full bg-[#27272A] mt-1"
-              />
-            </div>
-          </button>
+                class="h-5 flex items-center justify-center text-[10px] sm:text-xs font-bold transition"
+                :class="selectedBarIdx === idx ? 'text-accent-yellow font-extrabold' : 'text-[#71717A] group-hover:text-white'"
+              >
+                {{ bar.month }}
+              </div>
+
+              <!-- Barra Inferior (Negativa) -->
+              <div class="flex-1 flex items-start justify-center w-full pt-0.5">
+                <div
+                  v-if="bar.hasData && !bar.isPositive && bar.returnPct < 0"
+                  class="w-2 sm:w-3 rounded-b-full transition-all"
+                  :class="selectedBarIdx === idx ? 'bg-finance-neg shadow-sm shadow-finance-neg/50' : 'bg-[#52525B] group-hover:bg-[#A1A1AA]'"
+                  :style="{ height: `${Math.min(100, Math.max(18, (Math.abs(bar.returnPct) / 14) * 100))}%` }"
+                />
+                <div
+                  v-else-if="!bar.hasData"
+                  class="w-1.5 h-1.5 rounded-full bg-[#27272A] mt-1"
+                />
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
