@@ -830,32 +830,27 @@ function handleBarHover(idx: number) {
 
     <!-- GRÁFICO DE MONTANHA DO PATRIMÔNIO / RENDIMENTO + LINHA DE BENCHMARK -->
     <div class="relative w-full bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y space-y-2">
-      <!-- Legenda no Topo do Gráfico mostrando o Valor da Coordenada Selecionada sem cortar no mobile -->
+      <!-- Legenda no Topo do Gráfico: mês abreviado para caber em 1 linha; quebra linha apenas se não couber -->
       <div
         v-if="activePoint"
         data-testid="evolution-chart-floating-value"
-        class="pointer-events-none flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] sm:text-[11px] font-mono bg-[#18181B]/40 backdrop-blur-md border border-white/10 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-lg w-full min-w-0"
+        class="pointer-events-none flex flex-wrap items-center justify-between gap-x-1.5 sm:gap-x-2.5 gap-y-1 text-[9.5px] sm:text-[11px] tracking-tight font-mono bg-[#18181B]/40 backdrop-blur-md border border-white/10 rounded-xl px-2 sm:px-3 py-1.5 shadow-lg w-full min-w-0"
       >
-        <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0">
-          <span class="font-bold text-accent-yellow font-sans whitespace-nowrap shrink-0">
-            📍 {{ activePoint.name }}
-          </span>
-          <span class="text-white font-extrabold whitespace-nowrap">
-            {{
-              isPrivacyActive
-                ? 'R$ •••••'
-                : displayMode === 'rentabilidade'
-                ? `${formatCentsToBrl(activePoint.profitInCents)} (+${activePoint.profitPercent.toFixed(2).replace('.', ',')}%)`
-                : formatCentsToBrl(activePoint.netWorthInCents)
-            }}
-          </span>
-        </div>
-        <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <span class="text-[#52525B] hidden sm:inline">|</span>
-          <span :style="{ color: currentBenchmark.color }" class="font-bold break-words">
-            {{ activePoint.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }} ({{ currentBenchmark.shortName }}: +{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%)
-          </span>
-        </div>
+        <span class="font-bold text-accent-yellow font-sans whitespace-nowrap shrink-0">
+          📍 <span class="sm:hidden">{{ activePoint.date }}</span><span class="hidden sm:inline">{{ activePoint.name }}</span>
+        </span>
+        <span class="text-white font-extrabold whitespace-nowrap shrink-0">
+          {{
+            isPrivacyActive
+              ? 'R$ •••••'
+              : displayMode === 'rentabilidade'
+              ? `${formatCentsToBrl(activePoint.profitInCents)} (+${activePoint.profitPercent.toFixed(2).replace('.', ',')}%)`
+              : formatCentsToBrl(activePoint.netWorthInCents)
+          }}
+        </span>
+        <span :style="{ color: currentBenchmark.color }" class="font-bold whitespace-nowrap shrink-0">
+          {{ activePoint.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }} (<span class="hidden sm:inline">{{ currentBenchmark.shortName }}: </span>+{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%)
+        </span>
       </div>
 
       <svg
