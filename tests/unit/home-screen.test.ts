@@ -64,7 +64,7 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
     expect(wrapper.text()).toContain('Distribuição das Dívidas & Passivos');
   });
 
-  it('deve alternar o período selecionado no dashboard', async () => {
+  it('deve alternar o período selecionado no dashboard e atualizar os KPIs de rendimento para o período escolhido', async () => {
     const wrapper = mount(HomeScreen, {
       props: {
         transactions: mockTransactions,
@@ -73,11 +73,26 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
       },
     });
 
+    // Padrão inicial é 1M (Mês Vigente: 10/2026 -> +34,69%, R$ 34.569,50 inicial)
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('2026-10');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('+34,69%');
+
     const btn3M = wrapper.find('[data-testid="period-filter-3M"]');
     expect(btn3M.exists()).toBe(true);
 
     await btn3M.trigger('click');
     expect(wrapper.text()).toContain('Últimos 3 Meses');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('2026-08');
+
+    // Alternar para Ano Vigente (YTD: 2026-01 -> +36,01%)
+    await wrapper.find('[data-testid="period-filter-YTD"]').trigger('click');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('2026-01');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('+36,01%');
+
+    // Alternar para Tudo (ALL: 2020-07 -> +63,84% s/ capital, R$ 18.142,59)
+    await wrapper.find('[data-testid="period-filter-ALL"]').trigger('click');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('2020-07');
+    expect(wrapper.find('[data-testid="net-worth-historical-kpis"]').text()).toContain('+63,84%');
   });
 
   it('deve acionar a navegação para a Timeline e para Investimentos', async () => {

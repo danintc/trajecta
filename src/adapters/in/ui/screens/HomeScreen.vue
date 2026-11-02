@@ -9,7 +9,7 @@ import NetWorthLineChart from '../components/NetWorthLineChart.vue';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { calculateSavingsRate, calculateNetWorth } from '@/core/use-cases/net-worth-engine.use-case';
-import { deriveUserWealthHistory } from '@/shared/constants/wealth-history';
+import { deriveUserWealthHistory, sliceWealthHistory } from '@/shared/constants/wealth-history';
 import { subMonths, startOfYear, format } from 'date-fns';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
@@ -121,6 +121,77 @@ const netWorthResult = computed(() => {
     openBillsInCents: currentMonthBillsInCents.value,
     futureInstallmentsInCents: futureInstallmentsInCents.value,
   });
+});
+
+// Métricas de Patrimônio & Rentabilidade 100% reativas ao filtro de período selecionado no topo da Home
+const periodWealthMetrics = computed(() => {
+  const series = userWealth.value.series;
+  const summary = userWealth.value.summary;
+  if (!userWealth.value.hasHistory || series.length === 0) {
+    return {
+      startLabel: '-',
+      initialNetWorthInCents: 0,
+      variationInCents: 0,
+      returnPct: 0,
+      avgMonthlyPct: 0,
+      subtitleText: 'Patrimônio consolidado ativo',
+      variationLabel: 'Variação R$',
+      returnLabel: 'Rent. Período',
+    };
+  }
+
+  if (selectedPeriod.value === '1M') {
+    const last = series[series.length - 1];
+    return {
+      startLabel: last.yearMonth,
+      initialNetWorthInCents: last.initialNetWorthInCents,
+      variationInCents: last.monthlyProfitInCents,
+      returnPct: last.monthlyReturnPct,
+      avgMonthlyPct: last.monthlyReturnPct,
+      subtitleText: `em ${last.refDate} (Mês Vigente)`,
+      variationLabel: 'Lucro no Mês',
+      returnLabel: 'Rent. no Mês',
+    };
+  }
+
+  if (selectedPeriod.value === 'ALL') {
+    return {
+      startLabel: summary.startYearMonth,
+      initialNetWorthInCents: summary.initialNetWorthInCents,
+      variationInCents: summary.accumulatedProfitInCents,
+      returnPct: summary.totalProfitabilityPct,
+      avgMonthlyPct: summary.averageMonthlyReturnPct,
+      subtitleText: `desde ${summary.startYearMonth} (${summary.totalMonths} meses)`,
+      variationLabel: 'Lucro Acumulado',
+      returnLabel: 'Rent. s/ Capital',
+    };
+  }
+
+  const slice = sliceWealthHistory(series, selectedPeriod.value);
+  const first = slice[0] || series[0];
+  const last = slice[slice.length - 1] || series[series.length - 1];
+  const initCents = first.initialNetWorthInCents || 1;
+  const finalCents = last.finalNetWorthInCents;
+  const varCents = finalCents - initCents;
+  const retPct = Number((((finalCents - initCents) / initCents) * 100).toFixed(2));
+  const avgMonth =
+    slice.length > 0
+      ? Number((slice.reduce((acc, s) => acc + s.monthlyReturnPct, 0) / slice.length).toFixed(2))
+      : 0;
+
+  return {
+    startLabel: first.yearMonth,
+    initialNetWorthInCents: initCents,
+    variationInCents: varCents,
+    returnPct: retPct,
+    avgMonthlyPct: avgMonth,
+    subtitleText:
+      selectedPeriod.value === 'YTD'
+        ? `no ano de ${last.year} (${slice.length} meses)`
+        : `nos últimos ${slice.length} meses (${first.refDate} a ${last.refDate})`,
+    variationLabel: selectedPeriod.value === 'YTD' ? 'Lucro no Ano' : `Lucro (${selectedPeriod.value})`,
+    returnLabel: selectedPeriod.value === 'YTD' ? 'Retorno no Ano' : `Rent. (${selectedPeriod.value})`,
+  };
 });
 
 const periodSummary = computed(() => {
@@ -462,15 +533,19 @@ const periodLabel = computed(() => {
               >
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.netWorthTotalInCents) }}
               </div>
-              <div v-if="userWealth.hasHistory" class="text-xs text-finance-pos font-semibold truncate">
-                ▲ +{{ userWealth.summary.cumulativeSinceStartPct.toFixed(1).replace('.', ',') }}% desde {{ userWealth.summary.startYearMonth }} ({{ userWealth.summary.totalMonths }} meses)
+              <div
+                v-if="userWealth.hasHistory"
+                class="text-xs font-semibold truncate"
+                :class="periodWealthMetrics.returnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+              >
+                {{ periodWealthMetrics.returnPct >= 0 ? '▲ +' : '▼ ' }}{{ periodWealthMetrics.returnPct.toFixed(2).replace('.', ',') }}% {{ periodWealthMetrics.subtitleText }}
               </div>
               <div v-else class="text-xs text-finance-pos font-semibold truncate">
                 ▲ Patrimônio consolidado ativo
               </div>
             </div>
 
-            <!-- Resumo Histórico da Planilha Rentabilidade (Exibido apenas se o usuário tiver histórico) -->
+            <!-- Resumo de Patrimônio e Rentabilidade Reativo ao Período Selecionado no Topo -->
             <div
               v-if="userWealth.hasHistory"
               data-testid="net-worth-historical-kpis"
@@ -478,34 +553,43 @@ const periodLabel = computed(() => {
             >
               <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
                 <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
-                  Início ({{ userWealth.summary.startYearMonth }})
+                  Início ({{ periodWealthMetrics.startLabel }})
                 </span>
                 <span class="font-mono font-bold text-white">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(userWealth.summary.initialNetWorthInCents) }}
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodWealthMetrics.initialNetWorthInCents) }}
+                </span>
+              </div>
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  {{ periodWealthMetrics.variationLabel }}
+                </span>
+                <span
+                  class="font-mono font-bold"
+                  :class="periodWealthMetrics.variationInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+                >
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(periodWealthMetrics.variationInCents, { showSign: true }) }}
+                </span>
+              </div>
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  {{ periodWealthMetrics.returnLabel }}
+                </span>
+                <span
+                  class="font-mono font-bold"
+                  :class="periodWealthMetrics.returnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+                >
+                  {{ periodWealthMetrics.returnPct >= 0 ? '+' : '' }}{{ periodWealthMetrics.returnPct.toFixed(2).replace('.', ',') }}%
                 </span>
               </div>
               <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
                 <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
                   Média Mensal
                 </span>
-                <span class="font-mono font-bold text-finance-pos">
-                  +{{ userWealth.summary.averageMonthlyReturnPct.toFixed(2).replace('.', ',') }}% / mês
-                </span>
-              </div>
-              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
-                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
-                  Retorno 2026
-                </span>
-                <span class="font-mono font-bold text-finance-pos">
-                  +{{ userWealth.summary.ytd2026ReturnPct.toFixed(2).replace('.', ',') }}%
-                </span>
-              </div>
-              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
-                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
-                  Rent. Global
-                </span>
-                <span class="font-mono font-bold text-accent-yellow">
-                  +{{ userWealth.summary.totalProfitabilityPct.toFixed(2).replace('.', ',') }}%
+                <span
+                  class="font-mono font-bold"
+                  :class="periodWealthMetrics.avgMonthlyPct >= 0 ? 'text-accent-yellow' : 'text-finance-neg'"
+                >
+                  {{ periodWealthMetrics.avgMonthlyPct >= 0 ? '+' : '' }}{{ periodWealthMetrics.avgMonthlyPct.toFixed(2).replace('.', ',') }}% / mês
                 </span>
               </div>
             </div>

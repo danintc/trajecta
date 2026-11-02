@@ -95,11 +95,17 @@ const dataPoints = computed((): NetWorthPoint[] => {
         }));
       }
 
-      const firstVal = Math.max(1, slice[0].initialNetWorthInCents);
+      const isOneMonth = props.selectedPeriod === '1M';
+      const firstVal = Math.max(
+        1,
+        isOneMonth
+          ? slice[slice.length - 1].initialNetWorthInCents
+          : slice[0].initialNetWorthInCents
+      );
       const lastVal = Math.max(1, slice[slice.length - 1].finalNetWorthInCents);
       const bmAnnualReturn = currentBenchmark.value.defaultPeriodReturn;
-      const totalMonthsInSlice = Math.max(1, slice.length);
-      const periodBmReturn = bmAnnualReturn * (totalMonthsInSlice / 12);
+      const elapsedMonths = isOneMonth ? 1 : Math.max(1, slice.length);
+      const periodBmReturn = bmAnnualReturn * (elapsedMonths / 12);
       const isAllPeriod = props.selectedPeriod === 'ALL';
       const totalAccumulatedProfit = isAllPeriod
         ? userWealth.value.summary.accumulatedProfitInCents
@@ -113,7 +119,7 @@ const dataPoints = computed((): NetWorthPoint[] => {
           lastVal > firstVal ? Math.max(0, (nw - firstVal) / (lastVal - firstVal)) : progress;
         const yieldNw = isAllPeriod
           ? Math.round(totalAccumulatedProfit * nwProgressRatio)
-          : nw - firstVal;
+          : Math.max(0, nw - firstVal);
         const yieldBm = Math.max(0, bmVal - firstVal);
         const milestone = getCareerMilestoneForMonth(
           entry.yearMonth,
@@ -226,10 +232,15 @@ const metrics = computed(() => {
       percentOfBenchmark: 100,
     };
   }
-  const startNw =
+  const activeSlice =
     props.selectedPeriod && userWealth.value.hasHistory
-      ? sliceWealthHistory(userWealth.value.series, props.selectedPeriod)[0]?.initialNetWorthInCents ||
-        dataPoints.value[0].netWorthInCents
+      ? sliceWealthHistory(userWealth.value.series, props.selectedPeriod)
+      : [];
+  const startNw =
+    activeSlice.length > 0
+      ? props.selectedPeriod === '1M'
+        ? activeSlice[activeSlice.length - 1].initialNetWorthInCents
+        : activeSlice[0].initialNetWorthInCents
       : dataPoints.value[0].netWorthInCents;
   const currentIdx = Math.min(Math.max(0, activeIdx.value), dataPoints.value.length - 1);
   const currentPt = dataPoints.value[currentIdx] || dataPoints.value[dataPoints.value.length - 1];
@@ -242,7 +253,14 @@ const metrics = computed(() => {
     userWealth.value.hasHistory
       ? userWealth.value.summary.totalProfitabilityPct * progressRatio
       : ((endNw - startNw) / startNw) * 100;
-  const bmGrowth = currentBenchmark.value.defaultPeriodReturn * progressRatio;
+  const elapsedMonths =
+    activeSlice.length > 0
+      ? props.selectedPeriod === '1M'
+        ? 1
+        : activeSlice.length
+      : 12;
+  const bmGrowth =
+    currentBenchmark.value.defaultPeriodReturn * (elapsedMonths / 12) * progressRatio;
 
   const growthPercent = Number(nwGrowth.toFixed(1));
   const benchmarkGrowthPercent = Number(bmGrowth.toFixed(1));
