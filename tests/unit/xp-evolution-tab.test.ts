@@ -313,4 +313,30 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     await wrapper.find('[data-testid="btn-evolution-goto-home"]').trigger('click');
     expect(wrapper.emitted('navigateToHome')).toBeTruthy();
   });
+
+  it('deve manter a mesma rentabilidade (63,84%) e percentual do benchmark (92,48% do CDI) tanto na aba Rentabilidade quanto na aba Patrimônio em Desde o início (07/2020)', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    const periodSelect = wrapper.find('[data-testid="select-evolution-period"]');
+    await periodSelect.setValue('since_2020');
+
+    // Na aba Rentabilidade: 63,84% de retorno, 92,48% do CDI e índice CDI +69,03%
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('63,84%');
+    expect(wrapper.text()).toContain('92,48% do CDI');
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('92,48% do CDI');
+    expect(wrapper.find('[data-testid="evolution-chart-floating-value"]').text()).toContain('69,03%');
+    expect(wrapper.find('[data-testid="evolution-point-info"]').text()).toContain('92,48% do CDI');
+
+    // Ao alternar para a aba Patrimônio, não deve distorcer para 3747,79% do CDI
+    await wrapper.find('[data-testid="tab-mode-patrimonio"]').trigger('click');
+    expect(wrapper.find('[data-testid="evolution-header-primary-value"]').text()).toContain('46.563,38');
+    expect(wrapper.find('[data-testid="evolution-header-profit-pct"]').text()).toContain('63,84%');
+    expect(wrapper.text()).toContain('92,48% do CDI');
+    expect(wrapper.text()).not.toContain('3747,79% do CDI');
+  });
 });

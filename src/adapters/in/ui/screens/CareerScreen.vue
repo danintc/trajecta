@@ -403,14 +403,15 @@ const maxSalaryInCents = computed(() => {
         @primary-action="handleOpenNewRecord"
       />
 
-      <div v-else class="relative pl-6 border-l-2 border-border-subtle space-y-6 ml-3 pt-2">
+      <div v-else class="relative pl-4 sm:pl-6 border-l-2 border-border-subtle space-y-4 ml-2 sm:ml-3 pt-2">
         <div
           v-for="(record, index) in sortedRecordsDesc"
           :key="record.id"
-          class="relative group bg-background/60 border border-border-subtle/80 rounded-xl p-4"
+          :data-testid="`career-milestone-card-${record.id}`"
+          class="relative group bg-background/60 border border-border-subtle/80 rounded-xl p-3.5 sm:p-4 w-full space-y-3"
         >
           <div
-            class="absolute -left-[33px] top-5 w-4 h-4 rounded-full border-4 border-background transition"
+            class="absolute -left-[25px] sm:-left-[33px] top-4 sm:top-5 w-4 h-4 rounded-full border-4 border-background transition"
             :class="
               index === 0 && !record.endDate
                 ? 'bg-finance-career ring-2 ring-finance-career/20'
@@ -418,10 +419,11 @@ const maxSalaryInCents = computed(() => {
             "
           />
 
-          <div class="flex items-start justify-between gap-2">
-            <div class="space-y-1.5 min-w-0 flex-1">
+          <!-- Cabeçalho do Card: Cargo, Status, Empresa/Período à esquerda | Ações à direita -->
+          <div class="flex items-start justify-between gap-2 w-full">
+            <div class="space-y-1 min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-extrabold text-white">
+                <span class="text-sm sm:text-base font-extrabold text-white break-words">
                   {{ record.role }}
                 </span>
                 <span
@@ -438,39 +440,9 @@ const maxSalaryInCents = computed(() => {
                 </span>
               </div>
 
-              <div class="text-xs text-finance-neutral">
+              <div class="text-xs text-finance-neutral break-words">
                 {{ record.company }} • {{ record.startDate }}
                 {{ record.endDate ? `— ${record.endDate}` : '— Presente' }}
-              </div>
-
-              <div class="pt-1.5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                <div class="bg-surface px-2.5 py-1.5 rounded-lg border border-border-subtle/60">
-                  <span class="text-[10px] text-[#71717A] font-sans block">Salário Bruto</span>
-                  <strong class="text-white whitespace-nowrap">
-                    {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.grossSalaryInCents) }}
-                  </strong>
-                </div>
-
-                <div class="bg-surface px-2.5 py-1.5 rounded-lg border border-border-subtle/60">
-                  <span class="text-[10px] text-[#71717A] font-sans block">Salário Líquido</span>
-                  <strong class="text-finance-pos whitespace-nowrap">
-                    {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.netSalaryInCents) }}
-                  </strong>
-                </div>
-
-                <div class="bg-surface px-2.5 py-1.5 rounded-lg border border-border-subtle/60">
-                  <span class="text-[10px] text-[#71717A] font-sans block">Benefícios (VR/VA)</span>
-                  <strong class="text-white whitespace-nowrap">
-                    {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.mealAllowanceInCents) }}
-                  </strong>
-                </div>
-
-                <div class="bg-surface px-2.5 py-1.5 rounded-lg border border-border-subtle/60">
-                  <span class="text-[10px] text-[#71717A] font-sans block">Bônus Anual</span>
-                  <strong class="text-accent-yellow whitespace-nowrap">
-                    {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.annualBonusEstimatedInCents) }}
-                  </strong>
-                </div>
               </div>
             </div>
 
@@ -493,6 +465,37 @@ const maxSalaryInCents = computed(() => {
               >
                 <AppIcon name="trash" size="15" />
               </button>
+            </div>
+          </div>
+
+          <!-- Grade de Valores ocupando 100% da largura do Card -->
+          <div class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 text-xs font-mono">
+            <div class="w-full bg-surface px-3 py-2 rounded-xl border border-border-subtle/60 flex flex-col justify-between">
+              <span class="text-[10px] text-[#71717A] font-sans block">Salário Bruto</span>
+              <strong class="text-white text-xs sm:text-sm whitespace-nowrap mt-0.5">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.grossSalaryInCents) }}
+              </strong>
+            </div>
+
+            <div class="w-full bg-surface px-3 py-2 rounded-xl border border-border-subtle/60 flex flex-col justify-between">
+              <span class="text-[10px] text-[#71717A] font-sans block">Salário Líquido</span>
+              <strong class="text-finance-pos text-xs sm:text-sm whitespace-nowrap mt-0.5">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.netSalaryInCents) }}
+              </strong>
+            </div>
+
+            <div class="w-full bg-surface px-3 py-2 rounded-xl border border-border-subtle/60 flex flex-col justify-between">
+              <span class="text-[10px] text-[#71717A] font-sans block">Benefícios (VR/VA)</span>
+              <strong class="text-white text-xs sm:text-sm whitespace-nowrap mt-0.5">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.mealAllowanceInCents) }}
+              </strong>
+            </div>
+
+            <div class="w-full bg-surface px-3 py-2 rounded-xl border border-border-subtle/60 flex flex-col justify-between">
+              <span class="text-[10px] text-[#71717A] font-sans block">Bônus Anual</span>
+              <strong class="text-accent-yellow text-xs sm:text-sm whitespace-nowrap mt-0.5">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(record.annualBonusEstimatedInCents) }}
+              </strong>
             </div>
           </div>
         </div>
@@ -563,6 +566,7 @@ const maxSalaryInCents = computed(() => {
     <AddCareerModal
       :is-open="isAddModalOpen"
       :record-to-edit="recordToEdit"
+      :existing-records="careerRecords"
       @close="
         isAddModalOpen = false;
         recordToEdit = null;

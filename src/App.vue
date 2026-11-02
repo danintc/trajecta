@@ -346,9 +346,17 @@ async function handleLogout() {
               Trajecta
             </span>
             <span
-              class="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 bg-finance-pos/15 text-finance-pos border border-finance-pos/30"
+              data-testid="cloud-sync-indicator"
+              :title="isSyncingCloud ? 'Sincronizando com a nuvem...' : 'Salvo na nuvem'"
+              :aria-label="isSyncingCloud ? 'Sincronizando com a nuvem' : 'Salvo na nuvem'"
+              class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 border transition-colors"
+              :class="
+                isSyncingCloud
+                  ? 'bg-accent-yellow/15 text-accent-yellow border-accent-yellow/30 animate-pulse'
+                  : 'bg-finance-pos/15 text-finance-pos border-finance-pos/30'
+              "
             >
-              {{ isSyncingCloud ? 'Sincronizando...' : 'Salvo na nuvem' }}
+              <AppIcon :name="isSyncingCloud ? 'cloud-sync' : 'cloud-check'" size="13" />
             </span>
           </div>
           <p class="text-xs text-[#71717A] hidden sm:block">

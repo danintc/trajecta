@@ -10,7 +10,7 @@ import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { calculateSavingsRate, calculateNetWorth } from '@/core/use-cases/net-worth-engine.use-case';
 import { deriveUserWealthHistory, sliceWealthHistory } from '@/shared/constants/wealth-history';
-import { subMonths, startOfYear, format } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, format } from 'date-fns';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
 export type PeriodFilter = '1M' | '3M' | '6M' | 'YTD' | 'ALL';
@@ -44,15 +44,27 @@ const today = new Date();
 const todayStr = format(today, 'yyyy-MM-dd');
 const currentYearMonth = format(today, 'yyyy-MM');
 
-// Data de referência baseada no lançamento mais recente até hoje (ou data atual)
+// Data de referência alinhada ao Extrato (se o mês atual possui lançamentos, usa o mês atual; caso contrário, usa o último mês até o fim do mês vigente)
 const referenceDate = computed(() => {
+  const hasCurrentMonthTx = props.transactions.some((t) =>
+    t.date.startsWith(currentYearMonth)
+  );
+  if (hasCurrentMonthTx) {
+    return today;
+  }
+
+  const endOfCurrentMonthStr = format(endOfMonth(today), 'yyyy-MM-dd');
   const pastDates = props.transactions
     .map((t) => t.date)
-    .filter((d) => d <= todayStr)
+    .filter((d) => d <= endOfCurrentMonthStr)
     .sort((a, b) => b.localeCompare(a));
 
   if (pastDates.length > 0) {
     return new Date(`${pastDates[0]}T12:00:00Z`);
+  }
+  if (props.transactions.length > 0) {
+    const sortedDates = props.transactions.map((t) => t.date).sort((a, b) => b.localeCompare(a));
+    return new Date(`${sortedDates[0]}T12:00:00Z`);
   }
   return today;
 });
@@ -65,9 +77,9 @@ const periodStartDate = computed(() => {
     case '1M':
       return `${referenceYearMonth.value}-01`;
     case '3M':
-      return format(subMonths(refDate, 3), 'yyyy-MM-dd');
+      return format(startOfMonth(subMonths(refDate, 2)), 'yyyy-MM-dd');
     case '6M':
-      return format(subMonths(refDate, 6), 'yyyy-MM-dd');
+      return format(startOfMonth(subMonths(refDate, 5)), 'yyyy-MM-dd');
     case 'YTD':
       return format(startOfYear(refDate), 'yyyy-MM-dd');
     case 'ALL':
@@ -76,9 +88,15 @@ const periodStartDate = computed(() => {
   }
 });
 
+const periodEndDate = computed(() => {
+  return format(endOfMonth(referenceDate.value), 'yyyy-MM-dd');
+});
+
 const filteredTransactions = computed(() => {
   if (selectedPeriod.value === 'ALL') return props.transactions;
-  return props.transactions.filter((t) => t.date >= periodStartDate.value);
+  return props.transactions.filter(
+    (t) => t.date >= periodStartDate.value && t.date <= periodEndDate.value
+  );
 });
 
 // CÁLCULOS PATRIMONIAIS & BALANÇO

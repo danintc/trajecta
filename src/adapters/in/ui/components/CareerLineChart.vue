@@ -98,6 +98,16 @@ const xAxisStep = computed(() => {
   if (coords.value.length <= 5) return 1;
   return Math.max(2, Math.ceil(coords.value.length / 5));
 });
+
+function selectPrevPoint() {
+  if (coords.value.length === 0) return;
+  selectedIdx.value = Math.max(0, activePointIdx.value - 1);
+}
+
+function selectNextPoint() {
+  if (coords.value.length === 0) return;
+  selectedIdx.value = Math.min(coords.value.length - 1, activePointIdx.value + 1);
+}
 </script>
 
 <template>
@@ -105,7 +115,7 @@ const xAxisStep = computed(() => {
     data-testid="career-line-chart"
     class="flex flex-col justify-between w-full h-full select-none space-y-3"
   >
-    <!-- Legenda / Barra Informativa do Ponto Selecionado -->
+    <!-- Legenda / Barra Informativa do Ponto Selecionado + Navegação Compacta -->
     <div
       v-if="activePoint"
       class="bg-background/90 rounded-xl border border-finance-career/30 p-3 space-y-2 overflow-hidden shadow-sm"
@@ -116,9 +126,51 @@ const xAxisStep = computed(() => {
           <span class="font-bold text-white text-xs sm:text-sm break-words">{{ activePoint.role }}</span>
           <span v-if="activePoint.company" class="text-xs text-[#A1A1AA] break-words">• {{ activePoint.company }}</span>
         </div>
-        <span class="text-[10px] sm:text-[11px] text-finance-career font-bold bg-finance-career/10 border border-finance-career/25 px-2.5 py-0.5 rounded-md shrink-0 font-mono">
-          {{ activePoint.label }}
-        </span>
+
+        <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+          <span class="text-[10px] sm:text-[11px] text-finance-career font-bold bg-finance-career/10 border border-finance-career/25 px-2.5 py-0.5 rounded-md shrink-0 font-mono">
+            {{ activePoint.label }}
+          </span>
+
+          <div
+            v-if="coords.length > 1"
+            class="inline-flex items-center gap-1 bg-surface border border-border-subtle rounded-lg px-1 py-0.5"
+          >
+            <button
+              type="button"
+              data-testid="career-chart-prev"
+              :disabled="activePointIdx === 0"
+              aria-label="Marco anterior"
+              class="w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition"
+              :class="
+                activePointIdx === 0
+                  ? 'text-[#52525B] cursor-not-allowed'
+                  : 'text-white hover:bg-finance-career/20 hover:text-finance-career cursor-pointer'
+              "
+              @click="selectPrevPoint"
+            >
+              ‹
+            </button>
+            <span class="text-[10px] font-mono text-[#A1A1AA] px-1">
+              {{ activePointIdx + 1 }}/{{ coords.length }}
+            </span>
+            <button
+              type="button"
+              data-testid="career-chart-next"
+              :disabled="activePointIdx === coords.length - 1"
+              aria-label="Próximo marco"
+              class="w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition"
+              :class="
+                activePointIdx === coords.length - 1
+                  ? 'text-[#52525B] cursor-not-allowed'
+                  : 'text-white hover:bg-finance-career/20 hover:text-finance-career cursor-pointer'
+              "
+              @click="selectNextPoint"
+            >
+              ›
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-1.5 border-t border-border-subtle/50">
@@ -256,27 +308,46 @@ const xAxisStep = computed(() => {
       </svg>
     </div>
 
-    <!-- Legenda de Pontos Clicáveis Abaixo do Gráfico -->
-    <div class="flex flex-wrap items-center gap-2 pt-0.5">
+    <!-- Resumo Compacto de Extremos (Início vs Atual) sem listar todos os cargos -->
+    <div
+      v-if="coords.length >= 2"
+      data-testid="career-chart-endpoints"
+      class="flex items-center justify-between gap-2 pt-0.5 text-[11px]"
+    >
       <button
-        v-for="(pt, idx) in coords"
-        :key="`legend-${idx}`"
         type="button"
-        class="px-2.5 py-1.5 rounded-xl border text-xs flex flex-wrap items-center gap-1.5 transition cursor-pointer text-left"
+        data-testid="career-endpoint-start"
+        class="px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 transition cursor-pointer min-w-0"
         :class="
-          activePointIdx === idx
-            ? 'bg-finance-career/15 border-finance-career text-white font-bold shadow-sm'
+          activePointIdx === 0
+            ? 'bg-finance-career/15 border-finance-career text-white font-bold'
             : 'bg-background border-border-subtle text-[#A1A1AA] hover:text-white'
         "
-        @click="selectedIdx = idx"
+        @click="selectedIdx = 0"
       >
-        <span
-          class="w-2 h-2 rounded-full shrink-0"
-          :class="activePointIdx === idx ? 'bg-finance-career' : 'bg-[#52525B]'"
-        />
-        <span class="font-mono text-[11px] text-finance-career shrink-0">{{ pt.shortDate }}</span>
-        <span class="break-words">{{ pt.role }}</span>
-        <span class="text-[10px] text-[#71717A] hidden sm:inline">• {{ pt.label }}</span>
+        <span class="text-[10px] uppercase tracking-wider text-[#71717A] shrink-0">Início:</span>
+        <span class="font-mono text-finance-career shrink-0">{{ coords[0].shortDate }}</span>
+        <span class="truncate text-[#A1A1AA] hidden sm:inline">• {{ coords[0].label }}</span>
+      </button>
+
+      <span class="text-[10px] text-[#71717A] text-center hidden sm:inline">
+        Toque nos pontos do gráfico para inspecionar
+      </span>
+
+      <button
+        type="button"
+        data-testid="career-endpoint-current"
+        class="px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 transition cursor-pointer min-w-0"
+        :class="
+          activePointIdx === coords.length - 1
+            ? 'bg-finance-career/15 border-finance-career text-white font-bold'
+            : 'bg-background border-border-subtle text-[#A1A1AA] hover:text-white'
+        "
+        @click="selectedIdx = coords.length - 1"
+      >
+        <span class="text-[10px] uppercase tracking-wider text-[#71717A] shrink-0">Atual:</span>
+        <span class="font-mono text-finance-career shrink-0">{{ coords[coords.length - 1].shortDate }}</span>
+        <span class="truncate text-[#A1A1AA] hidden sm:inline">• {{ coords[coords.length - 1].label }}</span>
       </button>
     </div>
   </div>

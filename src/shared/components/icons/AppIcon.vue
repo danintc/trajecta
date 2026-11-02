@@ -28,6 +28,8 @@ export type IconName =
   | 'bar-chart'
   | 'layers'
   | 'upload'
+  | 'cloud-check'
+  | 'cloud-sync'
   // Categorias de Gastos (Money Tracker)
   | 'utensils' // Alimentação
   | 'beer' // Bebidas
@@ -226,6 +228,17 @@ const stroke = computed(() => Number(props.strokeWidth) || 2);
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
+    </g>
+
+    <g v-else-if="name === 'cloud-check'">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+      <path d="m9 13 2 2 4-4" />
+    </g>
+
+    <g v-else-if="name === 'cloud-sync'">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+      <path d="M12 11v4" />
+      <path d="m10 13 2-2 2 2" />
     </g>
 
     <!-- Categorias do Money Tracker -->

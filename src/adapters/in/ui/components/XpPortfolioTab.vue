@@ -381,6 +381,12 @@ function handleSelectInstitution(inst: string) {
   } else {
     selectedInstitutionFilter.value = inst;
   }
+  if (
+    selectedClassFilter.value !== 'ALL' &&
+    (classAssetCounts.value[selectedClassFilter.value] || 0) === 0
+  ) {
+    selectedClassFilter.value = 'ALL';
+  }
 }
 
 function mapAssetToPortfolioItem(a: Asset, portfolioTotalCents: number): PortfolioAssetItem {
@@ -890,6 +896,13 @@ function toggleCategoryExpansion(key: string) {
 }
 
 function handleSelectClassFilter(clsKey: string) {
+  if (
+    clsKey !== 'ALL' &&
+    props.assets.length > 0 &&
+    (classAssetCounts.value[clsKey] || 0) === 0
+  ) {
+    return;
+  }
   hoveredCategoryKey.value = null;
   if (clsKey === 'ALL' || selectedClassFilter.value === clsKey) {
     selectedClassFilter.value = 'ALL';
@@ -1078,14 +1091,16 @@ function handleSelectClassFilter(clsKey: string) {
           :key="cls.key"
           :data-testid="`class-filter-btn-${cls.key}`"
           :data-selected="selectedClassFilter === cls.key ? 'true' : 'false'"
+          :disabled="cls.key !== 'ALL' && (classAssetCounts[cls.key] || 0) === 0"
+          :aria-disabled="cls.key !== 'ALL' && (classAssetCounts[cls.key] || 0) === 0"
           type="button"
-          class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border cursor-pointer flex items-center gap-1"
+          class="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition shrink-0 border flex items-center gap-1"
           :class="
             selectedClassFilter === cls.key
-              ? 'bg-finance-invest text-black font-bold border-finance-invest'
+              ? 'bg-finance-invest text-black font-bold border-finance-invest cursor-pointer'
               : (classAssetCounts[cls.key] || 0) > 0
-                ? 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white'
-                : 'bg-background/40 text-[#52525B] border-border-subtle/40 hover:text-[#A1A1AA]'
+                ? 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white cursor-pointer'
+                : 'bg-background/30 text-[#52525B] border-border-subtle/30 opacity-45 cursor-not-allowed'
           "
           @click="handleSelectClassFilter(cls.key)"
         >

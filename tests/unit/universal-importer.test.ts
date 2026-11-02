@@ -138,5 +138,80 @@ describe('Universal Importer Engine (Google Sheets, Multi-Tab XLSX, PDF & OFX)',
     // Buffer vazio deve retornar erro amigável
     const emptyWorkbook = await parseUniversalWorkbookBuffer(new ArrayBuffer(0));
     expect(emptyWorkbook.success).toBe(false);
+
+    // Texto em branco deve retornar erro amigável
+    const emptyText = await parseStatementTextOrPdf('   ');
+    expect(emptyText.success).toBe(false);
+    expect(emptyText.errors.length).toBeGreaterThan(0);
+
+    // Texto sem padrão reconhecível deve retornar erro orientativo
+    const unrecognizedText = await parseStatementTextOrPdf('Linha aleatória sem valores nem datas');
+    expect(unrecognizedText.success).toBe(false);
+  });
+
+  it('deve importar planilha tabular customizada de transações e remover órfãos quando replaceExistingData for ativado', async () => {
+    const XLSX = await import('xlsx');
+    const customRows = [
+      {
+        Data: '2026-10-05',
+        Descrição: 'Dividendo PSSA3',
+        Valor: 'R$ 120,00',
+        Tipo: 'Dividendo',
+        Categoria: 'cat-investimentos',
+        Conta: 'XP Investimentos',
+      },
+      {
+        Data: '2026-10-06',
+        Descrição: 'Supermercado',
+        Valor: 'R$ 350,00',
+        Tipo: 'Despesa',
+      },
+      {
+        Data: '2026-10-07',
+        Descrição: '',
+        Valor: null,
+      },
+      {
+        Data: '2026-10-08',
+        Descrição: 'Valor Zero Inválido',
+        Valor: 0,
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(customRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Extrato Outubro');
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+
+    const parsed = await parseUniversalWorkbookBuffer(buf, 'Planilha Customizada');
+    expect(parsed.success).toBe(true);
+    expect(parsed.transactions).toHaveLength(2);
+    expect(parsed.transactions[0].type).toBe('dividend');
+    expect(parsed.errors).toHaveLength(2);
+
+    // Insere dados antigos no banco para testar substituição e limpeza de órfãos (staleIds)
+    await db.transactions.add({
+      id: 'tx-stale-1',
+      type: 'expense',
+      description: 'Transação Antiga Órfã',
+      amountInCents: 9900,
+      date: '2025-01-01',
+      categoryId: 'cat-outros',
+      accountOrCard: 'Antiga',
+      isInstallment: false,
+      source: 'manual',
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    });
+
+    const commitRes = await commitUniversalImport(parsed, { replaceExistingData: true });
+    expect(commitRes.success).toBe(true);
+    expect(commitRes.transactionsImported).toBe(2);
+    expect(await db.transactions.count()).toBe(2);
+
+    // URL vazia no Google Sheets deve retornar erro amigável
+    const emptyUrlRes = await parseGoogleSheetByUrlOrPreset('   ');
+    expect(emptyUrlRes.success).toBe(false);
+    expect(emptyUrlRes.errors[0]).toContain('URL do Google Sheets inválida');
   });
 });

@@ -1416,11 +1416,27 @@ export async function commitUniversalImport(
         const key = `${item.startDate}:${item.role.toUpperCase().trim()}`;
         const existing = byDateAndRole.get(key);
 
+        const isIncomingCompanyGeneric =
+          !item.company ||
+          ['tech & qa engineering', 'laboratório clínico', 'laboratorio clinico', 'empresa'].includes(
+            item.company.trim().toLowerCase()
+          );
+        const isExistingCompanyCustom =
+          existing?.company &&
+          !['tech & qa engineering', 'laboratório clínico', 'laboratorio clinico', 'empresa'].includes(
+            existing.company.trim().toLowerCase()
+          );
+
+        const resolvedCompany =
+          isIncomingCompanyGeneric && isExistingCompanyCustom && existing
+            ? existing.company
+            : item.company;
+
         const entity: CareerRecord = {
           id: existing
             ? existing.id
-            : generateDeterministicCareerId(item.startDate, item.role, item.company),
-          company: item.company,
+            : generateDeterministicCareerId(item.startDate, item.role, resolvedCompany),
+          company: resolvedCompany,
           role: item.role,
           startDate: item.startDate,
           endDate: item.endDate || (nextItem ? nextItem.startDate : undefined),

@@ -3,6 +3,7 @@ import {
   formatCentsToBrl,
   parseBrlToCents,
   formatCentsToDecimal,
+  formatIntegerWithDots,
   sanitizeCurrencyInput,
   normalizeCurrencyOnBlur,
   globalCurrency,
@@ -17,6 +18,7 @@ import {
 
 describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
   beforeEach(() => {
+    localStorage.clear();
     setGlobalCurrency('BRL');
     setUsdExchangeRate(USD_EXCHANGE_RATE, 'Referência', null);
   });
@@ -43,21 +45,30 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(parseBrlToCents('3450')).toBe(345000);
     expect(parseBrlToCents('23000')).toBe(2300000);
     expect(parseBrlToCents('100.000')).toBe(10000000);
+    expect(parseBrlToCents('1.000.000')).toBe(100000000);
     expect(parseBrlToCents(10.5)).toBe(1050);
     expect(parseBrlToCents('')).toBe(0);
     expect(parseBrlToCents('abc')).toBe(0);
   });
 
-  it('formatCentsToDecimal deve sempre gerar formato com exatamente 2 casas decimais e separador de milhar', () => {
+  it('formatCentsToDecimal e formatIntegerWithDots devem formatar corretamente com separadores de milhar', () => {
     expect(formatCentsToDecimal(345000)).toBe('3.450,00');
+    expect(formatCentsToDecimal(-345000)).toBe('-3.450,00');
     expect(formatCentsToDecimal(2300000)).toBe('23.000,00');
     expect(formatCentsToDecimal(710000)).toBe('7.100,00');
     expect(formatCentsToDecimal(15050)).toBe('150,50');
     expect(formatCentsToDecimal(0)).toBe('0,00');
+
+    expect(formatIntegerWithDots('')).toBe('');
+    expect(formatIntegerWithDots('abc')).toBe('');
+    expect(formatIntegerWithDots('000')).toBe('0');
+    expect(formatIntegerWithDots('7100')).toBe('7.100');
+    expect(formatIntegerWithDots('1000000')).toBe('1.000.000');
   });
 
   it('sanitizeCurrencyInput deve deslocar dígitos da direita para a esquerda mantendo sempre 2 decimais e milhar', () => {
     expect(sanitizeCurrencyInput('')).toBe('0,00');
+    expect(sanitizeCurrencyInput('abc')).toBe('0,00');
     expect(sanitizeCurrencyInput('0,007')).toBe('0,07');
     expect(sanitizeCurrencyInput('0,071')).toBe('0,71');
     expect(sanitizeCurrencyInput('0,710')).toBe('7,10');
@@ -85,12 +96,21 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(USD_EXCHANGE_RATE).toBe(5.65);
     expect(globalCurrency.value).toBe('BRL');
 
+    // Ignora taxas inválidas em setUsdExchangeRate
+    setUsdExchangeRate(-5);
+    setUsdExchangeRate(NaN);
+    expect(usdExchangeRate.value).toBe(5.65);
+
     toggleGlobalCurrency();
     expect(globalCurrency.value).toBe('USD');
 
     // R$ 565,00 (56500 centavos) na cotação 5.65 deve virar $100.00
     const strUsd = formatCentsToBrl(56500);
     expect(strUsd).toContain('$100.00');
+
+    // Com showSign em USD
+    const strSignUsd = formatCentsToBrl(56500, { showSign: true });
+    expect(strSignUsd).toContain('+$100.00');
 
     // Com valor negativo
     const strNegUsd = formatCentsToBrl(-56500);
@@ -102,7 +122,7 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(formatCentsToBrl(56500)).toContain('565,00');
   });
 
-  it('deve buscar a cotação do dólar em tempo real na AwesomeAPI e atualizar a conversão USD reativamente', async () => {
+  it('deve buscar a cotação do dólar em tempo real na AwesomeAPI e usar cache TTL quando não forçado', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -124,6 +144,14 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(rate).toBe(5);
     expect(usdExchangeRate.value).toBe(5);
     expect(usdRateSource.value).toBe('AwesomeAPI (Comercial)');
+
+    // Chamada subsequente sem force deve retornar imediatamente do cache TTL em memória
+    const cachedRate = await fetchLiveUsdExchangeRate({
+      force: false,
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+    expect(cachedRate).toBe(5);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     setGlobalCurrency('USD');
     // R$ 500,00 (50000 centavos) na cotação em tempo real 5.00 -> $100.00
@@ -147,5 +175,58 @@ describe('Currency Utils (formatCentsToBrl & parseBrlToCents)', () => {
     expect(rate).toBe(5.04);
     expect(usdExchangeRate.value).toBe(5.04);
     expect(usdRateSource.value).toBe('Banco Central (PTAX)');
+  });
+
+  it('deve fazer fallback para ExchangeRate-API (Fonte 3) e Frankfurter BCE (Fonte 4) ou cache local quando provedores anteriores falharem', async () => {
+    // Fonte 1 e 2 falham -> Fonte 3 (ExchangeRate-API) responde
+    const mockFetchErApi = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('AwesomeAPI down'))
+      .mockRejectedValueOnce(new Error('BCB down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          rates: { BRL: 5.12 },
+          time_last_update_utc: '2026-10-25T18:00:00Z',
+        }),
+      });
+
+    const rate3 = await fetchLiveUsdExchangeRate({
+      force: true,
+      fetchImpl: mockFetchErApi as unknown as typeof fetch,
+    });
+    expect(rate3).toBe(5.12);
+    expect(usdRateSource.value).toBe('ExchangeRate-API');
+
+    // Fonte 1, 2 e 3 falham -> Fonte 4 (Frankfurter BCE) responde
+    const mockFetchBce = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('AwesomeAPI down'))
+      .mockRejectedValueOnce(new Error('BCB down'))
+      .mockRejectedValueOnce(new Error('ER-API down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          rates: { BRL: 5.25 },
+          date: '2026-10-25',
+        }),
+      });
+
+    const rate4 = await fetchLiveUsdExchangeRate({
+      force: true,
+      fetchImpl: mockFetchBce as unknown as typeof fetch,
+    });
+    expect(rate4).toBe(5.25);
+    expect(usdRateSource.value).toBe('BCE (Frankfurter)');
+
+    // Todas as 4 fontes falham -> restaura do cache local salvo no localStorage
+    setUsdExchangeRate(USD_EXCHANGE_RATE, 'Referência', null);
+    const mockFetchAllFail = vi.fn().mockRejectedValue(new Error('Offline'));
+    const rateFallback = await fetchLiveUsdExchangeRate({
+      force: true,
+      fetchImpl: mockFetchAllFail as unknown as typeof fetch,
+    });
+    expect(rateFallback).toBe(5.25);
+    expect(usdRateSource.value).toContain('(Cache)');
   });
 });

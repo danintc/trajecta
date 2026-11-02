@@ -101,16 +101,11 @@ const periodConfig = computed(() => {
     const annualInfo = userWealth.value.annualReturns.find(
       (a) => a.year === (selectedYear.value === 'ytd' ? '2026' : selectedYear.value)
     );
-    const isRentMode = displayMode.value === 'rentabilidade';
     const profitPct = isSinceStart
-      ? isRentMode
-        ? userWealth.value.summary.totalProfitabilityPct
-        : userWealth.value.summary.cumulativeSinceStartPct
+      ? userWealth.value.summary.totalProfitabilityPct
       : annualInfo?.returnPct ?? Number((((lastVal - firstVal) / firstVal) * 100).toFixed(2));
     const exactProfitCents = isSinceStart
-      ? isRentMode
-        ? userWealth.value.summary.accumulatedProfitInCents
-        : lastVal - firstVal
+      ? userWealth.value.summary.accumulatedProfitInCents
       : lastVal - firstVal;
     const exactCostCents = isSinceStart
       ? userWealth.value.summary.investedCapitalInCents
@@ -329,9 +324,11 @@ const timelinePoints = computed(() => {
     const benchmarkReturn = isLast
       ? fullBmReturn
       : Number((fullBmReturn * m.factorBm).toFixed(2));
-    const benchmarkInCents = Math.round(
-      currentTotal * 0.91 * (1 + (fullBmReturn / 100) * (idx / (months.length - 1 || 1)))
-    );
+    const bmProfitInCents =
+      cfg.profitPct !== 0
+        ? Math.round(fullProfitInCents * (benchmarkReturn / cfg.profitPct))
+        : Math.round(currentTotal * (benchmarkReturn / 100));
+    const benchmarkInCents = Math.max(0, netWorthInCents - profitInCents + bmProfitInCents);
     const pctOfBenchmark = calculatePercentOfBenchmark(profitPercent, benchmarkReturn);
 
     const nwVal = isRent ? profitPercent : netWorthInCents;
@@ -854,7 +851,7 @@ function handleBarHover(idx: number) {
           </span>
           <span class="text-[#52525B]">|</span>
           <span :style="{ color: currentBenchmark.color }" class="font-bold whitespace-nowrap">
-            {{ currentBenchmark.shortName }}: +{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%
+            {{ activePoint.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }} ({{ currentBenchmark.shortName }}: +{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%)
           </span>
         </div>
       </div>
@@ -1025,10 +1022,12 @@ function handleBarHover(idx: number) {
               class="w-2.5 h-2.5 rounded-full shrink-0"
               :style="{ backgroundColor: currentBenchmark.color }"
             />
-            <span class="font-bold text-white font-sans">{{ currentBenchmark.shortName }}</span>
-            <strong class="font-bold text-finance-pos" :style="{ color: currentBenchmark.color }">
-              ↑ {{ portfolioValues.benchmarkReturn.toFixed(2).replace('.', ',') }}%
+            <strong class="font-bold text-white font-sans">
+              {{ activePoint.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }}
             </strong>
+            <span class="text-[#71717A] text-[10px] sm:text-[11px]" :style="{ color: currentBenchmark.color }">
+              (Índice {{ currentBenchmark.shortName }}: ↑ {{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%)
+            </span>
           </span>
         </div>
       </div>

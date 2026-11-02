@@ -114,4 +114,83 @@ describe('HomeScreen Component (Pure Dashboard com Donut Charts & Net Worth)', (
     await investBtn.trigger('click');
     expect(wrapper.emitted('navigateToInvest')).toBeTruthy();
   });
+
+  it('deve exibir exatamente os mesmos valores de Despesas, Receitas e Saldo do mês vigente que a aba Extrato (sem somar meses futuros ou voltar ao mês anterior quando o lançamento do mês é posterior ao dia de hoje)', () => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const nextYm =
+      now.getMonth() === 11
+        ? `${now.getFullYear() + 1}-01`
+        : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}`;
+    const prevYm =
+      now.getMonth() === 0
+        ? `${now.getFullYear() - 1}-12`
+        : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
+
+    const txsWithCurrentAndFutureMonths: Transaction[] = [
+      {
+        id: 'tx-prev',
+        type: 'income',
+        description: 'Salário Mês Anterior',
+        amountInCents: 2380000,
+        date: `${prevYm}-05`,
+        categoryId: 'cat-salario',
+        accountOrCard: 'Conta Principal',
+        isInstallment: false,
+        createdAt: `${prevYm}-05T12:00:00Z`,
+        updatedAt: `${prevYm}-05T12:00:00Z`,
+      },
+      {
+        id: 'tx-curr-exp',
+        type: 'expense',
+        description: 'Cartao de Credito',
+        amountInCents: 32838,
+        date: `${ym}-28`,
+        categoryId: 'cat-outros',
+        accountOrCard: 'Cartão de Crédito',
+        isInstallment: false,
+        createdAt: `${ym}-01T12:00:00Z`,
+        updatedAt: `${ym}-01T12:00:00Z`,
+      },
+      {
+        id: 'tx-curr-inc',
+        type: 'income',
+        description: 'Salario Liquido',
+        amountInCents: 510000,
+        date: `${ym}-28`,
+        categoryId: 'cat-salario',
+        accountOrCard: 'Conta Principal',
+        isInstallment: false,
+        createdAt: `${ym}-01T12:00:00Z`,
+        updatedAt: `${ym}-01T12:00:00Z`,
+      },
+      {
+        id: 'tx-future-inst',
+        type: 'expense',
+        description: 'Parcela Mês Seguinte',
+        amountInCents: 99900,
+        date: `${nextYm}-10`,
+        categoryId: 'cat-outros',
+        accountOrCard: 'Cartão de Crédito',
+        isInstallment: true,
+        currentInstallment: 2,
+        totalInstallments: 5,
+        createdAt: `${ym}-01T12:00:00Z`,
+        updatedAt: `${ym}-01T12:00:00Z`,
+      },
+    ];
+
+    const wrapper = mount(HomeScreen, {
+      props: {
+        transactions: txsWithCurrentAndFutureMonths,
+        assets: mockAssets,
+        isPrivacyActive: false,
+      },
+    });
+
+    expect(wrapper.find('[data-testid="kpi-expenses"]').text()).toContain('328,38');
+    expect(wrapper.find('[data-testid="kpi-expenses"]').text()).toContain('1 saídas');
+    expect(wrapper.find('[data-testid="kpi-income"]').text()).toContain('5.100,00');
+    expect(wrapper.find('[data-testid="kpi-balance"]').text()).toContain('4.771,62');
+  });
 });

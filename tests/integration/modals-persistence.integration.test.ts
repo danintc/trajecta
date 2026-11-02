@@ -74,4 +74,46 @@ describe('Modals Persistence Integration (AddAssetModal & AddCareerModal -> Dexi
     expect(cloudSyncService.upsertCareerRecord).toHaveBeenCalledTimes(1);
     expect(wrapper.emitted('success')).toBeTruthy();
   });
+
+  it('deve sugerir automaticamente a última empresa preenchida ao editar um card com empresa genérica e permitir escolher outra', async () => {
+    window.localStorage.setItem('trajecta_recent_career_companies', JSON.stringify(['Nubank', 'Itaú']));
+
+    const genericRecord = {
+      id: 'career-gen-1',
+      company: 'Tech & QA Engineering',
+      role: 'Mid level QA Analyst',
+      startDate: '2026-10',
+      grossSalaryInCents: 750000,
+      netSalaryInCents: 712397,
+      mealAllowanceInCents: 0,
+      annualBonusEstimatedInCents: 0,
+      changeReason: 'promocao' as const,
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:00:00Z',
+    };
+
+    const wrapper = mount(AddCareerModal, {
+      props: {
+        isOpen: true,
+        recordToEdit: genericRecord,
+      },
+      global: {
+        stubs: { Teleport: true },
+      },
+    });
+    await flushPromises();
+
+    // Deve já vir preenchido com "Nubank" (última empresa preenchida) em vez de "Tech & QA Engineering"
+    const companyInput = wrapper.find('[data-testid="input-career-company"]');
+    expect((companyInput.element as HTMLInputElement).value).toBe('Nubank');
+    expect(wrapper.find('[data-testid="badge-company-autosuggested"]').exists()).toBe(true);
+
+    // Clicar na segunda sugestão ("Itaú") troca em 1 clique
+    await wrapper.find('[data-testid="btn-suggest-company-1"]').trigger('click');
+    expect((companyInput.element as HTMLInputElement).value).toBe('Itaú');
+
+    // Clicar em "+ Escolher outra" limpa o campo para digitar uma nova empresa
+    await wrapper.find('[data-testid="btn-career-company-other"]').trigger('click');
+    expect((companyInput.element as HTMLInputElement).value).toBe('');
+  });
 });

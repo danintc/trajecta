@@ -49,7 +49,18 @@ const initialAnchorDate = (() => {
   const now = new Date();
   const currentYm = format(now, 'yyyy-MM');
   const hasCurrentMonthTx = props.transactions.some((t) => t.date.startsWith(currentYm));
-  if (!hasCurrentMonthTx && props.transactions.length > 0) {
+  if (hasCurrentMonthTx) {
+    return now;
+  }
+  const endOfCurrentMonthStr = format(endOfMonth(now), 'yyyy-MM-dd');
+  const pastOrCurrentDates = props.transactions
+    .map((t) => t.date)
+    .filter((d) => d <= endOfCurrentMonthStr)
+    .sort((a, b) => b.localeCompare(a));
+  if (pastOrCurrentDates.length > 0) {
+    return new Date(`${pastOrCurrentDates[0]}T12:00:00Z`);
+  }
+  if (props.transactions.length > 0) {
     const sortedDates = props.transactions.map((t) => t.date).sort((a, b) => b.localeCompare(a));
     return new Date(`${sortedDates[0]}T12:00:00Z`);
   }
@@ -210,13 +221,13 @@ const groupedByDay = computed(() => {
   }));
 });
 
-// Totais apurados no período
+// Totais apurados no período (alinhados com a aba Início)
 const totals = computed(() => {
   let exp = 0;
   let inc = 0;
   for (const t of periodTransactions.value) {
     if (t.type === 'expense') exp += t.amountInCents;
-    else inc += t.amountInCents;
+    else if (t.type === 'income' || t.type === 'dividend') inc += t.amountInCents;
   }
   return { totalExpenses: exp, totalIncome: inc };
 });

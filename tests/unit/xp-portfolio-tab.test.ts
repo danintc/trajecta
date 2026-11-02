@@ -329,5 +329,12 @@ describe('XpPortfolioTab Component (Estilo XP Print 4)', () => {
     expect(wrapper.find('[data-testid="donut-chip-acoes_br"]').attributes('data-selected')).toBe('false');
     expect(wrapper.text()).toContain('IVVB11');
     expect(wrapper.text()).not.toContain('WEGE3');
+
+    // Classes vazias (ex: FIIs sem nenhum ativo) devem estar desabilitadas e não selecionáveis
+    const fiisBtn = wrapper.find('[data-testid="class-filter-btn-fiis"]');
+    expect(fiisBtn.attributes('disabled')).toBeDefined();
+    await fiisBtn.trigger('click');
+    expect(fiisBtn.attributes('data-selected')).toBe('false');
+    expect(wrapper.find('[data-testid="class-filter-btn-internacional"]').attributes('data-selected')).toBe('true');
   });
 });

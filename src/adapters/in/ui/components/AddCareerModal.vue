@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import { db } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { CareerRecord, CareerChangeReason } from '@/core/domain/career.entity';
@@ -8,16 +8,74 @@ import { parseBrlToCents, formatCentsToBrl } from '@/shared/utils/currency';
 export interface AddCareerModalProps {
   isOpen: boolean;
   recordToEdit?: CareerRecord | null;
+  existingRecords?: CareerRecord[];
 }
 
 const props = withDefaults(defineProps<AddCareerModalProps>(), {
   recordToEdit: null,
+  existingRecords: () => [],
 });
 
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'success'): void;
 }>();
+
+const RECENT_COMPANIES_STORAGE_KEY = 'trajecta_recent_career_companies';
+const GENERIC_COMPANY_NAMES = new Set([
+  'tech & qa engineering',
+  'laboratório clínico',
+  'laboratorio clinico',
+  'carreira profissional',
+  'empresa',
+  'empresa atual',
+  'não informada',
+  'nao informada',
+]);
+
+function isGenericCompanyName(name?: string | null): boolean {
+  if (!name) return true;
+  const normalized = name.trim().toLowerCase();
+  return !normalized || GENERIC_COMPANY_NAMES.has(normalized);
+}
+
+function loadStoredRecentCompanies(): string[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_COMPANIES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((c) => typeof c === 'string' && c.trim().length > 0);
+    }
+  } catch {
+    // Fallback seguro
+  }
+  return [];
+}
+
+function saveRecentCompanyToStorage(companyName: string) {
+  const trimmed = companyName.trim();
+  if (!trimmed || isGenericCompanyName(trimmed)) return;
+  const current = loadStoredRecentCompanies();
+  const deduped = [
+    trimmed,
+    ...current.filter((c) => c.toLowerCase() !== trimmed.toLowerCase()),
+  ].slice(0, 8);
+  storedRecentCompanies.value = deduped;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(RECENT_COMPANIES_STORAGE_KEY, JSON.stringify(deduped));
+    } catch {
+      // Ignora erro de quota
+    }
+  }
+}
+
+const storedRecentCompanies = ref<string[]>(loadStoredRecentCompanies());
+const dbRecordsFallback = ref<CareerRecord[]>([]);
+const companyInputRef = ref<HTMLInputElement | null>(null);
+const isChoosingOtherCompany = ref(false);
 
 const company = ref('');
 const role = ref('');
@@ -33,13 +91,84 @@ const errorMessage = ref<string | null>(null);
 
 const isEditMode = computed(() => Boolean(props.recordToEdit));
 
+// Lista ordenada das últimas empresas reais preenchidas pelo usuário (sem duplicatas e sem nomes genéricos)
+const recentCustomCompanies = computed<string[]>(() => {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const name of storedRecentCompanies.value) {
+    const clean = name.trim();
+    const lower = clean.toLowerCase();
+    if (clean && !isGenericCompanyName(clean) && !seen.has(lower)) {
+      seen.add(lower);
+      result.push(clean);
+    }
+  }
+
+  const allRecords =
+    props.existingRecords.length > 0 ? props.existingRecords : dbRecordsFallback.value;
+  const sortedByRecentUpdate = [...allRecords].sort((a, b) =>
+    (b.updatedAt || b.startDate).localeCompare(a.updatedAt || a.startDate)
+  );
+
+  for (const rec of sortedByRecentUpdate) {
+    const clean = (rec.company || '').trim();
+    const lower = clean.toLowerCase();
+    if (clean && !isGenericCompanyName(clean) && !seen.has(lower)) {
+      seen.add(lower);
+      result.push(clean);
+    }
+  }
+
+  return result.slice(0, 6);
+});
+
+const wasAutoSuggestedFromGeneric = computed(() => {
+  if (!props.recordToEdit) return false;
+  return (
+    isGenericCompanyName(props.recordToEdit.company) &&
+    recentCustomCompanies.value.length > 0 &&
+    company.value === recentCustomCompanies.value[0]
+  );
+});
+
+async function selectCompanyOption(compName: string) {
+  isChoosingOtherCompany.value = false;
+  company.value = compName;
+}
+
+async function selectOtherCompanyOption() {
+  isChoosingOtherCompany.value = true;
+  company.value = '';
+  await nextTick();
+  companyInputRef.value?.focus();
+}
+
 watch(
   () => [props.isOpen, props.recordToEdit],
-  ([open]) => {
+  async ([open]) => {
     if (open) {
       errorMessage.value = null;
+      storedRecentCompanies.value = loadStoredRecentCompanies();
+      if (props.existingRecords.length === 0) {
+        try {
+          dbRecordsFallback.value = await db.careerRecords.toArray();
+        } catch {
+          dbRecordsFallback.value = [];
+        }
+      }
+
+      const latestSuggested = recentCustomCompanies.value[0] || '';
+
       if (props.recordToEdit) {
-        company.value = props.recordToEdit.company;
+        // Se o card tiver empresa genérica e o usuário já preencheu alguma empresa antes, já sugere a última preenchida!
+        if (isGenericCompanyName(props.recordToEdit.company) && latestSuggested) {
+          company.value = latestSuggested;
+          isChoosingOtherCompany.value = false;
+        } else {
+          company.value = props.recordToEdit.company;
+          isChoosingOtherCompany.value = false;
+        }
         role.value = props.recordToEdit.role;
         startDate.value = props.recordToEdit.startDate.slice(0, 7);
         isCurrent.value = !props.recordToEdit.endDate;
@@ -54,7 +183,8 @@ watch(
           ? formatCentsToBrl(props.recordToEdit.annualBonusEstimatedInCents).replace('R$', '').trim()
           : '';
       } else {
-        company.value = '';
+        company.value = latestSuggested;
+        isChoosingOtherCompany.value = !latestSuggested;
         role.value = '';
         startDate.value = new Date().toISOString().slice(0, 7);
         isCurrent.value = true;
@@ -148,6 +278,8 @@ async function handleSubmit() {
       await cloudSyncService.upsertCareerRecord(newRecord);
     }
 
+    saveRecentCompanyToStorage(company.value);
+
     emit('success');
     emit('close');
 
@@ -217,19 +349,68 @@ async function handleSubmit() {
               {{ errorMessage }}
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-3">
               <div>
-                <label class="block text-xs font-semibold text-finance-neutral mb-1">
-                  Empresa
-                </label>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <label class="block text-xs font-semibold text-finance-neutral">
+                    Empresa
+                  </label>
+                  <span
+                    v-if="wasAutoSuggestedFromGeneric"
+                    data-testid="badge-company-autosuggested"
+                    class="text-[10px] font-bold text-finance-career bg-finance-career/10 border border-finance-career/25 px-2 py-0.5 rounded-full"
+                  >
+                    ✨ Sugerida das últimas preenchidas
+                  </span>
+                </div>
+
+                <!-- Sugestões Rápidas das Últimas Empresas Preenchidas + Opção "Outra" -->
+                <div
+                  data-testid="career-company-suggestions"
+                  class="flex flex-wrap items-center gap-1.5 mb-2"
+                >
+                  <button
+                    v-for="(compName, idx) in recentCustomCompanies"
+                    :key="compName"
+                    type="button"
+                    :data-testid="`btn-suggest-company-${idx}`"
+                    class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer flex items-center gap-1"
+                    :class="
+                      company.trim().toLowerCase() === compName.toLowerCase() && !isChoosingOtherCompany
+                        ? 'bg-finance-career text-black font-bold border-finance-career shadow-sm'
+                        : 'bg-background text-[#A1A1AA] border-border-subtle hover:text-white hover:border-finance-career/40'
+                    "
+                    @click="selectCompanyOption(compName)"
+                  >
+                    <span v-if="company.trim().toLowerCase() === compName.toLowerCase() && !isChoosingOtherCompany">✓</span>
+                    <span>{{ compName }}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="btn-career-company-other"
+                    class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer flex items-center gap-1"
+                    :class="
+                      isChoosingOtherCompany || (!company.trim() && recentCustomCompanies.length > 0)
+                        ? 'bg-accent-yellow/15 text-accent-yellow border-accent-yellow font-bold'
+                        : 'bg-background/60 text-[#71717A] border-border-subtle hover:text-white'
+                    "
+                    @click="selectOtherCompanyOption"
+                  >
+                    <span>+ Escolher outra</span>
+                  </button>
+                </div>
+
                 <input
+                  ref="companyInputRef"
                   v-model="company"
                   type="text"
                   data-testid="input-career-company"
-                  placeholder="Ex: Nubank"
+                  placeholder="Digite o nome da empresa (Ex: Nubank)"
                   class="w-full h-10 bg-background border border-border-subtle focus:border-accent-yellow rounded-lg px-3 text-xs text-white outline-none transition"
                 />
               </div>
+
               <div>
                 <label class="block text-xs font-semibold text-finance-neutral mb-1">
                   Cargo / Posição
