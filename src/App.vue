@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { db, seedPopulatedDatabase } from '@/adapters/out/storage/dexie-db';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { db, seedPopulatedDatabase, clearTestDatabase } from '@/adapters/out/storage/dexie-db';
 import { cloudSyncService } from '@/adapters/out/storage/cloud-sync.service';
 import { useAuth } from '@/adapters/in/ui/composables/useAuth';
 import { Transaction } from '@/core/domain/transaction.entity';
 import { Asset } from '@/core/domain/asset.entity';
 import { CareerRecord } from '@/core/domain/career.entity';
+import { MonthlySnapshot } from '@/core/domain/snapshot.entity';
+import { isDanielProfile } from '@/shared/constants/wealth-history';
+import {
+  parseGoogleSheetByUrlOrPreset,
+  commitUniversalImport,
+} from '@/adapters/in/ingestion/universal-importer';
 import AuthScreen from './adapters/in/ui/screens/AuthScreen.vue';
 import HomeScreen from './adapters/in/ui/screens/HomeScreen.vue';
 import TimelineScreen from './adapters/in/ui/screens/TimelineScreen.vue';
@@ -13,6 +19,8 @@ import InvestmentsScreen from './adapters/in/ui/screens/InvestmentsScreen.vue';
 import CareerScreen from './adapters/in/ui/screens/CareerScreen.vue';
 import PhaseSimulatorScreen from './adapters/in/ui/screens/PhaseSimulatorScreen.vue';
 import AddTransactionModal from './adapters/in/ui/components/AddTransactionModal.vue';
+import UniversalImportModal from './adapters/in/ui/components/UniversalImportModal.vue';
+import type { ImportTargetModule } from '@/core/domain/canonical-ingestion.contract';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 import {
   globalCurrency,
@@ -36,9 +44,12 @@ const {
 } = useAuth();
 
 const activeTab = ref<ActiveTab>('home');
+const investInitialSubTab = ref<'custody' | 'evolution' | 'rebalance'>('custody');
 const pageTransitionName = ref<'page-slide-left' | 'page-slide-right'>('page-slide-left');
 const isPrivacyActive = ref(false);
 const isAddModalOpen = ref(false);
+const isUniversalImportOpen = ref(false);
+const importTargetModule = ref<ImportTargetModule>('all');
 const isUserMenuOpen = ref(false);
 const isSyncingCloud = ref(false);
 const transactionToEdit = ref<Transaction | null>(null);
@@ -90,37 +101,76 @@ function handleOpenAddModal() {
   isAddModalOpen.value = true;
 }
 
+function handleOpenImportModal(target: ImportTargetModule = 'all') {
+  importTargetModule.value = target;
+  isUniversalImportOpen.value = true;
+}
+
 function handleOpenEditModal(tx: Transaction) {
   transactionToEdit.value = tx;
   isAddModalOpen.value = true;
 }
 
-// Estados sincronizados com IndexedDB + Nuvem
+// Estados sincronizados com IndexedDB + Nuvem (Isolados por Perfil de Usuário)
 const transactions = ref<Transaction[]>([]);
 const assets = ref<Asset[]>([]);
 const careerRecords = ref<CareerRecord[]>([]);
+const snapshots = ref<MonthlySnapshot[]>([]);
+
+const ACTIVE_USER_STORAGE_KEY = 'trajecta_active_user_id';
+
+const isOwnerProfile = computed(() =>
+  isDanielProfile(userEmail.value, userDisplayName.value)
+);
 
 async function loadDatabaseData() {
   await db.ensureDefaultCategories();
-  const txs = await db.transactions.toArray();
-  const asts = await db.assets.toArray();
-  const crs = await db.careerRecords.toArray();
+  const [txs, asts, crs, snaps] = await Promise.all([
+    db.transactions.toArray(),
+    db.assets.toArray(),
+    db.careerRecords.toArray(),
+    db.snapshots.toArray(),
+  ]);
 
   transactions.value = txs;
   assets.value = asts;
   careerRecords.value = crs;
+  snapshots.value = snaps;
 }
 
 async function syncAndLoadWorkspace() {
   isSyncingCloud.value = true;
   try {
-    const localCount = await db.transactions.count();
-    if (localCount === 0) {
-      await seedPopulatedDatabase();
-    }
-
     if (currentUser.value) {
+      const activeUserId = currentUser.value.id;
+      const previousUserId =
+        typeof localStorage !== 'undefined'
+          ? localStorage.getItem(ACTIVE_USER_STORAGE_KEY)
+          : null;
+
+      // Isolamento Multi-Usuário: limpa cache local caso troque de conta ou venha do modo visitante
+      if (previousUserId !== activeUserId) {
+        await clearTestDatabase();
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(ACTIVE_USER_STORAGE_KEY, activeUserId);
+        }
+      }
+
       await cloudSyncService.pullFromCloudToLocal();
+
+      // Apenas para o perfil titular do Daniel: garante que 100% dos dados das duas planilhas estejam importados
+      if (isOwnerProfile.value) {
+        const snapshotCount = await db.snapshots.count();
+        if (snapshotCount === 0) {
+          const parsed = await parseGoogleSheetByUrlOrPreset('both_sheets');
+          await commitUniversalImport(parsed, { replaceExistingData: true });
+        }
+      }
+    } else {
+      const localCount = await db.transactions.count();
+      if (localCount === 0) {
+        await seedPopulatedDatabase();
+      }
     }
 
     await loadDatabaseData();
@@ -155,12 +205,8 @@ onMounted(async () => {
     void fetchLiveUsdExchangeRate({ force: true });
   }, 60_000);
 
-  await seedPopulatedDatabase();
-  await loadDatabaseData();
   await initAuth();
-  if (currentUser.value) {
-    await syncAndLoadWorkspace();
-  }
+  await syncAndLoadWorkspace();
 });
 
 onUnmounted(() => {
@@ -193,6 +239,11 @@ async function handleDeleteTransaction(id: string) {
 
 async function handleLogout() {
   isUserMenuOpen.value = false;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(ACTIVE_USER_STORAGE_KEY);
+  }
+  await clearTestDatabase();
+  await loadDatabaseData();
   await signOut();
 }
 </script>
@@ -248,6 +299,18 @@ async function handleLogout() {
 
       <!-- CONTROLES GLOBAIS -->
       <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <!-- Botão Global de Importação (Planilhas Google Sheets / Excel / PDF / OFX) -->
+        <button
+          data-testid="btn-open-universal-import"
+          type="button"
+          class="min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-border-subtle bg-background hover:border-accent-yellow/50 text-xs font-semibold text-white flex items-center gap-1.5 transition cursor-pointer shrink-0"
+          title="Importar Planilhas Google Sheets, Excel, PDF ou Extratos"
+          @click="handleOpenImportModal('all')"
+        >
+          <AppIcon name="upload" size="14" class="text-accent-yellow" />
+          <span class="hidden sm:inline">Importar</span>
+        </button>
+
         <!-- Toggle Modo Privacidade -->
         <button
           data-testid="privacy-toggle"
@@ -408,10 +471,14 @@ async function handleLogout() {
           key="screen-home"
           :transactions="transactions"
           :assets="assets"
+          :snapshots="snapshots"
+          :career-records="careerRecords"
           :is-privacy-active="isPrivacyActive"
           @open-add-modal="handleOpenAddModal"
+          @open-import-modal="handleOpenImportModal('all')"
           @navigate-to-timeline="activeTab = 'timeline'"
-          @navigate-to-invest="activeTab = 'invest'"
+          @navigate-to-invest="investInitialSubTab = 'custody'; activeTab = 'invest'"
+          @navigate-to-evolution="investInitialSubTab = 'evolution'; activeTab = 'invest'"
           @navigate-to-career="activeTab = 'career'"
           @navigate-to-simulator="activeTab = 'phase-simulator'"
         />
@@ -422,6 +489,7 @@ async function handleLogout() {
           :transactions="transactions"
           :is-privacy-active="isPrivacyActive"
           @open-add-modal="handleOpenAddModal"
+          @open-import-modal="handleOpenImportModal('transactions')"
           @edit-transaction="handleOpenEditModal"
           @delete-transaction="handleDeleteTransaction"
         />
@@ -430,10 +498,15 @@ async function handleLogout() {
           v-else-if="activeTab === 'invest'"
           key="screen-invest"
           :assets="assets"
+          :snapshots="snapshots"
+          :career-records="careerRecords"
           :is-privacy-active="isPrivacyActive"
+          :initial-sub-tab="investInitialSubTab"
           @refresh-data="loadDatabaseData"
+          @open-import-modal="handleOpenImportModal('assets')"
           @navigate-to-simulator="activeTab = 'phase-simulator'"
           @navigate-to-timeline="activeTab = 'timeline'"
+          @navigate-to-home="activeTab = 'home'"
         />
 
         <CareerScreen
@@ -442,6 +515,7 @@ async function handleLogout() {
           :career-records="careerRecords"
           :is-privacy-active="isPrivacyActive"
           @refresh-data="loadDatabaseData"
+          @open-import-modal="handleOpenImportModal('career')"
           @navigate-to-simulator="activeTab = 'phase-simulator'"
           @navigate-to-timeline="activeTab = 'timeline'"
         />
@@ -500,6 +574,15 @@ async function handleLogout() {
         isAddModalOpen = false;
         transactionToEdit = null;
       "
+      @success="loadDatabaseData"
+    />
+
+    <!-- CENTRAL DE IMPORTAÇÃO UNIVERSAL (PLANILHAS GOOGLE SHEETS, EXCEL, PDF, OFX) -->
+    <UniversalImportModal
+      :is-open="isUniversalImportOpen"
+      :initial-target-module="importTargetModule"
+      :is-owner-profile="isOwnerProfile"
+      @close="isUniversalImportOpen = false"
       @success="loadDatabaseData"
     />
   </div>

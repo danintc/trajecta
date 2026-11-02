@@ -25,6 +25,7 @@ const props = defineProps<CareerScreenProps>();
 
 const emit = defineEmits<{
   (e: 'refreshData'): void;
+  (e: 'openImportModal'): void;
   (e: 'navigateToSimulator'): void;
   (e: 'navigateToTimeline'): void;
 }>();
@@ -134,6 +135,15 @@ const maxSalaryInCents = computed(() => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
+        <button
+          type="button"
+          data-testid="btn-career-import"
+          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition whitespace-nowrap cursor-pointer"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="16" class="text-finance-career" />
+          <span>Importar Planilha Salarial</span>
+        </button>
         <button
           type="button"
           data-testid="btn-add-career"

@@ -2,11 +2,14 @@
 import { ref, computed } from 'vue';
 import { Transaction } from '@/core/domain/transaction.entity';
 import { Asset } from '@/core/domain/asset.entity';
+import type { MonthlySnapshot } from '@/core/domain/snapshot.entity';
+import type { CareerRecord } from '@/core/domain/career.entity';
 import DonutChart, { DonutSlice } from '../components/DonutChart.vue';
 import NetWorthLineChart from '../components/NetWorthLineChart.vue';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import { DEFAULT_CATEGORIES } from '@/shared/constants/categories';
 import { calculateSavingsRate, calculateNetWorth } from '@/core/use-cases/net-worth-engine.use-case';
+import { deriveUserWealthHistory } from '@/shared/constants/wealth-history';
 import { subMonths, startOfYear, format } from 'date-fns';
 import AppIcon from '@/shared/components/icons/AppIcon.vue';
 
@@ -17,14 +20,19 @@ export interface HomeScreenProps {
   transactions: Transaction[];
   assets: Asset[];
   isPrivacyActive: boolean;
+  snapshots?: MonthlySnapshot[];
+  careerRecords?: CareerRecord[];
 }
 
 const props = defineProps<HomeScreenProps>();
+const userWealth = computed(() => deriveUserWealthHistory(props.snapshots, props.careerRecords));
 
 const emit = defineEmits<{
   (e: 'openAddModal'): void;
+  (e: 'openImportModal'): void;
   (e: 'navigateToTimeline'): void;
   (e: 'navigateToInvest'): void;
+  (e: 'navigateToEvolution'): void;
   (e: 'navigateToCareer'): void;
   (e: 'navigateToSimulator'): void;
 }>();
@@ -253,11 +261,20 @@ const periodLabel = computed(() => {
         </button>
       </div>
 
-      <div class="flex items-center justify-between sm:justify-end gap-2">
+      <div class="flex items-center justify-between sm:justify-end gap-2.5">
         <span class="text-[11px] text-[#71717A] sm:hidden">{{ periodLabel }}</span>
         <button
           type="button"
-          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1.5 whitespace-nowrap ml-auto cursor-pointer"
+          data-testid="btn-home-import"
+          class="px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-xs font-semibold text-white flex items-center gap-1.5 transition cursor-pointer shrink-0"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="13" class="text-accent-yellow" />
+          <span>Importar Planilhas / PDF</span>
+        </button>
+        <button
+          type="button"
+          class="text-xs font-semibold text-accent-yellow hover:underline flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
           @click="emit('navigateToTimeline')"
         >
           <AppIcon name="timeline" size="14" />
@@ -412,9 +429,20 @@ const periodLabel = computed(() => {
               </span>
             </div>
             <p class="text-xs text-[#71717A] truncate">
-              Ativos reais deduzidos das faturas e parcelas futuras
+              Ativos reais deduzidos das faturas e parcelas futuras • Série histórica desde 07/2020
             </p>
           </div>
+
+          <button
+            type="button"
+            data-testid="btn-home-goto-evolution"
+            class="px-3 py-1.5 rounded-xl bg-accent-yellow/10 hover:bg-accent-yellow/20 border border-accent-yellow/30 text-accent-yellow text-xs font-bold flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto transition cursor-pointer shrink-0"
+            @click="emit('navigateToEvolution'); emit('navigateToInvest')"
+          >
+            <AppIcon name="line-chart" size="13" />
+            <span>Ver Rentabilidade & Evolução (2020–2026)</span>
+            <span>↗</span>
+          </button>
         </div>
 
         <!-- Métricas de Patrimônio + Gráfico Amplo -->
@@ -430,12 +458,55 @@ const periodLabel = computed(() => {
               >
                 {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(netWorthResult.netWorthTotalInCents) }}
               </div>
-              <div class="text-xs text-finance-pos font-semibold truncate">
-                ▲ +R$ 4.250,00 (+2,8%) no período
+              <div v-if="userWealth.hasHistory" class="text-xs text-finance-pos font-semibold truncate">
+                ▲ +{{ userWealth.summary.cumulativeSinceStartPct.toFixed(1).replace('.', ',') }}% desde {{ userWealth.summary.startYearMonth }} ({{ userWealth.summary.totalMonths }} meses)
+              </div>
+              <div v-else class="text-xs text-finance-pos font-semibold truncate">
+                ▲ Patrimônio consolidado ativo
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-border-subtle/70">
+            <!-- Resumo Histórico da Planilha Rentabilidade (Exibido apenas se o usuário tiver histórico) -->
+            <div
+              v-if="userWealth.hasHistory"
+              data-testid="net-worth-historical-kpis"
+              class="grid grid-cols-2 gap-2 py-2.5 border-t border-border-subtle/70 text-[11px]"
+            >
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  Início ({{ userWealth.summary.startYearMonth }})
+                </span>
+                <span class="font-mono font-bold text-white">
+                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(userWealth.summary.initialNetWorthInCents) }}
+                </span>
+              </div>
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  Média Mensal
+                </span>
+                <span class="font-mono font-bold text-finance-pos">
+                  +{{ userWealth.summary.averageMonthlyReturnPct.toFixed(2).replace('.', ',') }}% / mês
+                </span>
+              </div>
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  Retorno 2026
+                </span>
+                <span class="font-mono font-bold text-finance-pos">
+                  +{{ userWealth.summary.ytd2026ReturnPct.toFixed(2).replace('.', ',') }}%
+                </span>
+              </div>
+              <div class="bg-surface/60 rounded-xl p-2 border border-border-subtle/50">
+                <span class="block text-[9px] uppercase tracking-wider text-[#71717A] font-bold">
+                  Rent. Global
+                </span>
+                <span class="font-mono font-bold text-accent-yellow">
+                  +{{ userWealth.summary.totalProfitabilityPct.toFixed(2).replace('.', ',') }}%
+                </span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1 border-t border-border-subtle/70">
               <button
                 type="button"
                 class="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-bold text-finance-invest transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -460,6 +531,10 @@ const periodLabel = computed(() => {
               :current-net-worth-in-cents="netWorthResult.netWorthTotalInCents"
               :is-privacy-active="isPrivacyActive"
               :period-label="periodLabel"
+              :selected-period="selectedPeriod"
+              :snapshots="snapshots"
+              :career-records="careerRecords"
+              @open-evolution-detail="emit('navigateToEvolution'); emit('navigateToInvest')"
             />
           </div>
         </div>

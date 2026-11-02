@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Asset } from '@/core/domain/asset.entity';
+import type { MonthlySnapshot } from '@/core/domain/snapshot.entity';
+import type { CareerRecord } from '@/core/domain/career.entity';
 import {
   formatCentsToBrl,
   parseBrlToCents,
@@ -20,17 +22,31 @@ export type InvestSubTab = 'custody' | 'evolution' | 'rebalance';
 export interface InvestmentsScreenProps {
   assets: Asset[];
   isPrivacyActive: boolean;
+  initialSubTab?: InvestSubTab;
+  snapshots?: MonthlySnapshot[];
+  careerRecords?: CareerRecord[];
 }
 
 const props = defineProps<InvestmentsScreenProps>();
 
 const emit = defineEmits<{
   (e: 'refreshData'): void;
+  (e: 'openImportModal'): void;
   (e: 'navigateToSimulator'): void;
   (e: 'navigateToTimeline'): void;
+  (e: 'navigateToHome'): void;
 }>();
 
-const activeSubTab = ref<InvestSubTab>('custody');
+const activeSubTab = ref<InvestSubTab>(props.initialSubTab || 'custody');
+
+watch(
+  () => props.initialSubTab,
+  (newTab) => {
+    if (newTab) {
+      activeSubTab.value = newTab;
+    }
+  }
+);
 const aporteInput = ref('2.000,00');
 const isAddModalOpen = ref(false);
 const assetToEdit = ref<Asset | null>(null);
@@ -202,6 +218,15 @@ async function handleDeleteAsset(asset: Asset) {
       <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
+          data-testid="btn-invest-import"
+          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition whitespace-nowrap cursor-pointer"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="16" class="text-finance-invest" />
+          <span>Importar Carteira / PDF</span>
+        </button>
+        <button
+          type="button"
           data-testid="btn-add-asset"
           class="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-finance-invest hover:bg-[#0284C7] text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-finance-invest/30 ring-2 ring-finance-invest/40 transition transform active:scale-95 whitespace-nowrap cursor-pointer"
           @click="handleOpenNewAsset"
@@ -289,6 +314,9 @@ async function handleDeleteAsset(asset: Asset) {
         :assets="assets"
         :is-privacy-active="isPrivacyActive"
         :total-invested-in-cents="totalInvestedInCents"
+        :snapshots="snapshots"
+        :career-records="careerRecords"
+        @navigate-to-home="emit('navigateToHome')"
       />
 
       <!-- BANNER DE ACESSO AO SIMULADOR DE FASES -->

@@ -127,4 +127,36 @@ describe('NetWorthLineChart Component', () => {
     expect(wrapper.text()).toContain('+22%');
     expect(wrapper.find('[data-testid="net-worth-point-info"]').text()).toContain('Out/26');
   });
+
+  it('deve exibir a série histórica real completa (76 meses: Jul/20 a Out/26) quando selectedPeriod="ALL" e alternar entre Curva, Mensal e Anual', async () => {
+    const wrapper = mount(NetWorthLineChart, {
+      props: {
+        currentNetWorthInCents: 4656338,
+        isPrivacyActive: false,
+        selectedPeriod: 'ALL',
+      },
+    });
+
+    // Primeiro ponto é Jul/20 e último é Out/26 com marco de carreira Mid level QA Analyst
+    expect(wrapper.text()).toContain('Jul/20');
+    expect(wrapper.text()).toContain('Out/26');
+    expect(wrapper.find('[data-testid="badge-career-milestone"]').text()).toContain(
+      'Mid level QA Analyst'
+    );
+
+    // Alternar para modo Barras Mensais
+    await wrapper.find('[data-testid="btn-style-bars"]').trigger('click');
+    expect(wrapper.find('[data-testid="net-worth-bars-view"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('76 meses exibidos');
+
+    // Alternar para modo Retorno Anual (2020–2026)
+    await wrapper.find('[data-testid="btn-style-annual"]').trigger('click');
+    expect(wrapper.find('[data-testid="net-worth-annual-view"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="annual-return-bar-2020"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="annual-return-bar-2026"]').exists()).toBe(true);
+
+    // Emitir openEvolutionDetail ao clicar no atalho de Evolução
+    await wrapper.find('[data-testid="btn-open-evolution-from-chart"]').trigger('click');
+    expect(wrapper.emitted('openEvolutionDetail')).toBeTruthy();
+  });
 });

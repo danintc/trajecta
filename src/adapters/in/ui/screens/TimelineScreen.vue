@@ -36,6 +36,7 @@ const props = defineProps<TimelineScreenProps>();
 
 const emit = defineEmits<{
   (e: 'openAddModal'): void;
+  (e: 'openImportModal'): void;
   (e: 'editTransaction', tx: Transaction): void;
   (e: 'deleteTransaction', id: string): void;
 }>();
@@ -247,12 +248,21 @@ function handleDelete(id: string, description: string) {
         </p>
       </div>
 
-      <!-- Botão Primário (+) Novo Lançamento (Maior e bem enfático) -->
-      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+      <!-- Botões de Importação e Novo Lançamento -->
+      <div class="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+        <button
+          data-testid="btn-timeline-import"
+          type="button"
+          class="flex-1 sm:flex-initial px-4 py-3.5 rounded-2xl bg-surface hover:bg-surface-hover border border-border-subtle text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer whitespace-nowrap"
+          @click="emit('openImportModal')"
+        >
+          <AppIcon name="upload" size="16" class="text-accent-yellow" />
+          <span>Importar Planilha / PDF</span>
+        </button>
         <button
           data-testid="fab-add-transaction"
           type="button"
-          class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-accent-yellow/30 ring-2 ring-accent-yellow/40 transition transform active:scale-95 cursor-pointer whitespace-nowrap"
+          class="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-accent-yellow hover:bg-accent-yellow-hover text-black font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-accent-yellow/30 ring-2 ring-accent-yellow/40 transition transform active:scale-95 cursor-pointer whitespace-nowrap"
           @click="emit('openAddModal')"
         >
           <AppIcon name="plus" size="18" stroke-width="3" />

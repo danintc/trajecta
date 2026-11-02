@@ -3,6 +3,48 @@ import { db } from '@/adapters/out/storage/dexie-db';
 import { Transaction } from '@/core/domain/transaction.entity';
 import { Asset } from '@/core/domain/asset.entity';
 import { CareerRecord, CareerChangeReason } from '@/core/domain/career.entity';
+import { MonthlySnapshot } from '@/core/domain/snapshot.entity';
+
+interface SupabaseSnapshotRow {
+  year_month: string;
+  user_id: string;
+  accounts_balance_in_cents: number;
+  portfolio_value_in_cents: number;
+  open_bills_in_cents: number;
+  future_installments_in_cents: number;
+  net_worth_in_cents: number;
+  savings_rate_percent: number;
+  cdi_accumulated_percent?: number;
+  created_at?: string;
+}
+
+function mapSnapshotToRow(snap: MonthlySnapshot, userId: string): SupabaseSnapshotRow {
+  return {
+    year_month: snap.yearMonth,
+    user_id: userId,
+    accounts_balance_in_cents: snap.incomeRealizedInCents || snap.accountsBalanceInCents,
+    portfolio_value_in_cents: snap.portfolioTotalValueInCents,
+    open_bills_in_cents: snap.expensesRealizedInCents,
+    future_installments_in_cents: snap.installmentsCommitmentInCents,
+    net_worth_in_cents: snap.netWorthTotalInCents,
+    savings_rate_percent: Number(snap.savingsRatePercent),
+    cdi_accumulated_percent: 0,
+  };
+}
+
+function mapRowToSnapshot(row: SupabaseSnapshotRow): MonthlySnapshot {
+  return {
+    yearMonth: row.year_month,
+    incomeRealizedInCents: Number(row.accounts_balance_in_cents || 0),
+    expensesRealizedInCents: Number(row.open_bills_in_cents || 0),
+    savingsRatePercent: Number(row.savings_rate_percent || 0),
+    installmentsCommitmentInCents: Number(row.future_installments_in_cents || 0),
+    portfolioTotalValueInCents: Number(row.portfolio_value_in_cents || 0),
+    accountsBalanceInCents: Number(row.accounts_balance_in_cents || 0),
+    netWorthTotalInCents: Number(row.net_worth_in_cents || 0),
+    updatedAt: row.created_at || new Date().toISOString(),
+  };
+}
 
 interface SupabaseTransactionRow {
   id: string;
@@ -243,6 +285,19 @@ export const cloudSyncService = {
         }
       }
 
+      try {
+        const snapRes = await supabase.from('snapshots').select('*').eq('user_id', userId);
+        if (!snapRes.error && Array.isArray(snapRes.data)) {
+          const validSnaps = (snapRes.data as SupabaseSnapshotRow[]).filter((r) => Boolean(r.year_month));
+          if (validSnaps.length > 0) {
+            await db.snapshots.clear();
+            await db.snapshots.bulkPut(validSnaps.map(mapRowToSnapshot));
+          }
+        }
+      } catch {
+        // Mantém estado local de snapshots caso offline
+      }
+
       return true;
     }
 
@@ -317,5 +372,11 @@ export const cloudSyncService = {
     const userId = await this.getCurrentUserId();
     if (!userId) return;
     await supabase.from('career_records').delete().eq('user_id', userId).eq('id', id);
+  },
+
+  async upsertSnapshots(snapshots: MonthlySnapshot[]): Promise<void> {
+    const userId = await this.getCurrentUserId();
+    if (!userId || snapshots.length === 0) return;
+    await supabase.from('snapshots').upsert(snapshots.map((s) => mapSnapshotToRow(s, userId)));
   },
 };

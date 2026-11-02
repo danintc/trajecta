@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { formatCentsToBrl } from '@/shared/utils/currency';
 import {
   BenchmarkType,
@@ -7,15 +7,29 @@ import {
   getBenchmark,
   calculatePercentOfBenchmark,
 } from '@/shared/constants/benchmarks';
+import {
+  deriveUserWealthHistory,
+  sliceWealthHistory,
+  getCareerMilestoneForMonth,
+  type WealthHistoryFilter,
+} from '@/shared/constants/wealth-history';
+import type { MonthlySnapshot } from '@/core/domain/snapshot.entity';
+import type { CareerRecord } from '@/core/domain/career.entity';
 
 export type ChartDisplayMode = 'patrimonio' | 'rendimento';
+export type ChartVisualStyle = 'mountain' | 'bars' | 'annual';
 
 export interface NetWorthPoint {
   dateLabel: string;
+  yearMonth?: string;
   netWorthInCents: number;
   benchmarkInCents: number;
   yieldInCents: number;
   benchmarkYieldInCents: number;
+  monthlyReturnPct?: number;
+  cumulativeReturnPct?: number;
+  monthlyProfitInCents?: number;
+  careerMilestoneRole?: string;
   // Retrocompatibilidade
   benchmarkCdiInCents: number;
 }
@@ -24,35 +38,116 @@ export interface NetWorthLineChartProps {
   currentNetWorthInCents: number;
   isPrivacyActive: boolean;
   periodLabel?: string;
+  selectedPeriod?: WealthHistoryFilter;
   initialBenchmark?: BenchmarkType;
   initialMode?: ChartDisplayMode;
+  snapshots?: MonthlySnapshot[];
+  careerRecords?: CareerRecord[];
 }
 
 const props = withDefaults(defineProps<NetWorthLineChartProps>(), {
   periodLabel: 'Últimos 6 Meses',
+  selectedPeriod: undefined,
   initialBenchmark: 'cdi',
   initialMode: 'patrimonio',
+  snapshots: undefined,
+  careerRecords: undefined,
 });
+
+const emit = defineEmits<{
+  (e: 'openEvolutionDetail'): void;
+}>();
 
 const hoveredIdx = ref<number | null>(null);
 const pinnedIdx = ref<number | null>(null);
 const selectedBenchmark = ref<BenchmarkType>(props.initialBenchmark);
 const displayMode = ref<ChartDisplayMode>(props.initialMode);
+const visualStyle = ref<ChartVisualStyle>('mountain');
+
+watch(
+  () => props.selectedPeriod,
+  () => {
+    hoveredIdx.value = null;
+    pinnedIdx.value = null;
+  }
+);
 
 const currentBenchmark = computed(() => getBenchmark(selectedBenchmark.value));
+const userWealth = computed(() => deriveUserWealthHistory(props.snapshots, props.careerRecords));
 
 const dataPoints = computed((): NetWorthPoint[] => {
+  // Se selectedPeriod for fornecido e o perfil tiver histórico real (ex: 76 meses importados), usa a série do usuário
+  if (props.selectedPeriod && userWealth.value.hasHistory) {
+    const slice = sliceWealthHistory(userWealth.value.series, props.selectedPeriod);
+    if (slice.length > 0) {
+      if (props.currentNetWorthInCents <= 0) {
+        return slice.map((entry) => ({
+          dateLabel: entry.shortLabel,
+          yearMonth: entry.yearMonth,
+          netWorthInCents: 0,
+          benchmarkInCents: 0,
+          yieldInCents: 0,
+          benchmarkYieldInCents: 0,
+          monthlyReturnPct: 0,
+          cumulativeReturnPct: 0,
+          monthlyProfitInCents: 0,
+          benchmarkCdiInCents: 0,
+        }));
+      }
+
+      const lastHistoricalVal = slice[slice.length - 1].finalNetWorthInCents || 1;
+      const scaleFactor = props.currentNetWorthInCents / lastHistoricalVal;
+      const firstScaledVal = Math.max(
+        1,
+        Math.round(slice[0].initialNetWorthInCents * scaleFactor)
+      );
+      const bmAnnualReturn = currentBenchmark.value.defaultPeriodReturn;
+      const totalMonthsInSlice = Math.max(1, slice.length);
+      const periodBmReturn = bmAnnualReturn * (totalMonthsInSlice / 12);
+
+      return slice.map((entry, idx) => {
+        const isLast = idx === slice.length - 1;
+        const nw = isLast
+          ? props.currentNetWorthInCents
+          : Math.round(entry.finalNetWorthInCents * scaleFactor);
+        const progress = idx / Math.max(1, slice.length - 1);
+        const bmVal = Math.round(firstScaledVal * (1 + (periodBmReturn / 100) * progress));
+        const yieldNw = Math.max(0, nw - firstScaledVal);
+        const yieldBm = Math.max(0, bmVal - firstScaledVal);
+        const milestone = getCareerMilestoneForMonth(
+          entry.yearMonth,
+          userWealth.value.careerMilestones
+        );
+
+        return {
+          dateLabel: entry.shortLabel,
+          yearMonth: entry.yearMonth,
+          netWorthInCents: nw,
+          benchmarkInCents: bmVal,
+          yieldInCents: yieldNw,
+          benchmarkYieldInCents: yieldBm,
+          monthlyReturnPct: entry.monthlyReturnPct,
+          cumulativeReturnPct: entry.cumulativeReturnPct,
+          monthlyProfitInCents: Math.round(entry.monthlyProfitInCents * scaleFactor),
+          careerMilestoneRole: milestone?.role,
+          benchmarkCdiInCents: bmVal,
+        };
+      });
+    }
+  }
+
+  // Fallback padrão de 10 pontos (mantém 100% de compatibilidade com testes unitários isolados)
   const months = [
-    { label: 'Jan/26', nwFactor: 0.82, bmFactor: 0.88 },
-    { label: 'Fev/26', nwFactor: 0.78, bmFactor: 0.89 },
-    { label: 'Mar/26', nwFactor: 0.83, bmFactor: 0.91 },
-    { label: 'Abr/26', nwFactor: 0.88, bmFactor: 0.93 },
-    { label: 'Mai/26', nwFactor: 0.94, bmFactor: 0.95 },
-    { label: 'Jun/26', nwFactor: 0.91, bmFactor: 0.96 },
-    { label: 'Jul/26', nwFactor: 0.96, bmFactor: 0.975 },
-    { label: 'Ago/26', nwFactor: 0.95, bmFactor: 0.985 },
-    { label: 'Set/26', nwFactor: 0.985, bmFactor: 0.993 },
-    { label: 'Out/26', nwFactor: 1.0, bmFactor: 1.0 },
+    { label: 'Jan/26', nwFactor: 0.82, bmFactor: 0.88, monthlyReturnPct: -4.1 },
+    { label: 'Fev/26', nwFactor: 0.78, bmFactor: 0.89, monthlyReturnPct: -4.9 },
+    { label: 'Mar/26', nwFactor: 0.83, bmFactor: 0.91, monthlyReturnPct: 6.4 },
+    { label: 'Abr/26', nwFactor: 0.88, bmFactor: 0.93, monthlyReturnPct: 6.0 },
+    { label: 'Mai/26', nwFactor: 0.94, bmFactor: 0.95, monthlyReturnPct: 6.8 },
+    { label: 'Jun/26', nwFactor: 0.91, bmFactor: 0.96, monthlyReturnPct: -3.2 },
+    { label: 'Jul/26', nwFactor: 0.96, bmFactor: 0.975, monthlyReturnPct: 5.5 },
+    { label: 'Ago/26', nwFactor: 0.95, bmFactor: 0.985, monthlyReturnPct: -1.0 },
+    { label: 'Set/26', nwFactor: 0.985, bmFactor: 0.993, monthlyReturnPct: 3.7 },
+    { label: 'Out/26', nwFactor: 1.0, bmFactor: 1.0, monthlyReturnPct: 1.5 },
   ];
 
   if (props.currentNetWorthInCents <= 0) {
@@ -62,6 +157,7 @@ const dataPoints = computed((): NetWorthPoint[] => {
       benchmarkInCents: 0,
       yieldInCents: 0,
       benchmarkYieldInCents: 0,
+      monthlyReturnPct: 0,
       benchmarkCdiInCents: 0,
     }));
   }
@@ -73,10 +169,21 @@ const dataPoints = computed((): NetWorthPoint[] => {
   return months.map((m, idx) => {
     const nw = Math.round(props.currentNetWorthInCents * m.nwFactor);
     const progress = idx / (months.length - 1);
-    const bmVal = Math.round(baseVal * (1 + (bmReturn / 100) * progress * (m.bmFactor / months[0].bmFactor)));
+    const bmVal = Math.round(
+      baseVal * (1 + (bmReturn / 100) * progress * (m.bmFactor / months[0].bmFactor))
+    );
 
-    const yieldNw = Math.max(0, Math.round((props.currentNetWorthInCents - baseVal) * ((m.nwFactor - months[0].nwFactor) / (1 - months[0].nwFactor || 1))));
-    const yieldBm = Math.max(0, Math.round( yieldNw * (bmReturn / totalPortfolioGrowthPct) * m.bmFactor ));
+    const yieldNw = Math.max(
+      0,
+      Math.round(
+        (props.currentNetWorthInCents - baseVal) *
+          ((m.nwFactor - months[0].nwFactor) / (1 - months[0].nwFactor || 1))
+      )
+    );
+    const yieldBm = Math.max(
+      0,
+      Math.round(yieldNw * (bmReturn / totalPortfolioGrowthPct) * m.bmFactor)
+    );
 
     return {
       dateLabel: m.label,
@@ -84,10 +191,24 @@ const dataPoints = computed((): NetWorthPoint[] => {
       benchmarkInCents: bmVal,
       yieldInCents: yieldNw,
       benchmarkYieldInCents: yieldBm,
+      monthlyReturnPct: m.monthlyReturnPct,
       benchmarkCdiInCents: bmVal,
     };
   });
 });
+
+// Passo de exibição dos rótulos no eixo X para não sobrepor quando houver 76 meses (ALL)
+const xAxisLabelStep = computed(() => {
+  const len = dataPoints.value.length;
+  if (len > 36) return 12;
+  if (len > 14) return 4;
+  return 2;
+});
+
+const maxAbsAnnualReturn = computed(() => {
+  return Math.max(1, ...userWealth.value.annualReturns.map((a) => Math.abs(a.returnPct)));
+});
+
 
 const activeIdx = computed(() => {
   if (hoveredIdx.value !== null) return hoveredIdx.value;
@@ -225,38 +346,86 @@ function handleSvgTouch(e: TouchEvent) {
   >
     <!-- Cabeçalho Distribuído: Controles (Rendimento / Patrimônio à esquerda + Benchmark à direita) + Métricas em linha única -->
     <div class="flex flex-col gap-2.5 w-full">
-      <!-- Linha 1: Segmented Control à esquerda e Benchmark à direita -->
-      <div class="flex items-center justify-between gap-1.5 sm:gap-2 w-full min-w-0">
-        <!-- Segmented Control: Rendimento | Patrimônio -->
-        <div class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
-          <button
-            type="button"
-            class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
-            :class="
-              displayMode === 'rendimento'
-                ? 'bg-white text-black shadow-md font-extrabold'
-                : 'text-[#A1A1AA] hover:text-white'
-            "
-            @click="displayMode = 'rendimento'"
+      <!-- Linha 1: Segmented Control à esquerda, Estilo Visual no centro e Benchmark à direita -->
+      <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 w-full min-w-0">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- Segmented Control: Rendimento | Patrimônio -->
+          <div class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0">
+            <button
+              type="button"
+              class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
+              :class="
+                displayMode === 'rendimento'
+                  ? 'bg-white text-black shadow-md font-extrabold'
+                  : 'text-[#A1A1AA] hover:text-white'
+              "
+              @click="displayMode = 'rendimento'"
+            >
+              Rendimento
+            </button>
+            <button
+              type="button"
+              class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
+              :class="
+                displayMode === 'patrimonio'
+                  ? 'bg-white text-black shadow-md font-extrabold'
+                  : 'text-[#A1A1AA] hover:text-white'
+              "
+              @click="displayMode = 'patrimonio'"
+            >
+              Patrimônio
+            </button>
+          </div>
+
+          <!-- Seletor de Estilo de Gráfico (Inspirado nos 4 Gráficos da Planilha Rentabilidade) -->
+          <div
+            data-testid="net-worth-visual-style-selector"
+            class="inline-flex p-0.5 sm:p-1 bg-[#18181B] rounded-2xl border border-border-subtle shrink-0"
           >
-            Rendimento
-          </button>
-          <button
-            type="button"
-            class="px-2 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition cursor-pointer"
-            :class="
-              displayMode === 'patrimonio'
-                ? 'bg-white text-black shadow-md font-extrabold'
-                : 'text-[#A1A1AA] hover:text-white'
-            "
-            @click="displayMode = 'patrimonio'"
-          >
-            Patrimônio
-          </button>
+            <button
+              type="button"
+              data-testid="btn-style-mountain"
+              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
+              :class="
+                visualStyle === 'mountain'
+                  ? 'bg-accent-yellow text-black font-extrabold'
+                  : 'text-[#A1A1AA] hover:text-white'
+              "
+              @click="visualStyle = 'mountain'"
+            >
+              Curva
+            </button>
+            <button
+              type="button"
+              data-testid="btn-style-bars"
+              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
+              :class="
+                visualStyle === 'bars'
+                  ? 'bg-accent-yellow text-black font-extrabold'
+                  : 'text-[#A1A1AA] hover:text-white'
+              "
+              @click="visualStyle = 'bars'"
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              data-testid="btn-style-annual"
+              class="px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-xl transition cursor-pointer"
+              :class="
+                visualStyle === 'annual'
+                  ? 'bg-accent-yellow text-black font-extrabold'
+                  : 'text-[#A1A1AA] hover:text-white'
+              "
+              @click="visualStyle = 'annual'"
+            >
+              Anual (20–26)
+            </button>
+          </div>
         </div>
 
         <!-- Seletor de Benchmark alinhado à direita (sem 'vs' e responsivo para não cortar) -->
-        <div class="inline-flex items-center bg-[#18181B] border border-[#27272A] rounded-2xl px-2 sm:px-3 py-1 min-w-0 max-w-[48%] sm:max-w-none">
+        <div class="inline-flex items-center bg-[#18181B] border border-[#27272A] rounded-2xl px-2 sm:px-3 py-1 min-w-0 max-w-[48%] sm:max-w-none ml-auto">
           <div class="relative flex items-center min-w-0 w-full">
             <select
               id="benchmark-select"
@@ -336,8 +505,11 @@ function handleSvgTouch(e: TouchEvent) {
       </div>
     </div>
 
-    <!-- SVG do Gráfico idêntico ao da aba Investir (Montanha + Linha Pontilhada de Benchmark) -->
-    <div class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y">
+    <!-- MODO 1: SVG do Gráfico de Montanha (Montanha + Linha Pontilhada de Benchmark + Marcos de Carreira) -->
+    <div
+      v-if="visualStyle === 'mountain'"
+      class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y"
+    >
       <svg
         class="w-full h-full overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
@@ -417,6 +589,17 @@ function handleSvgTouch(e: TouchEvent) {
             stroke-width="1.2"
           />
 
+          <!-- Indicador de Marco de Carreira na Curva -->
+          <circle
+            v-if="pt.careerMilestoneRole"
+            :cx="pt.x"
+            :cy="pt.yNw"
+            r="3.2"
+            fill="#FACC15"
+            stroke="#09090B"
+            stroke-width="1"
+          />
+
           <!-- Ponto do Benchmark -->
           <circle
             v-if="activeIdx === idx || idx === coords.length - 1"
@@ -439,9 +622,9 @@ function handleSvgTouch(e: TouchEvent) {
             stroke-width="1.5"
           />
 
-          <!-- Rótulos do Eixo X -->
+          <!-- Rótulos do Eixo X (Adaptativos à quantidade de meses: 10 ou 76 meses) -->
           <text
-            v-if="idx % 2 === 0 || idx === coords.length - 1 || activeIdx === idx"
+            v-if="idx % xAxisLabelStep === 0 || idx === coords.length - 1 || activeIdx === idx"
             :x="pt.x"
             :y="height - 6"
             text-anchor="middle"
@@ -472,15 +655,116 @@ function handleSvgTouch(e: TouchEvent) {
       </svg>
     </div>
 
-    <!-- Barra Informativa do Ponto em Foco (Responsivo sem cortar no mobile) -->
+    <!-- MODO 2: GRÁFICO DE BARRAS MENSAIS (Patrimônio Final ou Rent. Mês % — Gráficos 2 e 3 da Planilha) -->
+    <div
+      v-else-if="visualStyle === 'bars'"
+      data-testid="net-worth-bars-view"
+      class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 flex flex-col justify-between overflow-hidden"
+    >
+      <div class="flex items-center justify-between text-[10px] text-[#A1A1AA]">
+        <span class="font-semibold">
+          {{ displayMode === 'patrimonio' ? 'Evolução Patrimonial Mês a Mês (R$)' : 'Oscilação / Rentabilidade Mensal (%)' }}
+        </span>
+        <span class="font-mono text-accent-yellow">
+          {{ dataPoints.length }} meses exibidos
+        </span>
+      </div>
+
+      <div class="flex-1 flex items-end justify-between gap-0.5 sm:gap-1 pt-2 pb-1 overflow-x-auto no-scrollbar">
+        <button
+          v-for="(pt, idx) in coords"
+          :key="idx"
+          type="button"
+          :data-testid="`net-worth-bar-${idx}`"
+          class="flex-1 min-w-[6px] h-full flex flex-col items-center justify-end group cursor-pointer focus:outline-none"
+          @mouseenter="hoveredIdx = idx"
+          @click="handlePointClick(idx)"
+        >
+          <div class="w-full flex-1 flex items-end justify-center">
+            <div
+              class="w-full rounded-t transition-all"
+              :class="[
+                activeIdx === idx
+                  ? 'bg-accent-yellow shadow-sm shadow-accent-yellow/50'
+                  : (pt.monthlyReturnPct ?? 0) >= 0 || displayMode === 'patrimonio'
+                  ? 'bg-white/80 group-hover:bg-white'
+                  : 'bg-finance-neg/80 group-hover:bg-finance-neg',
+              ]"
+              :style="{
+                height: `${Math.max(10, Math.min(100, ((height - paddingBottom - pt.yNw) / plotHeight) * 100))}%`,
+              }"
+            />
+          </div>
+          <span
+            v-if="idx % xAxisLabelStep === 0 || idx === coords.length - 1"
+            class="text-[8px] sm:text-[9px] text-[#71717A] mt-1 truncate"
+          >
+            {{ pt.dateLabel }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MODO 3: GRÁFICO DE RETORNO ANUAL (2020 a 2026 — Gráfico 4 da Planilha Rentabilidade) -->
+    <div
+      v-else-if="visualStyle === 'annual'"
+      data-testid="net-worth-annual-view"
+      class="relative w-full h-48 sm:h-56 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3.5 flex flex-col justify-between overflow-hidden"
+    >
+      <div class="flex items-center justify-between text-[10px] sm:text-xs">
+        <span class="font-bold text-white">Retorno Anual Fechado (2020–2026)</span>
+        <span class="font-mono font-bold text-accent-yellow">
+          Média Anual: +{{ userWealth.summary.averageAnnualReturnPct.toFixed(2).replace('.', ',') }}%
+        </span>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1.5 sm:gap-2.5 flex-1 items-end pt-3 pb-1">
+        <div
+          v-for="item in userWealth.annualReturns"
+          :key="item.year"
+          :data-testid="`annual-return-bar-${item.year}`"
+          class="flex flex-col items-center justify-end h-full gap-1"
+        >
+          <span
+            class="text-[9px] sm:text-[10px] font-mono font-extrabold whitespace-nowrap"
+            :class="item.returnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+          >
+            {{ item.returnPct >= 0 ? `+${item.returnPct.toFixed(0)}%` : `${item.returnPct.toFixed(0)}%` }}
+          </span>
+
+          <div class="w-full flex-1 flex items-end justify-center bg-[#18181B]/70 rounded-lg p-1 overflow-hidden">
+            <div
+              class="w-full rounded-md transition-all"
+              :class="item.returnPct >= 0 ? 'bg-finance-pos' : 'bg-finance-neg'"
+              :style="{
+                height: `${Math.max(16, Math.min(100, (Math.log10(Math.abs(item.returnPct) + 1) / Math.log10(maxAbsAnnualReturn + 1)) * 100))}%`,
+              }"
+            />
+          </div>
+
+          <span class="text-[10px] sm:text-xs font-bold text-white font-mono">
+            {{ item.year }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra Informativa do Ponto em Foco + Marco de Carreira + Link para Evolução -->
     <div
       v-if="activePt"
       data-testid="net-worth-point-info"
       class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs bg-background/70 px-3 sm:px-3.5 py-2 rounded-xl border border-border-subtle/60 text-[#A1A1AA] w-full min-w-0"
     >
-      <div class="flex items-center justify-between sm:justify-start gap-2">
+      <div class="flex flex-wrap items-center justify-between sm:justify-start gap-2">
         <span class="font-bold text-white whitespace-nowrap text-xs">
           📅 {{ activePt.dateLabel }}
+        </span>
+        <span
+          v-if="activePt.careerMilestoneRole"
+          data-testid="badge-career-milestone"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 truncate"
+        >
+          💼 {{ activePt.careerMilestoneRole }}
         </span>
         <button
           v-if="pinnedIdx !== null"
@@ -497,7 +781,7 @@ function handleSvgTouch(e: TouchEvent) {
           <span>Desmarcar</span>
         </button>
       </div>
-      <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 font-mono text-[10.5px] sm:text-xs min-w-0">
+      <div class="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 font-mono text-[10.5px] sm:text-xs min-w-0">
         <span class="whitespace-nowrap">
           {{ displayMode === 'patrimonio' ? 'Patrimônio:' : 'Rendimento:' }}
           <strong class="text-white">
@@ -511,6 +795,15 @@ function handleSvgTouch(e: TouchEvent) {
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePt.currentBmVal) }}
           </strong>
         </span>
+        <button
+          type="button"
+          data-testid="btn-open-evolution-from-chart"
+          class="font-sans text-[10px] sm:text-[11px] font-bold text-accent-yellow hover:underline flex items-center gap-1 whitespace-nowrap cursor-pointer ml-auto sm:ml-1"
+          @click="emit('openEvolutionDetail')"
+        >
+          <span>Evolução</span>
+          <span>↗</span>
+        </button>
       </div>
     </div>
   </div>

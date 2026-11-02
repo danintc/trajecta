@@ -273,4 +273,33 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     const pinSpan = floatingBox.find('span');
     expect(pinSpan.classes()).toContain('whitespace-nowrap');
   });
+
+  it('deve renderizar o Histórico Completo de Rentabilidade (2020–2026), filtrar a tabela de 76 meses e permitir navegar ao Balanço Patrimonial', async () => {
+    const wrapper = mount(XpEvolutionTab, {
+      props: {
+        assets: [],
+        isPrivacyActive: false,
+      },
+    });
+
+    expect(wrapper.find('[data-testid="evolution-historical-ledger-section"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('+2587,10%');
+    expect(wrapper.text()).toContain('Média Anual: +276,14%');
+
+    // Filtrar todos os 76 meses na tabela histórica
+    await wrapper.find('[data-testid="ledger-filter-ALL"]').trigger('click');
+    expect(wrapper.text()).toContain('Exibindo 76 meses');
+    expect(wrapper.text()).toContain('07/2020');
+    expect(wrapper.text()).toContain('Analista de Software I');
+
+    // Ativar curva 2020–2026 no topo
+    await wrapper.find('[data-testid="btn-activate-since-2020"]').trigger('click');
+    expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe(
+      'De 01/07/2020 Até 31/10/2026'
+    );
+
+    // Clicar no botão para voltar ao Balanço Patrimonial & Net Worth
+    await wrapper.find('[data-testid="btn-evolution-goto-home"]').trigger('click');
+    expect(wrapper.emitted('navigateToHome')).toBeTruthy();
+  });
 });
