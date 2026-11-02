@@ -259,11 +259,11 @@ const selectedBarIdx = ref<number | null>(4); // Maio pré-selecionado para exib
 
 // Coordenadas para o Gráfico de Montanha
 const width = 640;
-const height = 240;
-const paddingLeft = 14;
-const paddingRight = 14;
-const paddingTop = 24;
-const paddingBottom = 30;
+const height = 220;
+const paddingLeft = 20;
+const paddingRight = 20;
+const paddingTop = 14;
+const paddingBottom = 26;
 
 const plotWidth = width - paddingLeft - paddingRight;
 const plotHeight = height - paddingTop - paddingBottom;
@@ -829,17 +829,17 @@ function handleBarHover(idx: number) {
       </div>
 
     <!-- GRÁFICO DE MONTANHA DO PATRIMÔNIO / RENDIMENTO + LINHA DE BENCHMARK -->
-    <div class="relative w-full h-52 sm:h-60 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y">
-      <!-- Badge Flutuante no Topo do Gráfico mostrando o Valor da Coordenada Selecionada -->
+    <div class="relative w-full bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y space-y-2">
+      <!-- Legenda no Topo do Gráfico mostrando o Valor da Coordenada Selecionada sem cortar no mobile -->
       <div
         v-if="activePoint"
         data-testid="evolution-chart-floating-value"
-        class="pointer-events-none absolute top-2.5 left-3 right-3 z-10 flex items-center justify-between text-[10px] sm:text-[11px] font-mono bg-[#18181B]/40 backdrop-blur-md border border-white/10 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-lg"
+        class="pointer-events-none flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] sm:text-[11px] font-mono bg-[#18181B]/40 backdrop-blur-md border border-white/10 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-lg w-full min-w-0"
       >
-        <span class="font-bold text-accent-yellow font-sans whitespace-nowrap shrink-0">
-          📍 {{ activePoint.name }}
-        </span>
-        <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 whitespace-nowrap">
+        <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0">
+          <span class="font-bold text-accent-yellow font-sans whitespace-nowrap shrink-0">
+            📍 {{ activePoint.name }}
+          </span>
           <span class="text-white font-extrabold whitespace-nowrap">
             {{
               isPrivacyActive
@@ -849,8 +849,10 @@ function handleBarHover(idx: number) {
                 : formatCentsToBrl(activePoint.netWorthInCents)
             }}
           </span>
-          <span class="text-[#52525B]">|</span>
-          <span :style="{ color: currentBenchmark.color }" class="font-bold whitespace-nowrap">
+        </div>
+        <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span class="text-[#52525B] hidden sm:inline">|</span>
+          <span :style="{ color: currentBenchmark.color }" class="font-bold break-words">
             {{ activePoint.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }} ({{ currentBenchmark.shortName }}: +{{ activePoint.benchmarkReturn.toFixed(2).replace('.', ',') }}%)
           </span>
         </div>
@@ -858,7 +860,7 @@ function handleBarHover(idx: number) {
 
       <svg
         data-testid="xp-evolution-svg"
-        class="w-full h-full overflow-visible"
+        class="w-full h-44 sm:h-52 overflow-visible"
         :viewBox="`0 0 ${width} ${height}`"
         preserveAspectRatio="none"
         @touchstart.passive="handleSvgPointerMove"
@@ -958,12 +960,12 @@ function handleBarHover(idx: number) {
             stroke-width="1.5"
           />
 
-          <!-- Rótulos do Eixo X (Adaptativos para 12 ou 76 meses) -->
+          <!-- Rótulos do Eixo X (Adaptativos para 12 ou 76 meses, ancorados nas bordas para não cortar) -->
           <text
             v-if="(coords.length > 36 ? idx % 12 === 0 : idx % 2 === 0) || idx === coords.length - 1 || activePointIdx === idx"
             :x="pt.x"
             :y="height - 6"
-            text-anchor="middle"
+            :text-anchor="idx === 0 ? 'start' : idx === coords.length - 1 ? 'end' : 'middle'"
             :fill="activePointIdx === idx ? '#FFFFFF' : '#71717A'"
             font-size="10"
             :font-weight="activePointIdx === idx ? 700 : 500"
@@ -1001,14 +1003,14 @@ function handleBarHover(idx: number) {
         <span class="font-bold text-white whitespace-nowrap">
           📅 {{ activePoint.name }}
         </span>
-        <div class="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:text-xs">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[11px] sm:text-xs">
           <span class="whitespace-nowrap">
             Patrimônio:
             <strong class="text-white">
               {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(activePoint.netWorthInCents) }}
             </strong>
           </span>
-          <span class="text-border-subtle">|</span>
+          <span class="text-border-subtle hidden sm:inline">|</span>
           <span class="whitespace-nowrap">
             Rendimento:
             <strong class="text-finance-pos">
@@ -1016,8 +1018,8 @@ function handleBarHover(idx: number) {
               (+{{ activePoint.profitPercent.toFixed(2).replace('.', ',') }}%)
             </strong>
           </span>
-          <span class="text-border-subtle">|</span>
-          <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span class="text-border-subtle hidden sm:inline">|</span>
+          <span class="inline-flex flex-wrap items-center gap-1.5">
             <span
               class="w-2.5 h-2.5 rounded-full shrink-0"
               :style="{ backgroundColor: currentBenchmark.color }"

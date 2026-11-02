@@ -479,8 +479,8 @@ function handleSvgTouch(e: TouchEvent) {
         </div>
       </div>
 
-      <!-- Linha 2: Legendas + Badge Comparativo - BEM DISTRIBUÍDOS EM UMA LINHA SÓ -->
-      <div class="flex items-center justify-between gap-1 sm:gap-2 w-full text-[10px] sm:text-xs min-w-0">
+      <!-- Linha 2: Legendas + Badge Comparativo - BEM DISTRIBUÍDOS E SEM CORTE NO MOBILE -->
+      <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 w-full text-[10px] sm:text-xs min-w-0">
         <!-- Legenda Patrimônio / Rendimento -->
         <div class="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0">
           <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white shadow-sm shrink-0" />
@@ -651,12 +651,12 @@ function handleSvgTouch(e: TouchEvent) {
             stroke-width="1.5"
           />
 
-          <!-- Rótulos do Eixo X (Adaptativos à quantidade de meses: 10 ou 76 meses) -->
+          <!-- Rótulos do Eixo X (Adaptativos à quantidade de meses: 10 ou 76 meses, ancorados nas bordas) -->
           <text
             v-if="idx % xAxisLabelStep === 0 || idx === coords.length - 1 || activeIdx === idx"
             :x="pt.x"
             :y="height - 6"
-            text-anchor="middle"
+            :text-anchor="idx === 0 ? 'start' : idx === coords.length - 1 ? 'end' : 'middle'"
             :fill="activeIdx === idx ? '#FFFFFF' : '#71717A'"
             font-size="10"
             :font-weight="activeIdx === idx ? 700 : 500"
