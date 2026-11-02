@@ -58,6 +58,7 @@ watch(
   () => props.isOpen,
   (open) => {
     if (open) {
+      parseResult.value = null;
       errorMessage.value = '';
       commitSummary.value = null;
       if (props.initialTargetModule && props.initialTargetModule !== 'all') {
@@ -66,6 +67,12 @@ watch(
     }
   }
 );
+
+watch(sourceMode, () => {
+  parseResult.value = null;
+  errorMessage.value = '';
+  commitSummary.value = null;
+});
 
 function selectBestReviewTab(res: UniversalParseResult) {
   if (props.initialTargetModule && props.initialTargetModule !== 'all') {
@@ -425,6 +432,19 @@ function handleResetStaging() {
                   }}
                 </p>
               </div>
+            </div>
+
+            <div
+              v-if="isOwnerProfile"
+              class="p-3 rounded-xl bg-finance-pos/10 border border-finance-pos/30 flex items-center justify-between gap-2 text-xs"
+            >
+              <div class="flex items-center gap-2 text-finance-pos font-bold">
+                <span>✓</span>
+                <span>Suas 2 planilhas já estão sincronizadas no seu perfil.</span>
+              </div>
+              <span class="text-[10px] font-mono text-[#A1A1AA] hidden sm:inline">
+                Use abaixo apenas se quiser ressincronizar
+              </span>
             </div>
 
             <!-- BOTÕES 1-CLICK DAS PLANILHAS DO USUÁRIO (Exibidos exclusivamente para o perfil do proprietário) -->

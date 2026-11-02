@@ -99,6 +99,10 @@ const currentMonthBillsInCents = computed(() => {
 });
 
 const accountsBalanceInCents = computed(() => {
+  // Se a carteira já possui saldo explícito de caixa/conta (ex: Saldo XP importado da aba Carteira), evita dupla contagem
+  if (props.assets.some((a) => a.assetClass === 'reserva_emergencia')) {
+    return 0;
+  }
   let inc = 0;
   let exp = 0;
   for (const t of props.transactions) {

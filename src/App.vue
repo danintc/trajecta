@@ -118,6 +118,7 @@ const careerRecords = ref<CareerRecord[]>([]);
 const snapshots = ref<MonthlySnapshot[]>([]);
 
 const ACTIVE_USER_STORAGE_KEY = 'trajecta_active_user_id';
+const OWNER_SYNC_VERSION_KEY = 'trajecta_owner_sheets_synced_v4';
 
 const isOwnerProfile = computed(() =>
   isDanielProfile(userEmail.value, userDisplayName.value)
@@ -161,9 +162,16 @@ async function syncAndLoadWorkspace() {
       // Apenas para o perfil titular do Daniel: garante que 100% dos dados das duas planilhas estejam importados
       if (isOwnerProfile.value) {
         const snapshotCount = await db.snapshots.count();
-        if (snapshotCount === 0) {
+        const syncedVersionUser =
+          typeof localStorage !== 'undefined'
+            ? localStorage.getItem(OWNER_SYNC_VERSION_KEY)
+            : null;
+        if (snapshotCount < 76 || syncedVersionUser !== activeUserId) {
           const parsed = await parseGoogleSheetByUrlOrPreset('both_sheets');
           await commitUniversalImport(parsed, { replaceExistingData: true });
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(OWNER_SYNC_VERSION_KEY, activeUserId);
+          }
         }
       }
     } else {

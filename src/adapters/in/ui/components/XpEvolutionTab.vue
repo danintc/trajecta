@@ -49,8 +49,8 @@ const emit = defineEmits<{
   (e: 'navigateToHome'): void;
 }>();
 
-// Estado do Seletor Rentabilidade vs Patrimônio
-const displayMode = ref<'rentabilidade' | 'patrimonio'>('rentabilidade');
+// Estado do Seletor Rentabilidade vs Patrimônio vs Histórico & Fluxo
+const displayMode = ref<'rentabilidade' | 'patrimonio' | 'historico'>('rentabilidade');
 
 // Estado do Benchmark selecionado (Padrão CDI)
 const selectedBenchmark = ref<BenchmarkType>('cdi');
@@ -76,38 +76,63 @@ const filteredLedgerRows = computed(() => {
 
 // Configurações dinâmicas por período selecionado
 const periodConfig = computed(() => {
-  if (
+  const isSinceStart = selectedYear.value === 'since_2020' || selectedYear.value === 'all';
+  const useRealSnapshotsSeries =
     userWealth.value.hasHistory &&
-    (selectedYear.value === 'since_2020' ||
+    (props.snapshots !== undefined ||
+      isSinceStart ||
       selectedYear.value === '2024' ||
       selectedYear.value === '2023' ||
       selectedYear.value === '2022' ||
       selectedYear.value === '2021' ||
-      selectedYear.value === '2020')
-  ) {
-    const slice =
-      selectedYear.value === 'since_2020'
-        ? userWealth.value.series
-        : sliceWealthHistory(userWealth.value.series, selectedYear.value);
+      selectedYear.value === '2020');
+
+  if (useRealSnapshotsSeries) {
+    const filterKey = isSinceStart
+      ? 'ALL'
+      : selectedYear.value === '12m'
+        ? '12M'
+        : selectedYear.value === 'ytd'
+          ? '2026'
+          : (selectedYear.value as any);
+    const slice = sliceWealthHistory(userWealth.value.series, filterKey);
     const lastVal = slice[slice.length - 1]?.finalNetWorthInCents || 1;
     const firstVal = slice[0]?.initialNetWorthInCents || 1;
-    const annualInfo = userWealth.value.annualReturns.find((a) => a.year === selectedYear.value);
-    const profitPct =
-      selectedYear.value === 'since_2020'
-        ? userWealth.value.summary.cumulativeSinceStartPct
-        : annualInfo?.returnPct ?? Number((((lastVal - firstVal) / firstVal) * 100).toFixed(2));
+    const annualInfo = userWealth.value.annualReturns.find(
+      (a) => a.year === (selectedYear.value === 'ytd' ? '2026' : selectedYear.value)
+    );
+    const isRentMode = displayMode.value === 'rentabilidade';
+    const profitPct = isSinceStart
+      ? isRentMode
+        ? userWealth.value.summary.totalProfitabilityPct
+        : userWealth.value.summary.cumulativeSinceStartPct
+      : annualInfo?.returnPct ?? Number((((lastVal - firstVal) / firstVal) * 100).toFixed(2));
+    const exactProfitCents = isSinceStart
+      ? isRentMode
+        ? userWealth.value.summary.accumulatedProfitInCents
+        : lastVal - firstVal
+      : lastVal - firstVal;
+    const exactCostCents = isSinceStart
+      ? userWealth.value.summary.investedCapitalInCents
+      : firstVal;
     const totalMovements = slice.reduce(
       (acc, item) => acc + (item.incomeInCents - item.expensesInCents),
       0
     );
 
     return {
-      dateRangeLabel:
-        selectedYear.value === 'since_2020'
-          ? 'De 01/07/2020 Até 31/10/2026'
-          : `De 01/01/${selectedYear.value} Até 31/12/${selectedYear.value}`,
-      profitMultiplier: Math.max(0.5, lastVal / firstVal),
+      dateRangeLabel: isSinceStart
+        ? 'De 01/07/2020 Até 31/10/2026'
+        : selectedYear.value === '12m'
+          ? 'Últimos 12 Meses (Nov/25 a Out/26)'
+          : selectedYear.value === '2026' || selectedYear.value === 'ytd'
+            ? 'De 01/01/2026 Até 31/10/2026'
+            : `De 01/01/${selectedYear.value} Até 31/12/${selectedYear.value}`,
+      profitMultiplier: 1.0,
       profitPct,
+      exactCurrentTotal: lastVal,
+      exactCostTotal: exactCostCents,
+      exactProfitInCents: exactProfitCents,
       bmMultiplier: Math.max(0.8, slice.length / 12),
       initialFactor: firstVal / lastVal,
       movementsCents: totalMovements,
@@ -249,19 +274,30 @@ const plotWidth = width - paddingLeft - paddingRight;
 const plotHeight = height - paddingTop - paddingBottom;
 
 const baseTotals = computed(() => {
-  const cfg = periodConfig.value;
+  const cfg = periodConfig.value as typeof periodConfig.value & {
+    exactCurrentTotal?: number;
+    exactCostTotal?: number;
+    exactProfitInCents?: number;
+  };
   const currentTotal =
-    props.assets.length > 0
-      ? props.assets.reduce((sum, a) => sum + a.totalQuantity * a.currentPriceInCents, 0)
-      : props.totalInvestedInCents;
+    cfg.exactCurrentTotal !== undefined
+      ? cfg.exactCurrentTotal
+      : props.assets.length > 0
+        ? props.assets.reduce((sum, a) => sum + a.totalQuantity * a.currentPriceInCents, 0)
+        : props.totalInvestedInCents;
 
   const costTotal =
-    props.assets.length > 0
-      ? props.assets.reduce((sum, a) => sum + a.totalQuantity * a.averagePriceInCents, 0)
-      : Math.round(currentTotal / 1.0935);
+    cfg.exactCostTotal !== undefined
+      ? cfg.exactCostTotal
+      : props.assets.length > 0
+        ? props.assets.reduce((sum, a) => sum + a.totalQuantity * a.averagePriceInCents, 0)
+        : Math.round(currentTotal / 1.0935);
 
   const baseProfit = currentTotal - costTotal > 0 ? currentTotal - costTotal : 117256;
-  const fullProfitInCents = Math.round(baseProfit * cfg.profitMultiplier);
+  const fullProfitInCents =
+    cfg.exactProfitInCents !== undefined
+      ? cfg.exactProfitInCents
+      : Math.round(baseProfit * cfg.profitMultiplier);
   const fullBmReturn = Number(
     (currentBenchmark.value.defaultPeriodReturn * cfg.bmMultiplier).toFixed(2)
   );
@@ -630,11 +666,12 @@ function handleBarHover(idx: number) {
         </button>
       </div>
 
-      <!-- Segmented Control Estilo XP: [ Rentabilidade ] [ Patrimônio ] -->
+      <!-- Segmented Control Estilo XP: [ Rentabilidade ] [ Patrimônio ] [ Histórico & Fluxo ] -->
       <div class="inline-flex p-1 bg-[#18181B] rounded-2xl border border-border-subtle w-full sm:w-auto">
         <button
           type="button"
-          class="flex-1 sm:flex-initial px-5 py-2 text-xs font-bold rounded-xl transition"
+          data-testid="tab-mode-rentabilidade"
+          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
           :class="
             displayMode === 'rentabilidade'
               ? 'bg-white text-black shadow-md font-extrabold'
@@ -646,7 +683,8 @@ function handleBarHover(idx: number) {
         </button>
         <button
           type="button"
-          class="flex-1 sm:flex-initial px-5 py-2 text-xs font-bold rounded-xl transition"
+          data-testid="tab-mode-patrimonio"
+          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
           :class="
             displayMode === 'patrimonio'
               ? 'bg-white text-black shadow-md font-extrabold'
@@ -656,116 +694,132 @@ function handleBarHover(idx: number) {
         >
           Patrimônio
         </button>
-      </div>
-    </div>
-
-    <!-- BLOCO RESUMO PRINCIPAL (VALOR + VARIAÇÃO + % DO BENCHMARK) -->
-    <div class="space-y-3">
-      <div class="text-[11px] sm:text-xs text-[#71717A] flex items-center justify-between gap-2 w-full min-w-0">
-        <span class="truncate">
-          {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.headerDateLabel }}
-        </span>
         <button
-          v-if="pinnedIdx !== null"
+          v-if="userWealth.hasHistory"
           type="button"
-          data-testid="btn-clear-evolution-point"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-hover/90 hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0 ml-auto"
-          title="Voltar ao período atual"
-          @click="
-            pinnedIdx = null;
-            hoveredIdx = null;
-            selectedBarIdx = null;
+          data-testid="tab-mode-historico"
+          class="flex-1 sm:flex-initial px-3 sm:px-5 py-2 text-xs font-bold rounded-xl transition cursor-pointer"
+          :class="
+            displayMode === 'historico'
+              ? 'bg-accent-yellow text-black shadow-md font-extrabold'
+              : 'text-[#A1A1AA] hover:text-white'
           "
+          @click="displayMode = 'historico'"
         >
-          <span class="text-accent-yellow font-bold text-[9px]">✕</span>
-          <span>Desmarcar</span>
+          Histórico & Fluxo
         </button>
       </div>
+    </div>
 
-      <div class="flex flex-wrap items-baseline gap-2.5">
-        <span
-          data-testid="evolution-header-primary-value"
-          class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white"
-        >
-          {{
-            isPrivacyActive
-              ? 'R$ •••••'
-              : displayMode === 'rentabilidade'
-              ? formatCentsToBrl(portfolioValues.profitInCents)
-              : formatCentsToBrl(portfolioValues.currentTotal)
-          }}
-        </span>
-
-        <span
-          data-testid="evolution-header-profit-pct"
-          class="inline-flex items-center text-xs sm:text-sm font-bold text-finance-pos font-mono"
-        >
-          ↑ {{ portfolioValues.profitPercent.toFixed(2).replace('.', ',') }}%
-        </span>
-
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#27272A] border border-[#3F3F46] text-white">
-          <span
-            class="w-2 h-2 rounded-full shrink-0"
-            :style="{ backgroundColor: currentBenchmark.color }"
-          />
-          <span>{{ portfolioValues.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }}</span>
-        </span>
-      </div>
-
-      <!-- SELECTORES: ANO E BENCHMARK (Estilo XP) -->
-      <div class="flex items-center gap-2 pt-1">
-        <!-- Dropdown Ano -->
-        <div class="relative">
-          <select
-            v-model="selectedYear"
-            class="bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition"
-            @change="
-              hoveredIdx = null;
+    <template v-if="displayMode !== 'historico'">
+      <!-- BLOCO RESUMO PRINCIPAL (VALOR + VARIAÇÃO + % DO BENCHMARK) -->
+      <div class="space-y-3">
+        <div class="text-[11px] sm:text-xs text-[#71717A] flex items-center justify-between gap-2 w-full min-w-0">
+          <span class="truncate">
+            {{ displayMode === 'rentabilidade' ? 'Rentabilidade' : 'Patrimônio' }} • {{ portfolioValues.headerDateLabel }}
+          </span>
+          <button
+            v-if="pinnedIdx !== null"
+            type="button"
+            data-testid="btn-clear-evolution-point"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-hover/90 hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-border-subtle transition cursor-pointer whitespace-nowrap shrink-0 ml-auto"
+            title="Voltar ao período atual"
+            @click="
               pinnedIdx = null;
+              hoveredIdx = null;
+              selectedBarIdx = null;
             "
           >
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
-            <option value="2022">2022</option>
-            <option value="2021">2021</option>
-            <option value="2020">2020</option>
-            <option value="ytd">No ano</option>
-            <option value="12m">12 meses</option>
-            <option value="all">Todo o Histórico</option>
-            <option value="since_2020">Desde o Início (07/2020 - 76m)</option>
-          </select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+            <span class="text-accent-yellow font-bold text-[9px]">✕</span>
+            <span>Desmarcar</span>
+          </button>
         </div>
 
-        <!-- Dropdown Benchmark Selecionável -->
-        <div class="relative">
-          <select
-            v-model="selectedBenchmark"
-            class="bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition"
+        <div class="flex flex-wrap items-baseline gap-2.5">
+          <span
+            data-testid="evolution-header-primary-value"
+            class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white"
           >
-            <option
-              v-for="b in BENCHMARK_LIST"
-              :key="b.id"
-              :value="b.id"
-              class="bg-[#18181B] text-white"
+            {{
+              isPrivacyActive
+                ? 'R$ •••••'
+                : displayMode === 'rentabilidade'
+                ? formatCentsToBrl(portfolioValues.profitInCents)
+                : formatCentsToBrl(portfolioValues.currentTotal)
+            }}
+          </span>
+
+          <span
+            data-testid="evolution-header-profit-pct"
+            class="inline-flex items-center text-xs sm:text-sm font-bold font-mono"
+            :class="portfolioValues.profitPercent >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+          >
+            {{ portfolioValues.profitPercent >= 0 ? '↑' : '↓' }} {{ Math.abs(portfolioValues.profitPercent).toFixed(2).replace('.', ',') }}%
+          </span>
+
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#27272A] border border-[#3F3F46] text-white">
+            <span
+              class="w-2 h-2 rounded-full shrink-0"
+              :style="{ backgroundColor: currentBenchmark.color }"
+            />
+            <span>{{ portfolioValues.pctOfBenchmark.toFixed(2).replace('.', ',') }}% do {{ currentBenchmark.shortName }}</span>
+          </span>
+        </div>
+
+        <!-- SELECTORES: ANO E BENCHMARK (Responsivos 50/50 sem transbordar no mobile) -->
+        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 pt-1 w-full">
+          <!-- Dropdown Ano -->
+          <div class="relative min-w-0">
+            <select
+              v-model="selectedYear"
+              data-testid="select-evolution-period"
+              class="w-full sm:w-auto bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-2 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition truncate"
+              @change="
+                hoveredIdx = null;
+                pinnedIdx = null;
+              "
             >
-              {{ b.name }}
-            </option>
-          </select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
+              <option value="2026">2026 (No ano)</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+              <option value="2021">2021</option>
+              <option value="2020">2020</option>
+              <option value="12m">Últimos 12 meses</option>
+              <option value="since_2020">Desde o início (07/2020)</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Dropdown Benchmark Selecionável -->
+          <div class="relative min-w-0">
+            <select
+              v-model="selectedBenchmark"
+              data-testid="select-evolution-benchmark"
+              class="w-full sm:w-auto bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded-xl px-3 py-2 text-xs font-bold text-white pr-7 appearance-none cursor-pointer focus:outline-none transition truncate"
+            >
+              <option
+                v-for="b in BENCHMARK_LIST"
+                :key="b.id"
+                :value="b.id"
+                class="bg-[#18181B] text-white"
+              >
+                {{ b.name }}
+              </option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#71717A]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
     <!-- GRÁFICO DE MONTANHA DO PATRIMÔNIO / RENDIMENTO + LINHA DE BENCHMARK -->
     <div class="relative w-full h-52 sm:h-60 bg-[#09090B]/60 rounded-2xl border border-border-subtle p-3 overflow-hidden touch-pan-y">
@@ -1214,14 +1268,15 @@ function handleBarHover(idx: number) {
         </div>
       </div>
     </div>
+    </template>
 
     <!-- ========================================================================= -->
-    <!-- SEÇÃO: SÉRIE HISTÓRICA COMPLETA DA PLANILHA RENTABILIDADE (2020–2026)     -->
+    <!-- ABA 3 DEDICADA: HISTÓRICO & FLUXO PATRIMONIAL EM CARDS (2020–2026)        -->
     <!-- ========================================================================= -->
     <div
-      v-if="userWealth.hasHistory"
+      v-else-if="userWealth.hasHistory"
       data-testid="evolution-historical-ledger-section"
-      class="space-y-4 border-t border-border-subtle pt-5 pb-4"
+      class="space-y-4 pt-1 pb-4"
     >
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -1229,7 +1284,7 @@ function handleBarHover(idx: number) {
             <span>📊 Histórico Completo de Rentabilidade & Fluxo Patrimonial (2020–2026)</span>
           </h3>
           <p class="text-[11px] text-[#71717A]">
-            Série histórica real de {{ userWealth.summary.totalMonths }} meses ({{ userWealth.summary.startYearMonth }} a {{ userWealth.summary.endYearMonth }}) integrada com seus saltos de carreira
+            Série histórica real de {{ userWealth.summary.totalMonths }} meses ({{ userWealth.summary.startYearMonth }} a {{ userWealth.summary.endYearMonth }}) em cards mensais integrada com seus saltos de carreira
           </p>
         </div>
 
@@ -1237,13 +1292,16 @@ function handleBarHover(idx: number) {
           type="button"
           data-testid="btn-activate-since-2020"
           class="px-3 py-1.5 rounded-xl bg-accent-yellow/15 hover:bg-accent-yellow/25 border border-accent-yellow/35 text-accent-yellow text-xs font-bold transition cursor-pointer self-start sm:self-auto"
-          @click="selectedYear = 'since_2020'"
+          @click="
+            selectedYear = 'since_2020';
+            displayMode = 'patrimonio';
+          "
         >
-          Ver Curva 2020–2026 no Topo ↑
+          Ver Curva 2020–2026 no Gráfico ↑
         </button>
       </div>
 
-      <!-- 4 KPIs Consolidados da Planilha Rentabilidade -->
+      <!-- 4 KPIs Consolidados da Planilha Rentabilidade & Dashboard -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div class="bg-[#09090B]/70 border border-border-subtle rounded-xl p-3">
           <span class="block text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
@@ -1252,17 +1310,21 @@ function handleBarHover(idx: number) {
           <span class="text-sm font-mono font-extrabold text-white mt-0.5 block">
             {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(userWealth.summary.initialNetWorthInCents) }}
           </span>
-          <span class="text-[10px] text-[#A1A1AA]">Patrimônio de partida</span>
+          <span class="text-[10px] text-[#A1A1AA]">
+            Patr. Atual: {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(userWealth.summary.currentNetWorthInCents) }}
+          </span>
         </div>
 
         <div class="bg-[#09090B]/70 border border-border-subtle rounded-xl p-3">
           <span class="block text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-            Rent. Desde o Início
+            Lucro Acumulado
           </span>
           <span class="text-sm font-mono font-extrabold text-finance-pos mt-0.5 block">
-            +{{ userWealth.summary.cumulativeSinceStartPct.toFixed(2).replace('.', ',') }}%
+            {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(userWealth.summary.accumulatedProfitInCents) }}
           </span>
-          <span class="text-[10px] text-[#A1A1AA]">Multiplicação patrimonial</span>
+          <span class="text-[10px] text-finance-pos font-mono font-bold">
+            +{{ userWealth.summary.totalProfitabilityPct.toFixed(2).replace('.', ',') }}% s/ capital (+{{ userWealth.summary.cumulativeSinceStartPct.toFixed(2).replace('.', ',') }}%)
+          </span>
         </div>
 
         <div class="bg-[#09090B]/70 border border-border-subtle rounded-xl p-3">
@@ -1286,40 +1348,40 @@ function handleBarHover(idx: number) {
         </div>
       </div>
 
-      <!-- Gráfico de Retorno Anual Fechado (2020 a 2026) -->
+      <!-- Cards de Retorno Anual Fechado (2020 a 2026) -->
       <div class="bg-[#09090B]/60 border border-border-subtle rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span class="font-bold text-white">Desempenho por Ano Fechado (2020–2026)</span>
           <span class="font-mono font-bold text-accent-yellow">
             Média Anual: +{{ userWealth.summary.averageAnnualReturnPct.toFixed(2).replace('.', ',') }}%
           </span>
         </div>
 
-        <div class="grid grid-cols-7 gap-2 pt-2">
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pt-1">
           <button
             v-for="item in userWealth.annualReturns"
             :key="item.year"
             type="button"
             :data-testid="`xp-annual-card-${item.year}`"
-            class="bg-surface/80 hover:bg-surface-hover border border-border-subtle rounded-xl p-2 flex flex-col items-center justify-between gap-1.5 transition cursor-pointer"
+            class="bg-surface/80 hover:bg-surface-hover border border-border-subtle rounded-xl p-2.5 flex flex-col items-center justify-between gap-1 transition cursor-pointer"
             :class="ledgerYearFilter === item.year ? 'ring-1 ring-accent-yellow border-accent-yellow' : ''"
             @click="ledgerYearFilter = item.year as any"
           >
-            <span class="text-[10px] font-bold text-[#A1A1AA] font-mono">{{ item.year }}</span>
+            <span class="text-[11px] font-bold text-[#A1A1AA] font-mono">{{ item.year }}</span>
             <span
-              class="text-[10px] sm:text-xs font-mono font-extrabold"
+              class="text-xs font-mono font-extrabold"
               :class="item.returnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
             >
               {{ item.returnPct >= 0 ? `+${item.returnPct.toFixed(1).replace('.', ',')}%` : `${item.returnPct.toFixed(1).replace('.', ',')}%` }}
             </span>
-            <span class="text-[9px] font-mono text-[#71717A] hidden sm:inline">
+            <span class="text-[10px] font-mono text-[#71717A]">
               {{ isPrivacyActive ? 'R$ •••' : formatCentsToBrl(item.endNetWorthInCents) }}
             </span>
           </button>
         </div>
       </div>
 
-      <!-- Filtros de Ano para a Tabela Mensal -->
+      <!-- Filtros de Ano para os Cards Mensais -->
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
@@ -1344,70 +1406,101 @@ function handleBarHover(idx: number) {
         </span>
       </div>
 
-      <!-- Tabela Histórica Mês a Mês (Espelho da Aba Rentabilidade) -->
-      <div class="bg-[#09090B]/60 border border-border-subtle rounded-2xl overflow-hidden">
-        <div class="max-h-80 overflow-y-auto overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead class="bg-[#18181B] text-[#A1A1AA] text-[10px] uppercase tracking-wider sticky top-0 z-10 border-b border-border-subtle">
-              <tr>
-                <th class="py-2.5 px-3 font-bold">Mês/Ref</th>
-                <th class="py-2.5 px-3 font-bold text-right">Patr. Inicial</th>
-                <th class="py-2.5 px-3 font-bold text-right hidden sm:table-cell">Ganhos</th>
-                <th class="py-2.5 px-3 font-bold text-right hidden sm:table-cell">Gastos</th>
-                <th class="py-2.5 px-3 font-bold text-right">Patr. Final</th>
-                <th class="py-2.5 px-3 font-bold text-right">Lucro Mês</th>
-                <th class="py-2.5 px-3 font-bold text-right">Rent. Mês</th>
-                <th class="py-2.5 px-3 font-bold text-right hidden md:table-cell">Rent. Início</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border-subtle/50 font-mono text-[11px]">
-              <tr
-                v-for="row in filteredLedgerRows"
-                :key="row.yearMonth"
-                class="hover:bg-white/5 transition"
+      <!-- Lista de Cards Mensais de Rentabilidade & Fluxo Patrimonial -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div
+          v-for="row in filteredLedgerRows"
+          :key="row.yearMonth"
+          data-testid="ledger-month-card"
+          class="bg-[#09090B]/70 hover:bg-[#18181B]/90 border border-border-subtle rounded-2xl p-4 space-y-3 transition"
+        >
+          <!-- Topo do Card: Mês/Ref + Marco de Carreira + Badge de Rentabilidade Mensal -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="space-y-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-extrabold text-white font-mono">
+                  {{ row.refDate }}
+                </span>
+                <span class="text-xs text-[#A1A1AA]">
+                  • {{ row.fullName }}
+                </span>
+              </div>
+
+              <div
+                v-if="getCareerMilestoneForMonth(row.yearMonth, userWealth.careerMilestones)"
+                class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 font-bold"
               >
-                <td class="py-2 px-3 font-sans font-semibold text-white whitespace-nowrap">
-                  <div class="flex items-center gap-1.5">
-                    <span>{{ row.refDate }}</span>
-                    <span
-                      v-if="getCareerMilestoneForMonth(row.yearMonth, userWealth.careerMilestones)"
-                      class="text-[9px] px-1.5 py-0.5 rounded bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30 font-bold"
-                      :title="getCareerMilestoneForMonth(row.yearMonth, userWealth.careerMilestones)?.role"
-                    >
-                      💼 {{ getCareerMilestoneForMonth(row.yearMonth, userWealth.careerMilestones)?.role }}
-                    </span>
-                  </div>
-                </td>
-                <td class="py-2 px-3 text-right text-[#A1A1AA] whitespace-nowrap">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.initialNetWorthInCents) }}
-                </td>
-                <td class="py-2 px-3 text-right text-finance-pos whitespace-nowrap hidden sm:table-cell">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.incomeInCents) }}
-                </td>
-                <td class="py-2 px-3 text-right text-finance-neg whitespace-nowrap hidden sm:table-cell">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.expensesInCents) }}
-                </td>
-                <td class="py-2 px-3 text-right font-bold text-white whitespace-nowrap">
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.finalNetWorthInCents) }}
-                </td>
-                <td
-                  class="py-2 px-3 text-right font-bold whitespace-nowrap"
-                  :class="row.monthlyProfitInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
-                >
-                  {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.monthlyProfitInCents, { showSign: true }) }}
-                </td>
-                <td
-                  class="py-2 px-3 text-right font-bold whitespace-nowrap"
-                  :class="row.monthlyReturnPct >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
-                >
-                  {{ row.monthlyReturnPct >= 0 ? `+${row.monthlyReturnPct.toFixed(2).replace('.', ',')}%` : `${row.monthlyReturnPct.toFixed(2).replace('.', ',')}%` }}
-                </td>
-                <td class="py-2 px-3 text-right text-accent-yellow font-bold whitespace-nowrap hidden md:table-cell">
-                  +{{ row.cumulativeReturnPct.toFixed(1).replace('.', ',') }}%
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                <span>💼</span>
+                <span>{{ getCareerMilestoneForMonth(row.yearMonth, userWealth.careerMilestones)?.role }}</span>
+              </div>
+            </div>
+
+            <div class="text-right shrink-0">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-mono font-extrabold border"
+                :class="
+                  row.monthlyReturnPct >= 0
+                    ? 'bg-finance-pos/10 text-finance-pos border-finance-pos/30'
+                    : 'bg-finance-neg/10 text-finance-neg border-finance-neg/30'
+                "
+              >
+                {{ row.monthlyReturnPct >= 0 ? `+${row.monthlyReturnPct.toFixed(2).replace('.', ',')}%` : `${row.monthlyReturnPct.toFixed(2).replace('.', ',')}%` }}
+              </span>
+              <span
+                class="block text-[11px] font-mono font-bold mt-1"
+                :class="row.monthlyProfitInCents >= 0 ? 'text-finance-pos' : 'text-finance-neg'"
+              >
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.monthlyProfitInCents, { showSign: true }) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Grid 2x2 de Fluxo Patrimonial do Mês -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle/60 text-xs">
+            <div class="bg-surface/60 rounded-xl p-2.5 border border-border-subtle/50">
+              <span class="block text-[10px] uppercase tracking-wider text-[#71717A] font-semibold">
+                Patr. Inicial
+              </span>
+              <span class="font-mono font-bold text-[#D4D4D8] mt-0.5 block">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.initialNetWorthInCents) }}
+              </span>
+            </div>
+
+            <div class="bg-surface/60 rounded-xl p-2.5 border border-border-subtle/50">
+              <span class="block text-[10px] uppercase tracking-wider text-[#71717A] font-semibold">
+                Patr. Final
+              </span>
+              <span class="font-mono font-extrabold text-white mt-0.5 block">
+                {{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.finalNetWorthInCents) }}
+              </span>
+            </div>
+
+            <div class="bg-surface/60 rounded-xl p-2.5 border border-border-subtle/50">
+              <span class="block text-[10px] uppercase tracking-wider text-[#71717A] font-semibold">
+                Ganhos (Entradas)
+              </span>
+              <span class="font-mono font-bold text-finance-pos mt-0.5 block">
+                +{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.incomeInCents) }}
+              </span>
+            </div>
+
+            <div class="bg-surface/60 rounded-xl p-2.5 border border-border-subtle/50">
+              <span class="block text-[10px] uppercase tracking-wider text-[#71717A] font-semibold">
+                Gastos (Saídas)
+              </span>
+              <span class="font-mono font-bold text-finance-neg mt-0.5 block">
+                -{{ isPrivacyActive ? 'R$ •••••' : formatCentsToBrl(row.expensesInCents) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Rodapé do Card: Evolução acumulada desde o início -->
+          <div class="flex items-center justify-between text-[11px] pt-1 text-[#A1A1AA]">
+            <span>Evolução desde 07/2020</span>
+            <span class="font-mono font-bold text-accent-yellow">
+              +{{ row.cumulativeReturnPct.toFixed(1).replace('.', ',') }}%
+            </span>
+          </div>
         </div>
       </div>
     </div>

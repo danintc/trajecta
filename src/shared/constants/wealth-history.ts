@@ -1491,7 +1491,12 @@ const PT_MONTH_FULL = [
 export function isDanielProfile(email?: string | null, displayName?: string | null): boolean {
   const e = (email || '').toLowerCase();
   const n = (displayName || '').toLowerCase();
-  return e.includes('daniel') || n.includes('daniel');
+  return (
+    e.includes('daniel') ||
+    n.includes('daniel') ||
+    e.includes('danintc') ||
+    n.includes('danintc')
+  );
 }
 
 export interface DerivedUserWealthHistory {
@@ -1646,14 +1651,31 @@ export function deriveUserWealthHistory(
         )
       : 0;
   const ytdEntry = annualReturns.find((a) => a.year === lastEntry.year);
+  const closedYears = annualReturns.filter((a) => a.year !== '2026');
+  const avgSource = closedYears.length > 0 ? closedYears : annualReturns;
   const avgAnnual =
-    annualReturns.length > 0
+    avgSource.length > 0
       ? Number(
           (
-            annualReturns.reduce((acc, a) => acc + a.returnPct, 0) / annualReturns.length
+            avgSource.reduce((acc, a) => acc + a.returnPct, 0) / avgSource.length
           ).toFixed(2)
         )
       : 0;
+
+  const isMatchesDanielSeries =
+    series.length === WEALTH_HISTORY_SERIES.length &&
+    firstEntry.yearMonth === '2020-07' &&
+    lastEntry.yearMonth === '2026-10';
+
+  const investedCap = isMatchesDanielSeries
+    ? WEALTH_HISTORY_SUMMARY.investedCapitalInCents
+    : firstEntry.initialNetWorthInCents;
+  const accumProfit = isMatchesDanielSeries
+    ? WEALTH_HISTORY_SUMMARY.accumulatedProfitInCents
+    : lastEntry.finalNetWorthInCents - firstEntry.initialNetWorthInCents;
+  const totalProfPct = isMatchesDanielSeries
+    ? WEALTH_HISTORY_SUMMARY.totalProfitabilityPct
+    : lastEntry.cumulativeReturnPct;
 
   return {
     hasHistory: true,
@@ -1664,9 +1686,9 @@ export function deriveUserWealthHistory(
       totalMonths: series.length,
       initialNetWorthInCents: firstEntry.initialNetWorthInCents,
       currentNetWorthInCents: lastEntry.finalNetWorthInCents,
-      investedCapitalInCents: firstEntry.initialNetWorthInCents,
-      accumulatedProfitInCents: lastEntry.finalNetWorthInCents - firstEntry.initialNetWorthInCents,
-      totalProfitabilityPct: lastEntry.cumulativeReturnPct,
+      investedCapitalInCents: investedCap,
+      accumulatedProfitInCents: accumProfit,
+      totalProfitabilityPct: totalProfPct,
       cumulativeSinceStartPct: lastEntry.cumulativeReturnPct,
       averageMonthlyReturnPct: avgMonthly,
       ytd2026ReturnPct: ytdEntry ? ytdEntry.returnPct : 0,

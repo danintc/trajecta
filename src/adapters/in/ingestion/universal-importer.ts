@@ -309,15 +309,15 @@ export function buildPresetWorkbookForSheet(sheetId: string): XLSX.WorkBook {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(intlRows), 'INTERNACIONAL');
 
   const cryptoRows = [
-    ['Ativo', 'Preço Atual (USD)', 'Quantidade', 'Preço Médio (USD)', 'Valor Investido (USD)', 'Valor Atual (USD)', 'Lucro / Prejuízo (USD)', '% Carteira', '% Rentabilidade'],
-    ['USDC', '$1.00', '118.6300', '$1.00', 'R$118.63', '$118.63', '$0.00', '100.00%', '0.00%'],
+    ['Ativo', 'Preço Atual (R$)', 'Quantidade', 'Preço Médio (R$)', 'Valor Investido (R$)', 'Valor Atual (R$)', 'Lucro / Prejuízo (R$)', '% Carteira', '% Rentabilidade'],
+    ['USDC', 'R$644.97', '1', 'R$644.97', 'R$644.97', 'R$644.97', 'R$0.00', '100.00%', '0.00%'],
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cryptoRows), 'crypto');
 
   const rfRows = [
     ['Ativo', 'Valor Investido (R$)', 'Valor Atual (R$)', 'Lucro / Prejuízo (R$)', '% Carteira', '% Rentabilidade'],
-    ['TREND INVESTBACK V - Infinite', '$366.17', 'R$364.15', '-R$2.02', '$0.02', '-0.55%'],
-    ['Reserva em Dólar / Renda Fixa Cambial', '$2,725.94', 'R$14,820.39', 'R$12,094.45', '$0.98', '443.68%'],
+    ['TREND INVESTBACK V - Infinite', 'R$366.17', 'R$364.15', '-R$2.02', '2.40%', '-0.55%'],
+    ['Reserva em Dólar / Renda Fixa Cambial', 'R$8,780.78', 'R$14,820.39', 'R$6,039.61', '97.60%', '68.78%'],
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rfRows), 'Renda Fixa');
 

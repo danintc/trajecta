@@ -274,7 +274,7 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
     expect(pinSpan.classes()).toContain('whitespace-nowrap');
   });
 
-  it('deve renderizar o Histórico Completo de Rentabilidade (2020–2026), filtrar a tabela de 76 meses e permitir navegar ao Balanço Patrimonial', async () => {
+  it('deve renderizar a aba dedicada Histórico & Fluxo (2020–2026) em cards, filtrar os 76 meses e validar o valor acumulado real', async () => {
     const wrapper = mount(XpEvolutionTab, {
       props: {
         assets: [],
@@ -282,17 +282,28 @@ describe('XpEvolutionTab Component (Estilo XP Prints 1, 2 e 3)', () => {
       },
     });
 
+    // Nas abas Rentabilidade/Patrimônio, a listagem de 76 meses fica oculta para não poluir a tela
+    expect(wrapper.find('[data-testid="evolution-historical-ledger-section"]').exists()).toBe(false);
+
+    // Clicar na 3ª aba dedicada: Histórico & Fluxo
+    const histTab = wrapper.find('[data-testid="tab-mode-historico"]');
+    expect(histTab.exists()).toBe(true);
+    await histTab.trigger('click');
+
     expect(wrapper.find('[data-testid="evolution-historical-ledger-section"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('18.142,59');
+    expect(wrapper.text()).toContain('+63,84%');
     expect(wrapper.text()).toContain('+2587,10%');
     expect(wrapper.text()).toContain('Média Anual: +276,14%');
 
-    // Filtrar todos os 76 meses na tabela histórica
+    // Filtrar todos os 76 meses em cards
     await wrapper.find('[data-testid="ledger-filter-ALL"]').trigger('click');
     expect(wrapper.text()).toContain('Exibindo 76 meses');
+    expect(wrapper.findAll('[data-testid="ledger-month-card"]')).toHaveLength(76);
     expect(wrapper.text()).toContain('07/2020');
     expect(wrapper.text()).toContain('Analista de Software I');
 
-    // Ativar curva 2020–2026 no topo
+    // Ativar curva 2020–2026 no gráfico (volta automaticamente para o gráfico com since_2020)
     await wrapper.find('[data-testid="btn-activate-since-2020"]').trigger('click');
     expect(wrapper.find('[data-testid="details-reference-date"]').text()).toBe(
       'De 01/07/2020 Até 31/10/2026'
